@@ -13,9 +13,14 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const isMapPage = location.pathname === '/map';
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#F8F9FA]">
-      {/* Контент растягивается на всю доступную высоту */}
-      <main className={`flex-grow w-full ${showBottomTab && !isMapPage ? 'pb-24' : ''} flex flex-col`}>
+    /* h-[100dvh] фиксирует высоту на мобильных с динамическим viewport и убирает прокрутку body */
+    <div className="flex flex-col h-[100dvh] bg-[#F8F9FA] overflow-hidden">
+      {/* Контент скроллится внутри main, а не на уровне body */}
+      <main
+        className={`flex-grow w-full flex flex-col overflow-y-auto ${!isMapPage ? 'pt-14 px-4' : ''} ${
+          showBottomTab && !isMapPage ? 'pb-24' : ''
+        }`}
+      >
         {children}
       </main>
 

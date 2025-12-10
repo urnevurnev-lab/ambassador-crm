@@ -30,15 +30,15 @@ const MapPage: React.FC = () => {
   return (
     <Layout>
       {/* Контейнер карты тянется на всю доступную высоту */}
-      <div className="relative z-0 w-full h-full flex-grow">
+      <div className="relative w-full h-full z-0">
         
         {/* Хедер поверх карты */}
-        <div className="absolute top-0 left-0 right-0 z-[1000] p-4 pt-12 pointer-events-none">
-            <div className="flex justify-between items-center pointer-events-auto">
-                <div className="bg-black/70 backdrop-blur-md text-white px-4 py-2 rounded-full text-sm font-bold border border-white/10 shadow-lg">
-                    Точек на карте: {validFacilities.length}
-                </div>
+        <div className="absolute top-14 left-0 right-0 z-[1000] px-4 pointer-events-none">
+          <div className="flex justify-between items-center pointer-events-auto">
+            <div className="bg-black/70 backdrop-blur-md text-white px-4 py-2 rounded-full text-sm font-bold border border-white/10 shadow-lg">
+              Точек на карте: {validFacilities.length}
             </div>
+          </div>
         </div>
 
         {/* Сама карта */}
@@ -65,10 +65,10 @@ const MapPage: React.FC = () => {
         </MapContainer>
 
         {/* Кнопки управления */}
-        <div className="absolute bottom-6 right-4 z-[1000] flex flex-col gap-3">
-            <button className="w-12 h-12 bg-white text-black rounded-full flex items-center justify-center shadow-lg active:scale-90 transition">
-                <Navigation size={20}/>
-            </button>
+        <div className="absolute bottom-28 right-4 z-[1000] flex flex-col gap-3">
+          <button className="w-12 h-12 bg-white text-black rounded-full flex items-center justify-center shadow-lg active:scale-90 transition">
+            <Navigation size={20}/>
+          </button>
         </div>
       </div>
     </Layout>

@@ -9,11 +9,17 @@
   --sab: env(safe-area-inset-bottom);
 }
 
-html, body {
+html,
+body,
+#root {
   height: 100%;
   width: 100%;
   margin: 0;
   padding: 0;
+  overflow: hidden; /* Скроллим только внутри Layout */
+}
+
+body {
   background-color: #F8F9FA;
   color: #1C1C1E;
   -webkit-font-smoothing: antialiased;
@@ -23,7 +29,6 @@ html, body {
 #root {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
 }
 
 /* Скрываем скроллбар, но оставляем функционал */
