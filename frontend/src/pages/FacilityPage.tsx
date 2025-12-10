@@ -5,7 +5,6 @@ import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import { motion } from 'framer-motion';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import {
   MapPin,
   TrendingUp,
@@ -108,15 +107,15 @@ const FacilityPage: React.FC = () => {
 
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 flex flex-col items-center justify-center">
-            <div className="text-[10px] text-gray-400 uppercase font-bold mb-1">Health</div>
+            <div className="text-[10px] text-gray-400 uppercase font-bold mb-1">Рейтинг заполненности</div>
             <div className={`text-xl font-bold ${healthScore > 80 ? 'text-green-500' : 'text-amber-500'}`}>{healthScore}%</div>
           </div>
           <div className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 flex flex-col items-center justify-center">
-            <div className="text-[10px] text-gray-400 uppercase font-bold mb-1">SKU</div>
+            <div className="text-[10px] text-gray-400 uppercase font-bold mb-1">Позиций в наличии</div>
             <div className="text-xl font-bold text-gray-900">{currentStock.length}</div>
           </div>
           <div className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 flex flex-col items-center justify-center">
-            <div className="text-[10px] text-gray-400 uppercase font-bold mb-1">Визиты</div>
+            <div className="text-[10px] text-gray-400 uppercase font-bold mb-1">Визитов</div>
             <div className="text-xl font-bold text-gray-900">{facility.visits.length}</div>
           </div>
         </div>
@@ -128,6 +127,7 @@ const FacilityPage: React.FC = () => {
               zoom={15}
               zoomControl={false}
               dragging={false}
+              attributionControl={false}
               className="w-full h-full"
             >
               <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
@@ -141,41 +141,26 @@ const FacilityPage: React.FC = () => {
             <TrendingUp size={18} className="text-indigo-600" />
             <h3 className="font-bold text-gray-900">Полка</h3>
           </div>
-          <div className="flex flex-col items-center">
-            <div className="h-48 w-48 mb-6 relative">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={lineStats} innerRadius={60} outerRadius={80} paddingAngle={4} dataKey="value" stroke="none">
-                    {lineStats.map((e, i) => (
-                      <Cell key={i} fill={e.fill} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-3xl font-bold text-gray-900">{currentStock.length}</span>
-                <span className="text-[10px] text-gray-400 uppercase">Всего</span>
-              </div>
-            </div>
-            <div className="w-full space-y-3">
-              {lineStats.map((s) => (
-                <div key={s.name} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-3">
-                    <span className="w-3 h-3 rounded-full" style={{ backgroundColor: s.fill }}></span>
-                    <span className="text-gray-600 font-medium">{s.name}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-gray-400 font-medium">{s.percent}%</span>
-                    <span className="font-bold text-gray-900">{s.value}</span>
-                  </div>
+          <div className="space-y-3">
+            {lineStats.map((s) => (
+              <div key={s.name} className="space-y-1">
+                <div className="flex justify-between text-sm font-semibold text-[#1C1C1E]">
+                  <span>{s.name}</span>
+                  <span>{s.percent}%</span>
                 </div>
-              ))}
-            </div>
+                <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${s.percent}%`, backgroundColor: s.fill }}
+                  ></div>
+                </div>
+              </div>
+            ))}
+            {lineStats.length === 0 && <div className="text-sm text-gray-400">Нет данных по полке</div>}
           </div>
         </div>
 
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-1 h-full bg-rose-500"></div>
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-gray-900 flex items-center gap-2">
               <AlertOctagon size={18} className="text-rose-500" />
@@ -191,25 +176,21 @@ const FacilityPage: React.FC = () => {
               <p className="text-gray-500 text-sm mt-1">Все топовые позиции в наличии</p>
             </div>
           ) : (
-            <div className="space-y-5">
+            <div className="space-y-3">
               {Object.entries(groupedMissing).map(([line, items]) => (
-                <div key={line}>
-                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 border-b border-gray-100 pb-1">
-                    {line}
-                  </h4>
-                  <div className="grid grid-cols-1 gap-2">
-                    {items.map((p) => (
-                      <div
-                        key={p.id}
-                        className="flex items-center justify-between p-2 bg-gray-50 rounded-xl hover:bg-rose-50/50 transition-colors"
-                      >
-                        <span className="text-sm font-medium text-gray-700 ml-1">{cleanName(p.flavor)}</span>
-                        <div className="w-5 h-5 rounded-full border-2 border-gray-200 flex items-center justify-center">
-                          <div className="w-2.5 h-2.5 rounded-full bg-transparent"></div>
-                        </div>
+                <div key={line} className="space-y-2">
+                  {items.map((p) => (
+                    <div
+                      key={p.id}
+                      className="bg-orange-50 text-orange-800 border border-orange-100 rounded-xl px-3 py-2 text-sm flex items-center gap-2"
+                    >
+                      <span>⚠️</span>
+                      <div className="flex flex-col">
+                        <span className="font-semibold">{line}</span>
+                        <span className="text-xs text-orange-700">{cleanName(p.flavor)}</span>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>

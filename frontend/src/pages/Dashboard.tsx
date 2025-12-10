@@ -23,7 +23,7 @@ const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const currentTarget: Target | null = null;
+  const [currentTarget] = useState<Target | null>(null);
 
   // --- Загрузка базовой статистики (Сохранена рабочая логика) ---
   useEffect(() => {

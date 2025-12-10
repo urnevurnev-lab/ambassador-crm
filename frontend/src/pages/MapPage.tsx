@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import apiClient from '../api/apiClient';
 import { Layout } from '../components/Layout';
@@ -20,12 +20,19 @@ const MOSCOW_CENTER: [number, number] = [55.7558, 37.6173];
 
 const MapPage: React.FC = () => {
   const [facilities, setFacilities] = useState<Facility[]>([]);
+  const [search, setSearch] = useState('');
   
   useEffect(() => {
     apiClient.get<Facility[]>('/api/facilities').then(res => setFacilities(res.data)).catch(() => {});
   }, []);
 
   const validFacilities = facilities.filter(f => f.lat && f.lng && f.lat !== 0);
+  const filteredFacilities = useMemo(() => {
+    const term = search.toLowerCase().trim();
+    if (!term) return validFacilities;
+    return validFacilities.filter((f) => f.name.toLowerCase().includes(term));
+  }, [search, validFacilities]);
+
   const center = validFacilities[0] ? [validFacilities[0].lat, validFacilities[0].lng] : MOSCOW_CENTER;
 
   return (
@@ -49,12 +56,19 @@ const MapPage: React.FC = () => {
         <div className="flex-grow pt-[calc(env(safe-area-inset-top)+56px)] pb-24 px-3 flex flex-col">
             
             <div className="relative flex-grow w-full rounded-[2.5rem] overflow-hidden shadow-sm border border-gray-200/50 isolation-isolate">
-                
-                {/* Плашка с количеством (внутри карты) */}
-                <div className="absolute top-4 left-0 right-0 z-[1000] flex justify-center pointer-events-none">
-                    <div className="bg-white/90 backdrop-blur-md text-[#1C1C1E] px-4 py-2 rounded-full text-xs font-semibold shadow-sm border border-gray-100">
-                        Точек на карте: {validFacilities.length}
+                {/* Поиск + плашка с количеством */}
+                <div className="absolute top-4 left-0 right-0 z-[1000] px-4 flex flex-col gap-3">
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Поиск заведения..."
+                    className="w-full bg-white/95 backdrop-blur-md border border-gray-200 rounded-2xl px-4 py-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
+                  />
+                  <div className="flex justify-center pointer-events-none">
+                    <div className="bg-white/90 backdrop-blur-md text-[#1C1C1E] px-4 py-2 rounded-full text-xs font-semibold shadow-sm border border-gray-100 pointer-events-auto">
+                      Точек на карте: {filteredFacilities.length}
                     </div>
+                  </div>
                 </div>
 
                 {/* Карта */}
@@ -68,7 +82,7 @@ const MapPage: React.FC = () => {
                     <TileLayer 
                         url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" 
                     />
-                    {validFacilities.map(f => (
+                    {filteredFacilities.map(f => (
                         <Marker key={f.id} position={[f.lat, f.lng]}>
                         <Popup>
                             <div className="font-bold text-sm">{f.name}</div>

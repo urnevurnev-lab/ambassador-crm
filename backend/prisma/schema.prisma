@@ -54,6 +54,7 @@ model Visit {
   productsAvailable Product[] @relation("VisitProducts")
   photoUrl    String?
   isValidGeo  Boolean  @default(false)
+  comment     String?
   createdAt   DateTime @default(now())
 }
 

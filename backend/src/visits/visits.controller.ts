@@ -13,6 +13,7 @@ export class VisitsController {
         productsAvailable?: number[]; // Массив ID продуктов
         lat?: number;
         lng?: number;
+        comment?: string;
     }) {
         // 1. Создаем визит
         const visit = await this.prisma.visit.create({
@@ -21,6 +22,7 @@ export class VisitsController {
                 facilityId: body.facilityId,
                 type: body.type || 'VISIT',
                 isValidGeo: true, // Мы проверили это на фронте (Geo-Lock)
+                comment: body.comment,
                 productsAvailable: {
                     connect: body.productsAvailable?.map(id => ({ id })) || []
                 }
