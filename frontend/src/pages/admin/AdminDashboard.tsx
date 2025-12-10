@@ -43,6 +43,8 @@ export const AdminDashboard = () => {
   };
 
   const runCleanDb = async () => {
+    const confirmed = window.confirm('Удалить мусорные записи?');
+    if (!confirmed) return;
     WebApp.showAlert('Запускаем очистку базы...');
     try {
       await apiClient.post('/api/admin/clean-db');
@@ -97,7 +99,7 @@ export const AdminDashboard = () => {
 
           <div className="flex items-center justify-between pt-2 border-t border-gray-100">
             <div>
-              <div className="font-semibold text-sm">🧹 Очистить базу</div>
+              <div className="font-semibold text-sm">🗑 Очистить мусор</div>
               <div className="text-xs text-gray-400">Удалить активности, дубликаты и пустые адреса</div>
             </div>
             <button

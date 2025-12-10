@@ -58,13 +58,15 @@ export class AdminService {
             where: {
                 OR: [
                     { name: { startsWith: 'Активность', mode: 'insensitive' } },
+                    { name: { startsWith: 'Activity', mode: 'insensitive' } },
+                    { name: { startsWith: 'Test', mode: 'insensitive' } },
                     { name: { startsWith: 'Тест', mode: 'insensitive' } },
                 ],
             },
         });
 
         // 2. Удаляем пустые/короткие адреса
-        const emptyAddresses = await this.prisma.facility.findMany({
+        const badAddresses = await this.prisma.facility.findMany({
             where: {
                 OR: [
                     { address: null },
@@ -74,33 +76,23 @@ export class AdminService {
             },
             select: { id: true, address: true },
         });
-
-        // Допфильтр по длине <5
-        const shortAddressIds = emptyAddresses
+        const badAddressIds = badAddresses
             .filter((f) => !f.address || f.address.trim().length < 5)
             .map((f) => f.id);
 
-        const emptyIds = new Set<number>([...emptyAddresses.map((f) => f.id), ...shortAddressIds]);
-        let emptyDeleted = { count: 0 };
-        if (emptyIds.size) {
-            emptyDeleted = await this.prisma.facility.deleteMany({
-                where: { id: { in: Array.from(emptyIds) } },
-            });
-        }
+        const emptyDeleted = badAddressIds.length
+            ? await this.prisma.facility.deleteMany({ where: { id: { in: badAddressIds } } })
+            : { count: 0 };
 
         // 3. Дубликаты по name+address
         const allFacilities = await this.prisma.facility.findMany({
-            select: { id: true, name: true, address: true, createdAt: true },
+            select: { id: true, name: true, address: true },
             orderBy: { id: 'asc' },
         });
         const seen = new Map<string, number>();
         const duplicateIds: number[] = [];
-        const shortAddrIds: number[] = [];
         for (const f of allFacilities) {
             const addr = (f.address || '').trim();
-            if (addr.length > 0 && addr.length < 5) {
-                shortAddrIds.push(f.id);
-            }
             const key = `${(f.name || '').trim().toLowerCase()}|${addr.toLowerCase()}`;
             if (!key.trim()) continue;
             if (seen.has(key)) {
@@ -113,14 +105,10 @@ export class AdminService {
         if (duplicateIds.length) {
             duplicatesDeleted = await this.prisma.facility.deleteMany({ where: { id: { in: duplicateIds } } });
         }
-        if (shortAddrIds.length) {
-            const shortDeleted = await this.prisma.facility.deleteMany({ where: { id: { in: shortAddrIds } } });
-            emptyDeleted.count += shortDeleted.count;
-        }
 
-        // 4. Безнадежные (lat null)
+        // 4. Безнадежные (lat null или 0)
         const hopelessDeleted = await this.prisma.facility.deleteMany({
-            where: { lat: null },
+            where: { OR: [{ lat: null }, { lat: 0 }] },
         });
 
         return {
