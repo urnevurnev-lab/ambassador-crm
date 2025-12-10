@@ -11,7 +11,7 @@ export class GeocodingService {
     async getGeocodingStats() {
         const total = await this.prisma.facility.count();
         
-        // ИСПРАВЛЕНИЕ ЗДЕСЬ: Используем AND для двух условий "не null" и "не 0"
+        // Исправленный запрос для статистики
         const geocoded = await this.prisma.facility.count({
             where: {
                 AND: [
@@ -30,78 +30,87 @@ export class GeocodingService {
             },
         });
         
-        const stats = { total, geocoded, pending };
-        // this.logger.log(`STATS: Total: ${total} | Done: ${geocoded} | Pending: ${pending}`);
-        return stats;
+        return { total, geocoded, pending };
     }
 
     async geocodeMissingFacilities() {
-        this.logger.log('Starting SMART geocoding...');
+        this.logger.log('🚀 Starting SUPER-SMART geocoding...');
         
-        // Берем точки без координат (batches of 50)
+        // 1. Берем точки без координат (batches of 20, чтобы не перегружать)
         const facilities = await this.prisma.facility.findMany({
             where: {
-                OR: [
-                    { lat: null },
-                    { lat: 0 },
-                ],
+                OR: [{ lat: null }, { lat: 0 }],
             },
-            take: 50, 
+            take: 20, 
         });
 
-        console.log(`Found ${facilities.length} facilities to geocode`);
+        console.log(`Found ${facilities.length} facilities to process`);
         let updated = 0;
 
         for (const facility of facilities) {
             try {
-                // Умный поиск: "Название + Адрес"
-                // Если адрес слишком короткий, пропускаем
-                if (!facility.address || facility.address.length < 3) {
-                    console.log(`Skipping invalid address: ${facility.name}`);
+                // 2. ФИЛЬТР: Пропускаем активности и тесты
+                if (facility.name.toLowerCase().startsWith('активность') || facility.name.toLowerCase().includes('тест')) {
+                    console.log(`⏭️ Skipping activity: ${facility.name}`);
+                    // Можно пометить их как "обработанные" (например, lat=0.0001), чтобы не брать снова
+                    // Но пока просто пропускаем
                     continue;
                 }
 
-                const query = `${facility.name} ${facility.address}`;
-                const encodedQuery = encodeURIComponent(query);
+                // 3. СТРАТЕГИИ ПОИСКА (Waterfall)
+                // Очищаем адрес от мусора (этажи, индексы иногда мешают)
+                let cleanAddr = facility.address.replace(/(\d{6})|(\d{6},)/g, '').trim(); // убираем индекс
                 
-                // Запрос к Nominatim (OpenStreetMap)
-                const res = await axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${encodedQuery}&limit=1`, {
-                    headers: { 
-                        'User-Agent': 'AmbassadorCRM/1.0',
-                        'Referer': 'https://google.com',
-                    },
-                    timeout: 10000,
-                });
+                const strategies = [
+                    { name: 'Exact Match', query: `${facility.name} ${cleanAddr}` },
+                    { name: 'Address Only', query: `${cleanAddr}` },
+                    { name: 'Moscow Fallback', query: `${cleanAddr} Москва` } // Если город не указан, пробуем Москву
+                ];
 
-                const data = res.data;
-                
-                if (data && data.length > 0) {
-                    const first = data[0];
-                    if (first.lat && first.lon) {
-                        await this.prisma.facility.update({
-                            where: { id: facility.id },
-                            data: {
-                                lat: parseFloat(first.lat),
-                                lng: parseFloat(first.lon),
-                            },
+                let found = false;
+
+                for (const strat of strategies) {
+                    if (found) break; // Если нашли, следующие стратегии не нужны
+                    
+                    // Пропускаем стратегию, если запрос слишком короткий
+                    if (strat.query.length < 5) continue;
+
+                    try {
+                        const encodedQuery = encodeURIComponent(strat.query);
+                        const res = await axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${encodedQuery}&limit=1`, {
+                            headers: { 'User-Agent': 'AmbassadorCRM/2.0', 'Referer': 'https://google.com' },
+                            timeout: 5000,
                         });
-                        updated++;
-                        console.log(`✅ Geocoded: ${facility.name} -> [${first.lat}, ${first.lon}]`);
+
+                        if (res.data && res.data.length > 0) {
+                            const first = res.data[0];
+                            if (first.lat && first.lon) {
+                                await this.prisma.facility.update({
+                                    where: { id: facility.id },
+                                    data: {
+                                        lat: parseFloat(first.lat),
+                                        lng: parseFloat(first.lon),
+                                    },
+                                });
+                                updated++;
+                                found = true;
+                                console.log(`✅ [${strat.name}] Found: "${facility.name}" -> ${first.display_name.substring(0, 40)}...`);
+                            }
+                        }
+                    } catch (err) {
+                        // Игнорируем ошибки конкретной стратегии, пробуем следующую
                     }
-                } else {
-                    console.warn(`❌ Not found: ${query}`);
+                    
+                    // Пауза между стратегиями
+                    await new Promise(r => setTimeout(r, 1000)); 
                 }
 
-                // Пауза 1.5 сек, чтобы не забанили API
-                await new Promise((r) => setTimeout(r, 1500));
+                if (!found) {
+                    console.warn(`❌ FAILED all strategies for: ${facility.name}`);
+                }
 
             } catch (e: any) {
                 console.error(`Error processing ${facility.id}: ${e.message}`);
-                // Если ошибка сети (429/403), ждем дольше
-                if (e?.response?.status === 429 || e?.response?.status === 403) {
-                    console.warn('Rate limited. Waiting 5s...');
-                    await new Promise((r) => setTimeout(r, 5000));
-                }
             }
         }
 
