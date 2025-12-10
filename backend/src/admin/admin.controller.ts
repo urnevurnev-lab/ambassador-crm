@@ -45,4 +45,10 @@ export class AdminController {
     async getStats() {
         return this.adminService.getDashboardStats();
     }
+
+    @Post('clean-db')
+    @HttpCode(200)
+    async cleanDb() {
+        return this.adminService.cleanDatabase();
+    }
 }

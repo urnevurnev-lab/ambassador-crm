@@ -51,4 +51,83 @@ export class AdminService {
 
         return { users, facilities, orders, visits };
     }
+
+    async cleanDatabase() {
+        // 1. Удаляем активности/тесты
+        const activitiesDeleted = await this.prisma.facility.deleteMany({
+            where: {
+                OR: [
+                    { name: { startsWith: 'Активность', mode: 'insensitive' } },
+                    { name: { startsWith: 'Тест', mode: 'insensitive' } },
+                ],
+            },
+        });
+
+        // 2. Удаляем пустые/короткие адреса
+        const emptyAddresses = await this.prisma.facility.findMany({
+            where: {
+                OR: [
+                    { address: null },
+                    { address: { contains: 'Адрес не указан', mode: 'insensitive' } },
+                    { address: '' },
+                ],
+            },
+            select: { id: true, address: true },
+        });
+
+        // Допфильтр по длине <5
+        const shortAddressIds = emptyAddresses
+            .filter((f) => !f.address || f.address.trim().length < 5)
+            .map((f) => f.id);
+
+        const emptyIds = new Set<number>([...emptyAddresses.map((f) => f.id), ...shortAddressIds]);
+        let emptyDeleted = { count: 0 };
+        if (emptyIds.size) {
+            emptyDeleted = await this.prisma.facility.deleteMany({
+                where: { id: { in: Array.from(emptyIds) } },
+            });
+        }
+
+        // 3. Дубликаты по name+address
+        const allFacilities = await this.prisma.facility.findMany({
+            select: { id: true, name: true, address: true, createdAt: true },
+            orderBy: { id: 'asc' },
+        });
+        const seen = new Map<string, number>();
+        const duplicateIds: number[] = [];
+        const shortAddrIds: number[] = [];
+        for (const f of allFacilities) {
+            const addr = (f.address || '').trim();
+            if (addr.length > 0 && addr.length < 5) {
+                shortAddrIds.push(f.id);
+            }
+            const key = `${(f.name || '').trim().toLowerCase()}|${addr.toLowerCase()}`;
+            if (!key.trim()) continue;
+            if (seen.has(key)) {
+                duplicateIds.push(f.id);
+            } else {
+                seen.set(key, f.id);
+            }
+        }
+        let duplicatesDeleted = { count: 0 };
+        if (duplicateIds.length) {
+            duplicatesDeleted = await this.prisma.facility.deleteMany({ where: { id: { in: duplicateIds } } });
+        }
+        if (shortAddrIds.length) {
+            const shortDeleted = await this.prisma.facility.deleteMany({ where: { id: { in: shortAddrIds } } });
+            emptyDeleted.count += shortDeleted.count;
+        }
+
+        // 4. Безнадежные (lat null)
+        const hopelessDeleted = await this.prisma.facility.deleteMany({
+            where: { lat: null },
+        });
+
+        return {
+            activitiesDeleted: activitiesDeleted.count,
+            emptyDeleted: emptyDeleted.count,
+            duplicatesDeleted: duplicatesDeleted.count,
+            hopelessDeleted: hopelessDeleted.count,
+        };
+    }
 }

@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
+import { GeocodingService } from './geocoding.service';
 
 @Injectable()
 export class FacilitiesService {
-    constructor(private prisma: PrismaService) { }
+    constructor(private prisma: PrismaService, private geocodingService: GeocodingService) { }
 
     async findAll() {
         return this.prisma.facility.findMany({
@@ -28,7 +29,34 @@ export class FacilitiesService {
     }
 
     async create(data: any) {
-        return this.prisma.facility.create({ data });
+        if (!data.name || data.name.trim().length < 2) {
+            throw new BadRequestException('name is required');
+        }
+        if (!data.address || !/[A-Za-zА-Яа-я]/.test(data.address)) {
+            throw new BadRequestException('address is required');
+        }
+
+        const duplicate = await this.prisma.facility.findFirst({
+            where: {
+                name: { equals: data.name, mode: 'insensitive' },
+                address: { equals: data.address, mode: 'insensitive' },
+            },
+        });
+        if (duplicate) {
+            throw new ConflictException('Такое заведение уже есть');
+        }
+
+        // Геокодируем при создании
+        const coords = await this.geocodingService.tryGeocode(data.name, data.address);
+        const newFacility = await this.prisma.facility.create({
+            data: {
+                ...data,
+                lat: coords?.lat ?? null,
+                lng: coords?.lng ?? null,
+            },
+        });
+
+        return { facility: newFacility, geocoded: !!coords };
     }
 
     async update(id: number, data: any) {

@@ -32,7 +32,17 @@ const MapPage: React.FC = () => {
     <Layout>
       <div className="flex flex-col h-full bg-[#F8F9FA]">
         {/* 1. Светлый хедер (решает проблему наезда на челку) */}
-        <PageHeader title="Карта заведений" />
+        <PageHeader
+          title="Карта заведений"
+          rightContent={
+            <Link
+              to="/facility/new"
+              className="w-9 h-9 rounded-full bg-[#007AFF] text-white flex items-center justify-center text-lg font-bold"
+            >
+              +
+            </Link>
+          }
+        />
 
         {/* 2. Контейнер карты с отступами (Мягкая рамка) */}
         {/* pt-[calc(...)] нужен, чтобы компенсировать фиксированный хедер */}

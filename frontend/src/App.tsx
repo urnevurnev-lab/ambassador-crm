@@ -8,6 +8,7 @@ import MapPage from './pages/MapPage';
 import OrderPage from './pages/OrderPage';
 import FacilityPage from './pages/FacilityPage';
 import FacilitiesListPage from './pages/FacilitiesListPage';
+import NewFacilityPage from './pages/NewFacilityPage';
 
 // ИСПРАВЛЕННАЯ СТРОКА: Используем named import { AdminDashboard }
 import { AdminDashboard } from './pages/admin/AdminDashboard'; 
@@ -28,6 +29,7 @@ const App: React.FC = () => {
           <Route path="/map" element={<MapPage />} />
           <Route path="/orders" element={<OrderPage />} />
           <Route path="/facility/:id" element={<FacilityPage />} />
+          <Route path="/facility/new" element={<NewFacilityPage />} />
           <Route path="/facilities" element={<FacilitiesListPage />} />
           
           {/* Админ-панель: ИСПРАВЛЕНО */}

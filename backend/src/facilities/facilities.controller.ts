@@ -6,13 +6,14 @@ export class FacilitiesController {
     constructor(private readonly facilitiesService: FacilitiesService) { }
 
     @Post()
-    async createFacility(@Body() data: { name: string; address: string; city?: string; lat?: number; lng?: number }) {
+    async createFacility(@Body() data: { name: string; address: string; city?: string; lat?: number; lng?: number; format?: string }) {
         const address = data.city ? `${data.city}, ${data.address}` : data.address;
         return this.facilitiesService.create({
             name: data.name,
             address,
             lat: data.lat !== undefined ? Number(data.lat) : null,
             lng: data.lng !== undefined ? Number(data.lng) : null,
+            format: data.format,
         });
     }
 

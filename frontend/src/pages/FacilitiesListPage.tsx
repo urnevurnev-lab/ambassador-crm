@@ -43,7 +43,18 @@ const FacilitiesListPage: React.FC = () => {
   return (
     <Layout>
       {/* 1. Светлый хедер с кнопкой "Назад" слева (безопасно) */}
-      <PageHeader title="База точек" back />
+      <PageHeader
+        title="База точек"
+        back
+        rightContent={
+          <Link
+            to="/facility/new"
+            className="w-9 h-9 rounded-full bg-[#007AFF] text-white flex items-center justify-center text-lg font-bold"
+          >
+            +
+          </Link>
+        }
+      />
 
       <div className="bg-[#F8F9FA] min-h-screen pt-[calc(env(safe-area-inset-top)+60px)] pb-32 px-4">
         

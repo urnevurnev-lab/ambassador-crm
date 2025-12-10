@@ -57,55 +57,18 @@ export class GeocodingService {
                     continue;
                 }
 
-                // 3. СТРАТЕГИИ ПОИСКА (Waterfall)
-                // Очищаем адрес от мусора (этажи, индексы иногда мешают)
-                let cleanAddr = facility.address.replace(/(\d{6})|(\d{6},)/g, '').trim(); // убираем индекс
-                
-                const strategies = [
-                    { name: 'Exact Match', query: `${facility.name} ${cleanAddr}` },
-                    { name: 'Address Only', query: `${cleanAddr}` },
-                    { name: 'Moscow Fallback', query: `${cleanAddr} Москва` } // Если город не указан, пробуем Москву
-                ];
+                const coords = await this.tryGeocode(facility.name, facility.address);
 
-                let found = false;
-
-                for (const strat of strategies) {
-                    if (found) break; // Если нашли, следующие стратегии не нужны
-                    
-                    // Пропускаем стратегию, если запрос слишком короткий
-                    if (strat.query.length < 5) continue;
-
-                    try {
-                        const encodedQuery = encodeURIComponent(strat.query);
-                        const res = await axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${encodedQuery}&limit=1`, {
-                            headers: { 'User-Agent': 'AmbassadorCRM/2.0', 'Referer': 'https://google.com' },
-                            timeout: 5000,
-                        });
-
-                        if (res.data && res.data.length > 0) {
-                            const first = res.data[0];
-                            if (first.lat && first.lon) {
-                                await this.prisma.facility.update({
-                                    where: { id: facility.id },
-                                    data: {
-                                        lat: parseFloat(first.lat),
-                                        lng: parseFloat(first.lon),
-                                    },
-                                });
-                                updated++;
-                                found = true;
-                                console.log(`✅ [${strat.name}] Found: "${facility.name}" -> ${first.display_name.substring(0, 40)}...`);
-                            }
-                        }
-                    } catch (err) {
-                        // Игнорируем ошибки конкретной стратегии, пробуем следующую
-                    }
-                    
-                    // Пауза между стратегиями
-                    await new Promise(r => setTimeout(r, 1000)); 
-                }
-
-                if (!found) {
+                if (coords) {
+                    await this.prisma.facility.update({
+                        where: { id: facility.id },
+                        data: {
+                            lat: coords.lat,
+                            lng: coords.lng,
+                        },
+                    });
+                    updated++;
+                } else {
                     console.warn(`❌ FAILED all strategies for: ${facility.name}`);
                 }
 
@@ -115,5 +78,47 @@ export class GeocodingService {
         }
 
         return { updated };
+    }
+
+    async tryGeocode(name: string, address: string | null) {
+        if (!address || address.length < 3) return null;
+
+        // Очищаем адрес от индексов
+        const cleanAddr = address.replace(/(\d{6})|(\d{6},)/g, '').trim();
+
+        const strategies = [
+            { name: 'Exact Match', query: `${name} ${cleanAddr}` },
+            { name: 'Address Only', query: `${cleanAddr}` },
+            { name: 'Moscow Fallback', query: `${cleanAddr} Москва` },
+        ];
+
+        for (const strat of strategies) {
+            if (strat.query.length < 5) continue;
+
+            try {
+                const encodedQuery = encodeURIComponent(strat.query);
+                const res = await axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${encodedQuery}&limit=1`, {
+                    headers: { 'User-Agent': 'AmbassadorCRM/2.0', 'Referer': 'https://google.com' },
+                    timeout: 5000,
+                });
+
+                if (res.data && res.data.length > 0) {
+                    const first = res.data[0];
+                    if (first.lat && first.lon) {
+                        console.log(`✅ [${strat.name}] Found: "${name}" -> ${first.display_name.substring(0, 60)}...`);
+                        return {
+                            lat: parseFloat(first.lat),
+                            lng: parseFloat(first.lon),
+                        };
+                    }
+                }
+            } catch (err) {
+                // игнорируем и пробуем следующую стратегию
+            }
+
+            await new Promise((r) => setTimeout(r, 1000));
+        }
+
+        return null;
     }
 }
