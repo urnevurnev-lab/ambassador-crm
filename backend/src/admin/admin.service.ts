@@ -11,6 +11,28 @@ export class AdminService {
         private readonly geocodingService: GeocodingService
     ) {}
 
+    // --- СТАРЫЕ МЕТОДЫ (Вернули, чтобы контроллер не падал) ---
+
+    async geocode() {
+        // Проксируем вызов в сервис геокодинга
+        return this.geocodingService.geocodeMissingFacilities();
+    }
+
+    async createMainDistributor() {
+        const exists = await this.prisma.distributor.findFirst();
+        if (!exists) {
+            return this.prisma.distributor.create({
+                data: {
+                    name: 'Main Distributor',
+                    telegramChatId: '' // Пустой ID, заполнят потом
+                }
+            });
+        }
+        return { message: 'Distributor already exists' };
+    }
+
+    // --- НОВЫЕ МЕТОДЫ (Очистка и Статистика) ---
+
     async resetDatabase() {
         await this.prisma.visit.deleteMany();
         await this.prisma.orderItem.deleteMany();
@@ -23,23 +45,18 @@ export class AdminService {
     async cleanDatabase() {
         this.logger.log('🧹 Starting deep cleaning...');
 
-        // 1. ОПРЕДЕЛЯЕМ КРИТЕРИИ МУСОРА
-        // Находим ID всех заведений, которые подходят под удаление
+        // 1. Находим "мусор"
         const garbageFacilities = await this.prisma.facility.findMany({
             where: {
                 OR: [
-                    // Активности и Тесты
                     { name: { startsWith: 'Активность', mode: 'insensitive' } },
                     { name: { startsWith: 'Activity', mode: 'insensitive' } },
                     { name: { startsWith: 'Test', mode: 'insensitive' } },
                     { name: { startsWith: 'Тест', mode: 'insensitive' } },
-                    
-                    // Плохие адреса
                     { address: '' },
                     { address: null },
                     { address: 'Адрес не указан' },
-                    
-                    // Безнадежные (без координат)
+                    // Удаляем те, что без координат (значит, умный поиск не справился)
                     { lat: null },
                     { lat: 0 },
                 ]
@@ -50,44 +67,31 @@ export class AdminService {
         const idsToDelete = garbageFacilities.map(f => f.id);
 
         if (idsToDelete.length === 0) {
-            return { message: 'Nothing to clean. Database is shiny! ✨' };
+            return { message: 'Nothing to clean.' };
         }
 
         this.logger.log(`Found ${idsToDelete.length} garbage facilities. Deleting...`);
 
-        // 2. УДАЛЯЕМ СВЯЗИ (Визиты и Заказы)
-        // Сначала удаляем элементы заказов
+        // 2. УДАЛЯЕМ СВЯЗИ (Чтобы не было ошибки Foreign Key)
         await this.prisma.orderItem.deleteMany({
-            where: {
-                order: {
-                    facilityId: { in: idsToDelete }
-                }
-            }
+            where: { order: { facilityId: { in: idsToDelete } } }
         });
-
-        // Удаляем сами заказы
-        const deletedOrders = await this.prisma.order.deleteMany({
+        await this.prisma.order.deleteMany({
+            where: { facilityId: { in: idsToDelete } }
+        });
+        await this.prisma.visit.deleteMany({
             where: { facilityId: { in: idsToDelete } }
         });
 
-        // Удаляем визиты
-        const deletedVisits = await this.prisma.visit.deleteMany({
-            where: { facilityId: { in: idsToDelete } }
-        });
-
-        // 3. УДАЛЯЕМ САМИ ЗАВЕДЕНИЯ
+        // 3. УДАЛЯЕМ САМИ ТОЧКИ
         const deletedFacilities = await this.prisma.facility.deleteMany({
             where: { id: { in: idsToDelete } }
         });
 
-        const result = {
-            deletedFacilities: deletedFacilities.count,
-            deletedVisits: deletedVisits.count,
-            deletedOrders: deletedOrders.count
+        return { 
+            message: 'Cleanup successful', 
+            deleted: deletedFacilities.count 
         };
-
-        this.logger.log(`Cleanup complete: ${JSON.stringify(result)}`);
-        return result;
     }
 
     async getDashboardStats() {
