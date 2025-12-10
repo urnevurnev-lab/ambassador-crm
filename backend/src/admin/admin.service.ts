@@ -11,10 +11,9 @@ export class AdminService {
         private readonly geocodingService: GeocodingService
     ) {}
 
-    // --- СТАРЫЕ МЕТОДЫ (Вернули, чтобы контроллер не падал) ---
+    // --- СТАРЫЕ МЕТОДЫ (для совместимости) ---
 
     async geocode() {
-        // Проксируем вызов в сервис геокодинга
         return this.geocodingService.geocodeMissingFacilities();
     }
 
@@ -24,14 +23,14 @@ export class AdminService {
             return this.prisma.distributor.create({
                 data: {
                     name: 'Main Distributor',
-                    telegramChatId: '' // Пустой ID, заполнят потом
+                    telegramChatId: '' 
                 }
             });
         }
         return { message: 'Distributor already exists' };
     }
 
-    // --- НОВЫЕ МЕТОДЫ (Очистка и Статистика) ---
+    // --- НОВЫЕ МЕТОДЫ ---
 
     async resetDatabase() {
         await this.prisma.visit.deleteMany();
@@ -46,17 +45,22 @@ export class AdminService {
         this.logger.log('🧹 Starting deep cleaning...');
 
         // 1. Находим "мусор"
+        // ВАЖНО: Убрали { address: null }, так как поле обязательное
         const garbageFacilities = await this.prisma.facility.findMany({
             where: {
                 OR: [
+                    // Активности и Тесты
                     { name: { startsWith: 'Активность', mode: 'insensitive' } },
                     { name: { startsWith: 'Activity', mode: 'insensitive' } },
                     { name: { startsWith: 'Test', mode: 'insensitive' } },
                     { name: { startsWith: 'Тест', mode: 'insensitive' } },
+                    
+                    // Плохие адреса (пустые строки)
                     { address: '' },
-                    { address: null },
                     { address: 'Адрес не указан' },
-                    // Удаляем те, что без координат (значит, умный поиск не справился)
+                    { address: { lt: '     ' } }, // Короче 5 символов (примерно)
+                    
+                    // Безнадежные (без координат)
                     { lat: null },
                     { lat: 0 },
                 ]
@@ -67,31 +71,42 @@ export class AdminService {
         const idsToDelete = garbageFacilities.map(f => f.id);
 
         if (idsToDelete.length === 0) {
-            return { message: 'Nothing to clean.' };
+            this.logger.log('Nothing to clean. Database is shiny! ✨');
+            return { message: 'Nothing to clean. Database is shiny! ✨', deleted: 0 };
         }
 
         this.logger.log(`Found ${idsToDelete.length} garbage facilities. Deleting...`);
 
         // 2. УДАЛЯЕМ СВЯЗИ (Чтобы не было ошибки Foreign Key)
+        // Удаляем OrderItems, связанные с этими заведениями
         await this.prisma.orderItem.deleteMany({
             where: { order: { facilityId: { in: idsToDelete } } }
         });
-        await this.prisma.order.deleteMany({
-            where: { facilityId: { in: idsToDelete } }
-        });
-        await this.prisma.visit.deleteMany({
+        
+        // Удаляем Orders
+        const deletedOrders = await this.prisma.order.deleteMany({
             where: { facilityId: { in: idsToDelete } }
         });
 
-        // 3. УДАЛЯЕМ САМИ ТОЧКИ
+        // Удаляем Visits
+        const deletedVisits = await this.prisma.visit.deleteMany({
+            where: { facilityId: { in: idsToDelete } }
+        });
+
+        // 3. УДАЛЯЕМ САМИ ЗАВЕДЕНИЯ
         const deletedFacilities = await this.prisma.facility.deleteMany({
             where: { id: { in: idsToDelete } }
         });
 
-        return { 
+        const result = { 
             message: 'Cleanup successful', 
-            deleted: deletedFacilities.count 
+            deletedFacilities: deletedFacilities.count,
+            deletedVisits: deletedVisits.count,
+            deletedOrders: deletedOrders.count
         };
+        
+        this.logger.log(`Cleanup Done: ${JSON.stringify(result)}`);
+        return result;
     }
 
     async getDashboardStats() {
