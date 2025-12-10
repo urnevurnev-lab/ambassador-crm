@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: #F8F9FA; /* Светлый фон подложки */
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch; /* Плавный скролл на iOS */
+}
+
+#root {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}

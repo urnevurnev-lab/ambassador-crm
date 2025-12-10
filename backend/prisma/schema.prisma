@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  AMBASSADOR
+}
+
+enum VisitType {
+  TASTING
+  TRAINING
+  CHECKUP
+}
+
+model User {
+  id          Int      @id @default(autoincrement())
+  telegramId  String   @unique
+  fullName    String
+  role        Role     @default(AMBASSADOR)
+  xp          Int      @default(0)
+  level       Int      @default(1)
+  visits      Visit[]
+  orders      Order[]
+  createdAt   DateTime @default(now())
+}
+
+model Facility {
+  id          Int      @id @default(autoincrement())
+  name        String
+  address     String
+  lat         Float?
+  lng         Float?
+  format      String?
+  tier        String?
+  mustList    Json?    
+  visits      Visit[]
+  orders      Order[]
+}
+
+model Visit {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id])
+  facilityId  Int
+  facility    Facility @relation(fields: [facilityId], references: [id])
+  type        String   @default("UNKNOWN")
+  date        DateTime @default(now())
+  productsAvailable Product[] @relation("VisitProducts")
+  photoUrl    String?
+  isValidGeo  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model Product {
+  id        Int      @id @default(autoincrement())
+  line      String
+  flavor    String
+  sku       String   @unique
+  category  String   @default("UNKNOWN")
+  createdAt DateTime @default(now())
+  productsAvailableIn Visit[] @relation("VisitProducts")
+  orderItems OrderItem[]
+}
+
+model Order {
+  id            Int      @id @default(autoincrement())
+  userId        Int?
+  user          User?     @relation(fields: [userId], references: [id])
+  facilityId    Int?
+  facility      Facility? @relation(fields: [facilityId], references: [id])
+  distributorId Int?
+  distributor   Distributor? @relation(fields: [distributorId], references: [id])
+  status        String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  processedBy   String?
+  total         Float    @default(0)
+  items         OrderItem[]
+  createdAt     DateTime @default(now())
+}
+
+model OrderItem {
+  id        Int      @id @default(autoincrement())
+  orderId   Int
+  order     Order    @relation(fields: [orderId], references: [id])
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int
+}
+
+model Distributor {
+  id             Int      @id @default(autoincrement())
+  name           String
+  telegramChatId String
+  orders         Order[]
+}
