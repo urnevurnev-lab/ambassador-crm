@@ -1,76 +1,71 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import apiClient from '../api/apiClient';
 import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import { motion } from 'framer-motion';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
-import {
-  MapPin,
-  TrendingUp,
-  AlertOctagon,
-  CheckCircle2,
-  ChevronDown,
-  ChevronUp,
-  ArrowRight,
-  History,
+import { 
+  MapPin, AlertTriangle, CheckCircle2, 
+  ArrowRight, History, BarChart3 
 } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 
+// --- ИНТЕРФЕЙСЫ ---
 interface Product { id: number; flavor: string; category: string; line: string; }
-interface Visit { id: number; date: string; type: string; user?: { fullName: string }; productsAvailable?: Product[]; }
+interface Visit { id: number; date: string; type: string; comment?: string; user?: { fullName: string }; productsAvailable?: Product[]; }
 interface FacilityResponse {
-  facility: { id: number; name: string; address: string; tier?: string; format?: string; lat?: number; lng?: number; visits: Visit[]; };
-  lastVisit: Visit | null;
+  facility: { id: number; name: string; address: string; lat?: number; lng?: number; visits: Visit[]; };
   currentStock: Product[];
   missingRecommendations?: (Product & { count?: number })[];
   categoryBreakdown?: Record<string, number>;
 }
 
+// Умная очистка имени
 const cleanName = (name: string) => {
   let cleaned = name.split('(')[0].trim();
+  // Если все капсом - делаем красиво (МЯТА -> Мята)
   if (cleaned === cleaned.toUpperCase()) cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1).toLowerCase();
   return cleaned;
 };
 
-const COLORS: Record<string, string> = {
-  Bliss: '#F472B6',
-  'White Line': '#94A3B8',
-  'Black Line': '#171717',
-  'Cigar Line': '#D97706',
-  Other: '#6366F1',
+// Цвета для полосок
+const LINE_COLORS: Record<string, string> = {
+  'Bliss': '#ec4899',      // Розовый
+  'White Line': '#94a3b8', // Серый
+  'Black Line': '#171717', // Черный
+  'Cigar Line': '#d97706', // Янтарный
+  'Other': '#6366f1'       // Индиго
 };
 
 const FacilityPage: React.FC = () => {
   const { id } = useParams();
   const [data, setData] = useState<FacilityResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [openVisitId, setOpenVisitId] = useState<number | null>(null);
-
   useEffect(() => {
-    apiClient
-      .get<FacilityResponse>(`/api/facilities/${id}`)
-      .then((res) => setData(res.data))
+    apiClient.get<FacilityResponse>(`/api/facilities/${id}`)
+      .then(res => setData(res.data))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [id]);
 
-  const lineStats = useMemo(() => {
-    if (!data?.categoryBreakdown) return [];
-    const total = Object.values(data.categoryBreakdown).reduce((a, b) => a + b, 0);
-    return Object.entries(data.categoryBreakdown)
-      .map(([name, value]) => ({
-        name,
-        value,
-        percent: total ? Math.round((value / total) * 100) : 0,
-        fill: COLORS[name] || COLORS['Other'],
-      }))
-      .sort((a, b) => b.value - a.value);
+  // Данные для линейных графиков
+  const stats = useMemo(() => {
+      if (!data?.categoryBreakdown) return [];
+      const total = Object.values(data.categoryBreakdown).reduce((a: number, b: number) => a + b, 0);
+      const base = total === 0 ? 1 : total;
+      
+      return Object.entries(data.categoryBreakdown).map(([name, value]) => ({
+          name, 
+          value: value as number, 
+          percent: Math.round(((value as number) / base) * 100),
+          color: LINE_COLORS[name] || LINE_COLORS['Other']
+      })).sort((a, b) => (b.value as number) - (a.value as number));
   }, [data]);
 
   const groupedMissing = useMemo(() => {
     if (!data?.missingRecommendations) return {};
-    return data.missingRecommendations.reduce((acc, item) => {
+    return data.missingRecommendations.reduce((acc: Record<string, Product[]>, item: Product) => {
       const line = item.line || 'Другое';
       if (!acc[line]) acc[line] = [];
       acc[line].push(item);
@@ -79,177 +74,188 @@ const FacilityPage: React.FC = () => {
   }, [data]);
 
   const healthScore = useMemo(() => {
-    if (!data) return 0;
-    const missingCount = data.missingRecommendations?.length || 0;
-    return Math.max(0, 100 - missingCount * 5);
+      if (!data) return 0;
+      const missingCount = data.missingRecommendations?.length || 0;
+      return Math.max(0, 100 - (missingCount * 5));
   }, [data]);
 
-  if (loading || !data) {
-    return (
-      <Layout>
-        <div className="h-screen flex items-center justify-center bg-[#F8F9FA] text-gray-400">Загрузка...</div>
-      </Layout>
-    );
-  }
-
+  if (loading || !data) return <Layout><div className="h-screen flex items-center justify-center text-gray-400">Загрузка...</div></Layout>;
+  
   const { facility, currentStock } = data;
 
   return (
     <Layout>
       <PageHeader title={cleanName(facility.name)} back />
-
-      <div className="pt-[calc(env(safe-area-inset-top)+60px)] px-4 pb-32 space-y-4">
-        <div className="text-center mb-1">
-          <div className="inline-flex items-center justify-center px-3 py-1 bg-gray-100 rounded-full text-xs text-gray-500">
-            <MapPin size={12} className="mr-1" /> {facility.address}
-          </div>
+      
+      <div className="pt-[calc(env(safe-area-inset-top)+60px)] px-4 pb-32 space-y-5">
+        
+        {/* Адрес */}
+        <div className="flex justify-center">
+             <div className="inline-flex items-center px-3 py-1.5 bg-gray-100 rounded-full text-xs font-medium text-gray-600 shadow-sm border border-gray-200">
+                <MapPin size={14} className="mr-1.5 text-gray-400"/> {facility.address}
+             </div>
         </div>
 
+        {/* 3 Главные цифры (РУССКИЕ) */}
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 flex flex-col items-center justify-center">
-            <div className="text-[10px] text-gray-400 uppercase font-bold mb-1">Рейтинг заполненности</div>
-            <div className={`text-xl font-bold ${healthScore > 80 ? 'text-green-500' : 'text-amber-500'}`}>{healthScore}%</div>
-          </div>
-          <div className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 flex flex-col items-center justify-center">
-            <div className="text-[10px] text-gray-400 uppercase font-bold mb-1">Позиций в наличии</div>
-            <div className="text-xl font-bold text-gray-900">{currentStock.length}</div>
-          </div>
-          <div className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 flex flex-col items-center justify-center">
-            <div className="text-[10px] text-gray-400 uppercase font-bold mb-1">Визитов</div>
-            <div className="text-xl font-bold text-gray-900">{facility.visits.length}</div>
-          </div>
+            <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm text-center flex flex-col justify-center h-24">
+                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Рейтинг</div>
+                <div className={`text-2xl font-black ${healthScore > 80 ? 'text-green-500' : healthScore > 50 ? 'text-yellow-500' : 'text-red-500'}`}>{healthScore}%</div>
+            </div>
+            <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm text-center flex flex-col justify-center h-24">
+                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">В наличии</div>
+                <div className="text-2xl font-black text-[#1C1C1E]">{currentStock.length}</div>
+                <div className="text-[9px] text-gray-300 font-medium">SKU</div>
+            </div>
+            <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm text-center flex flex-col justify-center h-24">
+                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Визиты</div>
+                <div className="text-2xl font-black text-[#1C1C1E]">{facility.visits.length}</div>
+            </div>
         </div>
 
+        {/* Карта (Без флага) */}
         {facility.lat && facility.lng && (
-          <div className="h-32 w-full rounded-2xl overflow-hidden shadow-sm border border-gray-100 relative z-0">
-            <MapContainer
-              center={[facility.lat, facility.lng]}
-              zoom={15}
-              zoomControl={false}
-              dragging={false}
-              attributionControl={false}
-              className="w-full h-full"
-            >
-              <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
-              <Marker position={[facility.lat, facility.lng]} />
-            </MapContainer>
-          </div>
+            <div className="h-32 w-full rounded-3xl overflow-hidden shadow-sm border border-gray-100 relative z-0">
+                 <MapContainer 
+                    center={[facility.lat, facility.lng]} 
+                    zoom={15} 
+                    zoomControl={false} 
+                    dragging={false} 
+                    attributionControl={false} // Убираем копирайты
+                    className="w-full h-full bg-gray-100"
+                 >
+                    <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+                    <Marker position={[facility.lat, facility.lng]} />
+                 </MapContainer>
+            </div>
         )}
 
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingUp size={18} className="text-indigo-600" />
-            <h3 className="font-bold text-gray-900">Полка</h3>
-          </div>
-          <div className="space-y-3">
-            {lineStats.map((s) => (
-              <div key={s.name} className="space-y-1">
-                <div className="flex justify-between text-sm font-semibold text-[#1C1C1E]">
-                  <span>{s.name}</span>
-                  <span>{s.percent}%</span>
-                </div>
-                <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{ width: `${s.percent}%`, backgroundColor: s.fill }}
-                  ></div>
-                </div>
-              </div>
-            ))}
-            {lineStats.length === 0 && <div className="text-sm text-gray-400">Нет данных по полке</div>}
-          </div>
+        {/* Полка (Линейные графики) */}
+        <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-2 mb-5">
+                <BarChart3 size={20} className="text-indigo-600"/>
+                <h3 className="font-bold text-gray-900 text-lg">Структура полки</h3>
+            </div>
+            
+            <div className="space-y-4">
+                {stats.length === 0 ? <div className="text-center text-gray-400 text-sm py-4">Нет данных о товарах</div> : 
+                 stats.map(s => (
+                    <div key={s.name}>
+                        <div className="flex justify-between text-xs font-bold text-gray-700 mb-1.5">
+                            <span>{s.name}</span>
+                            <span>{s.value} шт ({s.percent}%)</span>
+                        </div>
+                        <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                            <motion.div 
+                                initial={{ width: 0 }} 
+                                animate={{ width: `${s.percent}%` }} 
+                                transition={{ duration: 1, ease: "easeOut" }}
+                                className="h-full rounded-full" 
+                                style={{ backgroundColor: s.color }} 
+                            />
+                        </div>
+                    </div>
+                ))}
+            </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 relative overflow-hidden">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-gray-900 flex items-center gap-2">
-              <AlertOctagon size={18} className="text-rose-500" />
-              Рекомендации
+        {/* Рекомендации (Чего нет) */}
+        <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between mb-5">
+                <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
+                    <AlertTriangle size={20} className="text-orange-500"/>
+                    Чего не хватает
+                </h3>
+            </div>
+
+            {Object.keys(groupedMissing).length === 0 ? (
+                <div className="flex flex-col items-center py-6 text-center">
+                    <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-3">
+                        <CheckCircle2 size={24} />
+                    </div>
+                    <p className="text-gray-900 font-bold">Полка идеальна!</p>
+                    <p className="text-gray-500 text-xs mt-1">Все ключевые позиции в наличии</p>
+                </div>
+            ) : (
+                <div className="space-y-4">
+                    {Object.entries(groupedMissing).map(([line, items]) => (
+                        <div key={line} className="bg-orange-50/50 rounded-2xl p-3 border border-orange-100/50">
+                            <div className="text-[10px] font-bold text-orange-400 uppercase mb-2 tracking-widest">{line}</div>
+                            <div className="flex flex-wrap gap-2">
+                                {items.map(p => (
+                                    <span key={p.id} className="text-xs font-medium text-orange-800 bg-white border border-orange-100 px-2 py-1 rounded-md shadow-sm">
+                                        {cleanName(p.flavor)}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+
+        {/* История визитов */}
+        <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
+            <h3 className="font-bold text-gray-900 text-lg mb-5 flex items-center gap-2">
+                <History size={20} className="text-gray-400"/>
+                История визитов
             </h3>
-          </div>
-          {Object.keys(groupedMissing).length === 0 ? (
-            <div className="flex flex-col items-center py-6 text-center">
-              <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-3">
-                <CheckCircle2 size={24} />
-              </div>
-              <p className="text-gray-900 font-medium">Отличная работа!</p>
-              <p className="text-gray-500 text-sm mt-1">Все топовые позиции в наличии</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {Object.entries(groupedMissing).map(([line, items]) => (
-                <div key={line} className="space-y-2">
-                  {items.map((p) => (
-                    <div
-                      key={p.id}
-                      className="bg-orange-50 text-orange-800 border border-orange-100 rounded-xl px-3 py-2 text-sm flex items-center gap-2"
-                    >
-                      <span>⚠️</span>
-                      <div className="flex flex-col">
-                        <span className="font-semibold">{line}</span>
-                        <span className="text-xs text-orange-700">{cleanName(p.flavor)}</span>
-                      </div>
+            
+            <div className="space-y-6 relative border-l-2 border-gray-100 ml-2.5">
+                {facility.visits.map((v) => (
+                    <div key={v.id} className="pl-6 relative">
+                        {/* Точка на линии */}
+                        <div className="absolute -left-[7px] top-1.5 w-3.5 h-3.5 bg-white border-[3px] border-gray-300 rounded-full"></div>
+                        
+                        <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                            <div className="flex justify-between items-start mb-2">
+                                <div>
+                                    <div className="text-sm font-bold text-gray-900">
+                                        {new Date(v.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}
+                                    </div>
+                                    <div className="text-xs text-gray-500 font-medium">{v.type === 'VISIT' ? 'Визит' : v.type}</div>
+                                </div>
+                                <div className="text-xs text-gray-400">{v.user?.fullName?.split(' ')[0]}</div>
+                            </div>
+                            
+                            {/* Комментарий (если есть) */}
+                            {v.comment && (
+                                <div className="text-xs text-gray-600 italic bg-white p-2 rounded-lg border border-gray-100 mb-2">
+                                    "{v.comment}"
+                                </div>
+                            )}
+
+                            {/* Товары */}
+                            {v.productsAvailable && v.productsAvailable.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                    {v.productsAvailable.slice(0, 5).map(p => (
+                                        <span key={p.id} className="text-[9px] px-1.5 py-0.5 bg-gray-200 text-gray-600 rounded">
+                                            {cleanName(p.flavor)}
+                                        </span>
+                                    ))}
+                                    {v.productsAvailable.length > 5 && (
+                                        <span className="text-[9px] px-1.5 py-0.5 bg-gray-100 text-gray-400 rounded">
+                                            +{v.productsAvailable.length - 5}
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
-                  ))}
-                </div>
-              ))}
+                ))}
+                {facility.visits.length === 0 && <div className="pl-6 text-gray-400 text-sm">История пуста</div>}
             </div>
-          )}
         </div>
 
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <h3 className="font-bold text-gray-900 mb-5 flex items-center gap-2">
-            <History size={18} className="text-gray-400" />
-            История
-          </h3>
-          <div className="space-y-0 relative border-l-2 border-gray-100 ml-2.5">
-            {facility.visits.map((v) => (
-              <div key={v.id} className="pl-6 pb-8 last:pb-0 relative">
-                <div className="absolute -left-[7px] top-1.5 w-3.5 h-3.5 bg-white border-[3px] border-gray-300 rounded-full"></div>
-                <div onClick={() => setOpenVisitId(openVisitId === v.id ? null : v.id)} className="cursor-pointer">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="text-sm font-bold text-gray-900">
-                        {new Date(v.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
-                      </div>
-                      <div className="text-xs text-gray-500 mt-0.5">{v.user?.fullName}</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {v.productsAvailable && v.productsAvailable.length > 0 && (
-                        <span className="text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2 py-1 rounded-md">
-                          +{v.productsAvailable.length}
-                        </span>
-                      )}
-                      {openVisitId === v.id ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
-                    </div>
-                  </div>
-                  {openVisitId === v.id && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="mt-3 overflow-hidden">
-                      <div className="flex flex-wrap gap-1.5">
-                        {v.productsAvailable?.map((p) => (
-                          <span key={p.id} className="text-[10px] px-2 py-1 bg-gray-100 text-gray-600 rounded-md">
-                            {cleanName(p.flavor)}
-                          </span>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
 
+      {/* Кнопка действия */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-xl border-t border-gray-100 z-40 pb-[calc(env(safe-area-inset-bottom)+16px)]">
-        <Link to={`/visit/new?facilityId=${facility.id}`}>
-          <motion.button
-            whileTap={{ scale: 0.98 }}
-            className="w-full h-12 bg-[#007AFF] text-white rounded-xl font-semibold text-base shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2"
-          >
-            Начать визит <ArrowRight size={18} />
-          </motion.button>
-        </Link>
+            <Link to={`/visit/new?facilityId=${facility.id}`}>
+                <motion.button whileTap={{ scale: 0.98 }} className="w-full h-14 bg-[#1C1C1E] text-white rounded-2xl font-bold text-lg shadow-xl flex items-center justify-center gap-2">
+                    Начать визит <ArrowRight size={20}/>
+                </motion.button>
+            </Link>
       </div>
     </Layout>
   );
