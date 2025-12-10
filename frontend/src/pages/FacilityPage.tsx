@@ -1,14 +1,20 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import apiClient from '../api/apiClient';
 import { Layout } from '../components/Layout';
+import { PageHeader } from '../components/PageHeader';
 import { motion } from 'framer-motion';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { 
-  ChevronLeft, MapPin, Calendar, TrendingUp, 
-  AlertOctagon, CheckCircle2, ChevronDown, ChevronUp, 
-  ArrowRight, History 
+import {
+  MapPin,
+  TrendingUp,
+  AlertOctagon,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  ArrowRight,
+  History,
 } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 
@@ -28,36 +34,39 @@ const cleanName = (name: string) => {
   return cleaned;
 };
 
-// Премиум палитра (Pastel & Dark)
 const COLORS: Record<string, string> = {
-  'Bliss': '#F472B6',      // Pink 400
-  'White Line': '#94A3B8', // Slate 400
-  'Black Line': '#171717', // Neutral 900
-  'Cigar Line': '#D97706', // Amber 600
-  'Other': '#6366F1'       // Indigo 500
+  Bliss: '#F472B6',
+  'White Line': '#94A3B8',
+  'Black Line': '#171717',
+  'Cigar Line': '#D97706',
+  Other: '#6366F1',
 };
 
 const FacilityPage: React.FC = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
   const [data, setData] = useState<FacilityResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [openVisitId, setOpenVisitId] = useState<number | null>(null);
 
   useEffect(() => {
-    apiClient.get<FacilityResponse>(`/api/facilities/${id}`)
-      .then(res => setData(res.data))
+    apiClient
+      .get<FacilityResponse>(`/api/facilities/${id}`)
+      .then((res) => setData(res.data))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [id]);
 
   const lineStats = useMemo(() => {
-      if (!data?.categoryBreakdown) return [];
-      const total = Object.values(data.categoryBreakdown).reduce((a, b) => a + b, 0);
-      return Object.entries(data.categoryBreakdown).map(([name, value]) => ({
-          name, value, percent: total ? Math.round((value / total) * 100) : 0,
-          fill: COLORS[name] || COLORS['Other']
-      })).sort((a, b) => b.value - a.value);
+    if (!data?.categoryBreakdown) return [];
+    const total = Object.values(data.categoryBreakdown).reduce((a, b) => a + b, 0);
+    return Object.entries(data.categoryBreakdown)
+      .map(([name, value]) => ({
+        name,
+        value,
+        percent: total ? Math.round((value / total) * 100) : 0,
+        fill: COLORS[name] || COLORS['Other'],
+      }))
+      .sort((a, b) => b.value - a.value);
   }, [data]);
 
   const groupedMissing = useMemo(() => {
@@ -71,223 +80,195 @@ const FacilityPage: React.FC = () => {
   }, [data]);
 
   const healthScore = useMemo(() => {
-      if (!data) return 0;
-      const missingCount = data.missingRecommendations?.length || 0;
-      return Math.max(0, 100 - (missingCount * 5));
+    if (!data) return 0;
+    const missingCount = data.missingRecommendations?.length || 0;
+    return Math.max(0, 100 - missingCount * 5);
   }, [data]);
 
-  if (loading || !data) return <Layout><div className="h-screen flex items-center justify-center bg-gray-50 text-gray-400">Загрузка...</div></Layout>;
-  
-  const { facility, lastVisit, currentStock } = data;
+  if (loading || !data) {
+    return (
+      <Layout>
+        <div className="h-screen flex items-center justify-center bg-[#F8F9FA] text-gray-400">Загрузка...</div>
+      </Layout>
+    );
+  }
+
+  const { facility, currentStock } = data;
 
   return (
     <Layout>
-      <div className="bg-[#F8F9FA] min-h-screen pb-40">
-        
-        {/* --- 1. HERO HEADER (CLEAN & DARK) --- */}
-        <div className="bg-[#111111] text-white rounded-b-[2.5rem] pt-6 pb-10 px-6 shadow-2xl relative z-10">
-            {/* Top Bar */}
-            <div className="flex justify-between items-center mb-8">
-                <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md active:scale-95 transition">
-                    <ChevronLeft size={20}/>
-                </button>
-                <div className="px-3 py-1 bg-white/10 rounded-full text-xs font-medium backdrop-blur-md border border-white/5">
-                    ID: {facility.id}
-                </div>
-            </div>
+      <PageHeader title={cleanName(facility.name)} back />
 
-            {/* Title & Address */}
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold leading-tight mb-3">{facility.name}</h1>
-                <div className="flex items-start text-gray-400 text-sm">
-                    <MapPin size={16} className="mt-0.5 mr-2 shrink-0 text-white/50"/>
-                    <span className="leading-snug">{facility.address}</span>
-                </div>
-            </div>
-
-            {/* Key Metrics Cards */}
-            <div className="grid grid-cols-3 gap-3">
-                <div className="bg-[#222] rounded-2xl p-3 border border-white/5">
-                    <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">Health</div>
-                    <div className={`text-xl font-bold ${healthScore > 80 ? 'text-green-400' : 'text-amber-400'}`}>{healthScore}%</div>
-                </div>
-                <div className="bg-[#222] rounded-2xl p-3 border border-white/5">
-                    <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">SKU</div>
-                    <div className="text-xl font-bold text-white">{currentStock.length}</div>
-                </div>
-                <div className="bg-[#222] rounded-2xl p-3 border border-white/5">
-                    <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">Визиты</div>
-                    <div className="text-xl font-bold text-white">{facility.visits.length}</div>
-                </div>
-            </div>
+      <div className="pt-[calc(env(safe-area-inset-top)+60px)] px-4 pb-32 space-y-4">
+        <div className="text-center mb-1">
+          <div className="inline-flex items-center justify-center px-3 py-1 bg-gray-100 rounded-full text-xs text-gray-500">
+            <MapPin size={12} className="mr-1" /> {facility.address}
+          </div>
         </div>
 
-        <div className="px-5 mt-6 space-y-6">
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 flex flex-col items-center justify-center">
+            <div className="text-[10px] text-gray-400 uppercase font-bold mb-1">Health</div>
+            <div className={`text-xl font-bold ${healthScore > 80 ? 'text-green-500' : 'text-amber-500'}`}>{healthScore}%</div>
+          </div>
+          <div className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 flex flex-col items-center justify-center">
+            <div className="text-[10px] text-gray-400 uppercase font-bold mb-1">SKU</div>
+            <div className="text-xl font-bold text-gray-900">{currentStock.length}</div>
+          </div>
+          <div className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 flex flex-col items-center justify-center">
+            <div className="text-[10px] text-gray-400 uppercase font-bold mb-1">Визиты</div>
+            <div className="text-xl font-bold text-gray-900">{facility.visits.length}</div>
+          </div>
+        </div>
 
-            {/* --- MAP CARD --- */}
-            {facility.lat !== undefined && facility.lng !== undefined && (
-              <div className="bg-white rounded-3xl p-1 shadow-sm border border-gray-100">
-                <div className="h-48 w-full overflow-hidden rounded-2xl">
-                  <MapContainer
-                    key={facility.id}
-                    center={[facility.lat, facility.lng]}
-                    zoom={15}
-                    scrollWheelZoom={false}
-                    dragging={false}
-                    zoomControl={false}
-                    className="h-full w-full"
-                  >
-                    <TileLayer
-                      url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                      attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-                    />
-                    <Marker position={[facility.lat, facility.lng]} />
-                  </MapContainer>
+        {facility.lat && facility.lng && (
+          <div className="h-32 w-full rounded-2xl overflow-hidden shadow-sm border border-gray-100 relative z-0">
+            <MapContainer
+              center={[facility.lat, facility.lng]}
+              zoom={15}
+              zoomControl={false}
+              dragging={false}
+              className="w-full h-full"
+            >
+              <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+              <Marker position={[facility.lat, facility.lng]} />
+            </MapContainer>
+          </div>
+        )}
+
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingUp size={18} className="text-indigo-600" />
+            <h3 className="font-bold text-gray-900">Полка</h3>
+          </div>
+          <div className="flex flex-col items-center">
+            <div className="h-48 w-48 mb-6 relative">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={lineStats} innerRadius={60} outerRadius={80} paddingAngle={4} dataKey="value" stroke="none">
+                    {lineStats.map((e, i) => (
+                      <Cell key={i} fill={e.fill} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-3xl font-bold text-gray-900">{currentStock.length}</span>
+                <span className="text-[10px] text-gray-400 uppercase">Всего</span>
+              </div>
+            </div>
+            <div className="w-full space-y-3">
+              {lineStats.map((s) => (
+                <div key={s.name} className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-3">
+                    <span className="w-3 h-3 rounded-full" style={{ backgroundColor: s.fill }}></span>
+                    <span className="text-gray-600 font-medium">{s.name}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-400 font-medium">{s.percent}%</span>
+                    <span className="font-bold text-gray-900">{s.value}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1 h-full bg-rose-500"></div>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-gray-900 flex items-center gap-2">
+              <AlertOctagon size={18} className="text-rose-500" />
+              Рекомендации
+            </h3>
+          </div>
+          {Object.keys(groupedMissing).length === 0 ? (
+            <div className="flex flex-col items-center py-6 text-center">
+              <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-3">
+                <CheckCircle2 size={24} />
+              </div>
+              <p className="text-gray-900 font-medium">Отличная работа!</p>
+              <p className="text-gray-500 text-sm mt-1">Все топовые позиции в наличии</p>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {Object.entries(groupedMissing).map(([line, items]) => (
+                <div key={line}>
+                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 border-b border-gray-100 pb-1">
+                    {line}
+                  </h4>
+                  <div className="grid grid-cols-1 gap-2">
+                    {items.map((p) => (
+                      <div
+                        key={p.id}
+                        className="flex items-center justify-between p-2 bg-gray-50 rounded-xl hover:bg-rose-50/50 transition-colors"
+                      >
+                        <span className="text-sm font-medium text-gray-700 ml-1">{cleanName(p.flavor)}</span>
+                        <div className="w-5 h-5 rounded-full border-2 border-gray-200 flex items-center justify-center">
+                          <div className="w-2.5 h-2.5 rounded-full bg-transparent"></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <h3 className="font-bold text-gray-900 mb-5 flex items-center gap-2">
+            <History size={18} className="text-gray-400" />
+            История
+          </h3>
+          <div className="space-y-0 relative border-l-2 border-gray-100 ml-2.5">
+            {facility.visits.map((v) => (
+              <div key={v.id} className="pl-6 pb-8 last:pb-0 relative">
+                <div className="absolute -left-[7px] top-1.5 w-3.5 h-3.5 bg-white border-[3px] border-gray-300 rounded-full"></div>
+                <div onClick={() => setOpenVisitId(openVisitId === v.id ? null : v.id)} className="cursor-pointer">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="text-sm font-bold text-gray-900">
+                        {new Date(v.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-0.5">{v.user?.fullName}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {v.productsAvailable && v.productsAvailable.length > 0 && (
+                        <span className="text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2 py-1 rounded-md">
+                          +{v.productsAvailable.length}
+                        </span>
+                      )}
+                      {openVisitId === v.id ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+                    </div>
+                  </div>
+                  {openVisitId === v.id && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="mt-3 overflow-hidden">
+                      <div className="flex flex-wrap gap-1.5">
+                        {v.productsAvailable?.map((p) => (
+                          <span key={p.id} className="text-[10px] px-2 py-1 bg-gray-100 text-gray-600 rounded-md">
+                            {cleanName(p.flavor)}
+                          </span>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
                 </div>
               </div>
-            )}
-
-            {/* --- 2. ANALYTICS (BIG CHART) --- */}
-            <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between mb-6">
-                    <h3 className="font-bold text-lg text-gray-900 flex items-center gap-2">
-                        <TrendingUp size={20} className="text-indigo-600"/>
-                        Полка
-                    </h3>
-                </div>
-
-                <div className="flex flex-col items-center">
-                    {/* График крупно */}
-                    <div className="h-48 w-48 mb-6 relative">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie data={lineStats} innerRadius={60} outerRadius={80} paddingAngle={4} dataKey="value" stroke="none">
-                                    {lineStats.map((e, i) => <Cell key={i} fill={e.fill} />)}
-                                </Pie>
-                            </PieChart>
-                        </ResponsiveContainer>
-                        {/* Центр графика */}
-                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                            <span className="text-3xl font-bold text-gray-900">{currentStock.length}</span>
-                            <span className="text-[10px] text-gray-400 uppercase">Всего</span>
-                        </div>
-                    </div>
-
-                    {/* Легенда снизу */}
-                    <div className="w-full space-y-3">
-                        {lineStats.map(s => (
-                            <div key={s.name} className="flex items-center justify-between text-sm">
-                                <div className="flex items-center gap-3">
-                                    <span className="w-3 h-3 rounded-full" style={{backgroundColor: s.fill}}></span>
-                                    <span className="text-gray-600 font-medium">{s.name}</span>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <span className="text-xs text-gray-400 font-medium">{s.percent}%</span>
-                                    <span className="font-bold text-gray-900">{s.value}</span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            {/* --- 3. MUST LIST (STRUCTURED) --- */}
-            <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-1 h-full bg-rose-500"></div>
-                <div className="flex items-center justify-between mb-6">
-                    <h3 className="font-bold text-lg text-gray-900 flex items-center gap-2">
-                        <AlertOctagon size={20} className="text-rose-500"/>
-                        Рекомендации
-                    </h3>
-                </div>
-
-                {Object.keys(groupedMissing).length === 0 ? (
-                    <div className="flex flex-col items-center py-8 text-center">
-                        <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-3">
-                            <CheckCircle2 size={24} />
-                        </div>
-                        <p className="text-gray-900 font-medium">Отличная работа!</p>
-                        <p className="text-gray-500 text-sm mt-1">Все топовые позиции в наличии</p>
-                    </div>
-                ) : (
-                    <div className="space-y-6">
-                        {Object.entries(groupedMissing).map(([line, items]) => (
-                            <div key={line}>
-                                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 border-b border-gray-100 pb-1">{line}</h4>
-                                <div className="grid grid-cols-1 gap-2">
-                                    {items.map(p => (
-                                        <div key={p.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-xl hover:bg-rose-50/50 transition-colors">
-                                            <span className="text-sm font-medium text-gray-700 ml-1">{cleanName(p.flavor)}</span>
-                                            <div className="w-5 h-5 rounded-full border-2 border-gray-200 flex items-center justify-center">
-                                                <div className="w-2.5 h-2.5 rounded-full bg-transparent"></div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            {/* --- 4. HISTORY --- */}
-            <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-                <h3 className="font-bold text-lg text-gray-900 mb-6 flex items-center gap-2">
-                    <History size={20} className="text-gray-400"/>
-                    История
-                </h3>
-                
-                <div className="space-y-0 relative border-l-2 border-gray-100 ml-2.5">
-                    {facility.visits.map((v) => (
-                        <div key={v.id} className="pl-6 pb-8 last:pb-0 relative">
-                            <div className="absolute -left-[7px] top-1.5 w-3.5 h-3.5 bg-white border-[3px] border-gray-300 rounded-full"></div>
-                            
-                            <div onClick={() => setOpenVisitId(openVisitId === v.id ? null : v.id)} className="cursor-pointer">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <div className="text-sm font-bold text-gray-900">
-                                            {new Date(v.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
-                                        </div>
-                                        <div className="text-xs text-gray-500 mt-0.5">{v.user?.fullName}</div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        {v.productsAvailable && v.productsAvailable.length > 0 && (
-                                            <span className="text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2 py-1 rounded-md">
-                                                +{v.productsAvailable.length}
-                                            </span>
-                                        )}
-                                        {openVisitId === v.id ? <ChevronUp size={16} className="text-gray-400"/> : <ChevronDown size={16} className="text-gray-400"/>}
-                                    </div>
-                                </div>
-
-                                {openVisitId === v.id && (
-                                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="mt-3 overflow-hidden">
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {v.productsAvailable?.map(p => (
-                                                <span key={p.id} className="text-[10px] px-2 py-1 bg-gray-100 text-gray-600 rounded-md">
-                                                    {cleanName(p.flavor)}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
+            ))}
+          </div>
         </div>
+      </div>
 
-        {/* --- BOTTOM ACTION --- */}
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 z-50">
-            <Link to={`/visit/new?facilityId=${facility.id}`}>
-                <motion.button whileTap={{ scale: 0.98 }} className="w-full h-14 bg-[#111] text-white rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center gap-2">
-                    Начать визит <ArrowRight size={20}/>
-                </motion.button>
-            </Link>
-        </div>
-
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-xl border-t border-gray-100 z-40 pb-[calc(env(safe-area-inset-bottom)+16px)]">
+        <Link to={`/visit/new?facilityId=${facility.id}`}>
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            className="w-full h-12 bg-[#007AFF] text-white rounded-xl font-semibold text-base shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2"
+          >
+            Начать визит <ArrowRight size={18} />
+          </motion.button>
+        </Link>
       </div>
     </Layout>
   );
