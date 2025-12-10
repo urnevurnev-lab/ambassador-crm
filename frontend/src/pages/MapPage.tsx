@@ -29,8 +29,8 @@ const MapPage: React.FC = () => {
 
   return (
     <Layout>
-      {/* Контейнер карты: высота экрана минус меню */}
-      <div className="relative w-full h-[85vh] bg-[#111] overflow-hidden rounded-b-[2rem] shadow-xl">
+      {/* Контейнер карты тянется на всю доступную высоту */}
+      <div className="relative z-0 w-full h-full flex-grow">
         
         {/* Хедер поверх карты */}
         <div className="absolute top-0 left-0 right-0 z-[1000] p-4 pt-12 pointer-events-none">
@@ -42,7 +42,13 @@ const MapPage: React.FC = () => {
         </div>
 
         {/* Сама карта */}
-        <MapContainer center={center as [number, number]} zoom={11} zoomControl={false} className="w-full h-full z-0">
+        <MapContainer
+          center={center as [number, number]}
+          zoom={11}
+          zoomControl={false}
+          className="w-full h-full z-0"
+          style={{ minHeight: '100%' }}
+        >
           <TileLayer 
               attribution='&copy; CARTO' 
               url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" 

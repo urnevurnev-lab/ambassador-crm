@@ -10,11 +10,12 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   // Скрываем меню только в админке и на экране входа
   const showBottomTab = !location.pathname.startsWith('/admin') && location.pathname !== '/login';
+  const isMapPage = location.pathname === '/map';
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F8F9FA]">
       {/* Контент растягивается на всю доступную высоту */}
-      <main className={`flex-grow w-full ${showBottomTab ? 'pb-24' : ''}`}>
+      <main className={`flex-grow w-full ${showBottomTab && !isMapPage ? 'pb-24' : ''} flex flex-col`}>
         {children}
       </main>
 
