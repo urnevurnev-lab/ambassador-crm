@@ -79,7 +79,7 @@ const Dashboard: React.FC = () => {
         {/* Current Target */}
         <motion.div
           whileHover={{ scale: currentTarget ? 1.01 : 1 }}
-          className="relative bg-white rounded-[35px] h-[200px] overflow-hidden shadow-sm col-span-2 border border-gray-100"
+          className="relative bg-white rounded-[35px] h-[200px] overflow-hidden shadow-soft col-span-2"
         >
           {currentTarget ? (
             <>
@@ -113,7 +113,7 @@ const Dashboard: React.FC = () => {
         <div className="grid grid-cols-2 gap-3">
           <motion.div
             whileHover={{ scale: 1.02 }}
-            className="bg-white h-[160px] p-6 rounded-[35px] shadow-sm border border-gray-100 flex flex-col justify-between"
+            className="bg-gradient-to-br from-white to-[#F2F3F7] h-[160px] p-6 rounded-[35px] shadow-soft flex flex-col justify-between"
           >
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -126,7 +126,7 @@ const Dashboard: React.FC = () => {
 
           <motion.div
             whileHover={{ scale: 1.02 }}
-            className="bg-white h-[160px] p-6 rounded-[35px] shadow-sm border border-gray-100 flex flex-col justify-between"
+            className="bg-gradient-to-br from-white to-[#F2F3F7] h-[160px] p-6 rounded-[35px] shadow-soft flex flex-col justify-between"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -146,7 +146,7 @@ const Dashboard: React.FC = () => {
           <Link to="/facilities">
             <motion.div
               whileHover={{ scale: 1.01 }}
-              className="bg-white p-5 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-100 col-span-2 cursor-pointer"
+              className="bg-gradient-to-br from-white to-[#F2F3F7] p-5 rounded-3xl shadow-soft col-span-2 cursor-pointer"
             >
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
@@ -166,7 +166,7 @@ const Dashboard: React.FC = () => {
           <motion.div whileTap={{ scale: 0.98 }}>
             <Link
               to="/map"
-              className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-indigo-700 font-medium"
+              className="flex items-center justify-between bg-gradient-to-br from-white to-[#F2F3F7] p-4 rounded-2xl shadow-soft text-indigo-700 font-medium"
             >
               <div className="flex items-center">
                 <MapPin size={24} className="mr-4 text-indigo-500" />
@@ -179,7 +179,7 @@ const Dashboard: React.FC = () => {
           <motion.div whileTap={{ scale: 0.98 }}>
             <Link
               to="/orders"
-              className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-gray-100 text-indigo-700 font-medium"
+              className="flex items-center justify-between bg-gradient-to-br from-white to-[#F2F3F7] p-4 rounded-2xl shadow-soft text-indigo-700 font-medium"
             >
               <div className="flex items-center">
                 <ShoppingCart size={24} className="mr-4 text-indigo-500" />
