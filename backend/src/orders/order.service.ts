@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { TelegramAuthUser } from '../telegram/telegram.utils';
 
 interface CreateOrderDto {
     facilityId: number;
@@ -17,7 +18,7 @@ export class OrderService {
         private readonly telegramService: TelegramService,
     ) {}
 
-    async create(createOrderDto: CreateOrderDto) {
+    async create(createOrderDto: CreateOrderDto, telegramUser?: TelegramAuthUser) {
         const { facilityId, distributorId, items } = createOrderDto;
 
         if (!items || items.length === 0) {
@@ -49,10 +50,20 @@ export class OrderService {
             throw new BadRequestException(`Unknown SKUs: ${missingSkus.join(', ')}`);
         }
 
+        let ambassadorUser = null;
+        if (telegramUser) {
+            ambassadorUser = await this.prisma.user.upsert({
+                where: { telegramId: telegramUser.telegramId },
+                update: { fullName: telegramUser.fullName },
+                create: { telegramId: telegramUser.telegramId, fullName: telegramUser.fullName },
+            });
+        }
+
         const newOrder = await this.prisma.order.create({
             data: {
                 facilityId,
                 distributorId,
+                userId: ambassadorUser?.id,
                 status: 'PENDING',
                 items: {
                     create: items.map((item) => ({
@@ -64,6 +75,7 @@ export class OrderService {
             include: {
                 facility: true,
                 distributor: true,
+                user: true,
             },
         });
 
@@ -72,7 +84,8 @@ export class OrderService {
 
         const orderDetails =
             `**Заведение:** ${facility.name} (${facility.address})\n` +
-            `**Дистрибьютор:** ${distributorName}\n\n` +
+            `**Дистрибьютор:** ${distributorName}\n` +
+            `${ambassadorUser ? `**Амбассадор:** ${ambassadorUser.fullName}\n` : ''}\n` +
             `**Товары:**\n${details}`;
 
         if (distributor.telegramChatId) {

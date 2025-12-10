@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Body, Get } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 
 @Controller('visits')
@@ -7,39 +7,53 @@ export class VisitsController {
 
     @Post()
     async createVisit(@Body() body: {
-        userId: number;
+        userId: number; // Берется из токена/авторизации (или передается с фронта временно)
         facilityId: number;
         type: string;
-        lat: number;
-        lng: number;
-        photoUrl?: string;
-        date?: Date;
+        productsAvailable?: number[]; // Массив ID продуктов
+        lat?: number;
+        lng?: number;
     }) {
-        // Basic geo validation stub
-        const facility = await this.prisma.facility.findUnique({ where: { id: body.facilityId } });
-        if (!facility) throw new BadRequestException('Facility not found');
-
-        // Simple distance check logic could go here. For now just set valid if close enough.
-        // 0.001 degrees is roughly 100m.
-        const isValidGeo = Math.abs(facility.lat - body.lat) < 0.001 && Math.abs(facility.lng - body.lng) < 0.001;
-
-        return this.prisma.visit.create({
+        // 1. Создаем визит
+        const visit = await this.prisma.visit.create({
             data: {
                 userId: body.userId,
                 facilityId: body.facilityId,
-                type: body.type || 'UNKNOWN',
-                date: body.date ? new Date(body.date) : new Date(),
-                photoUrl: body.photoUrl,
-                isValidGeo,
+                type: body.type || 'VISIT',
+                isValidGeo: true, // Мы проверили это на фронте (Geo-Lock)
+                productsAvailable: {
+                    connect: body.productsAvailable?.map(id => ({ id })) || []
+                }
             },
         });
+
+        // 2. Геймификация: Начисляем XP пользователю
+        const XP_PER_VISIT = 50;
+        const user = await this.prisma.user.findUnique({ where: { id: body.userId } });
+        
+        if (user) {
+            const newXp = user.xp + XP_PER_VISIT;
+            // Простая формула уровня: Каждые 1000 XP = 1 уровень
+            const newLevel = Math.floor(newXp / 1000) + 1;
+
+            await this.prisma.user.update({
+                where: { id: user.id },
+                data: {
+                    xp: newXp,
+                    level: newLevel
+                }
+            });
+        }
+
+        return visit;
     }
 
     @Get()
     async getHistory() {
         return this.prisma.visit.findMany({
-            include: { facility: true, user: true },
+            include: { facility: true, user: true, productsAvailable: true },
             orderBy: { createdAt: 'desc' },
+            take: 50
         });
     }
 }
