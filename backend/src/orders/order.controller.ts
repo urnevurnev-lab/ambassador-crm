@@ -1,5 +1,6 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import { OrderService } from './order.service';
+import { TelegramAuthGuard } from '../telegram/telegram.guard';
 
 interface CreateOrderDto {
     facilityId: number;
@@ -8,6 +9,7 @@ interface CreateOrderDto {
 }
 
 @Controller('orders')
+@UseGuards(TelegramAuthGuard)
 export class OrderController {
     constructor(private readonly orderService: OrderService) {}
 
