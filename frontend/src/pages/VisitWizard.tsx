@@ -89,7 +89,7 @@ export const VisitWizard = () => {
                     WebApp.HapticFeedback.notificationOccurred('success');
                     setGeoStatus('success');
                     // Ждем анимацию и переходим к активности
-                    setTimeout(() => setStep('activity'), 1000); 
+                    setTimeout(() => setStep('activity'), 1200); 
                 } else {
                     WebApp.HapticFeedback.notificationOccurred('error');
                     setGeoStatus('error');
@@ -158,18 +158,21 @@ export const VisitWizard = () => {
                             <h2 className="text-2xl font-black mb-2">{selectedFacility.name}</h2>
                             <p className="text-gray-500 text-sm mb-10">{selectedFacility.address}</p>
 
-                            <div className={`w-40 h-40 rounded-full flex items-center justify-center mb-8 transition-all duration-500 shadow-2xl ${geoStatus === 'success' ? 'bg-green-500 text-white scale-110' : geoStatus === 'error' ? 'bg-red-100 text-red-500' : 'bg-white text-gray-800'}`}>
+                            <motion.div 
+                                animate={geoStatus === 'success' ? { x: [0, -5, 5, -5, 5, 0], scale: 1.1 } : { scale: 1 }}
+                                className={`w-40 h-40 rounded-full flex items-center justify-center mb-8 transition-colors duration-500 shadow-2xl ${geoStatus === 'success' ? 'bg-green-500 text-white' : geoStatus === 'error' ? 'bg-red-100 text-red-500' : 'bg-white text-gray-800'}`}
+                            >
                                 {geoStatus === 'loading' ? <Loader2 size={64} className="animate-spin"/> :
                                  geoStatus === 'success' ? <Unlock size={64}/> :
                                  <Lock size={64}/>}
-                            </div>
+                            </motion.div>
 
-                            {geoStatus === 'error' && <div className="text-red-500 font-bold mb-4">Вы слишком далеко! (Нужно &lt; 100м)</div>}
+                            {geoStatus === 'error' && <div className="text-red-500 font-bold mb-4">Вы слишком далеко!</div>}
                             {geoStatus === 'success' && <div className="text-green-600 font-bold mb-4">Доступ открыт!</div>}
 
                             {geoStatus !== 'success' && (
                                 <button onClick={checkGeo} className="w-full max-w-xs bg-black text-white py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition">
-                                    📍 Я на месте
+                                    📍 Открыть смену
                                 </button>
                             )}
                         </motion.div>
@@ -178,7 +181,7 @@ export const VisitWizard = () => {
                     {/* 3. АКТИВНОСТЬ */}
                     {step === 'activity' && (
                         <motion.div key="activity" initial={{x:50, opacity:0}} animate={{x:0, opacity:1}} exit={{x:-50, opacity:0}} className="space-y-4">
-                            <h2 className="text-2xl font-bold">Что делаем?</h2>
+                            <h2 className="text-2xl font-bold">Что делаем сегодня?</h2>
                             <div className="grid grid-cols-1 gap-3">
                                 {ACTIVITIES.map(act => (
                                     <button key={act.id} onClick={() => { setActivity(act.id); setStep('stock'); }} className="p-5 bg-white rounded-2xl shadow-sm text-left font-bold text-lg flex justify-between items-center active:scale-95 transition border border-gray-100">
@@ -193,8 +196,7 @@ export const VisitWizard = () => {
                     {step === 'stock' && (
                         <motion.div key="stock" initial={{opacity:0}} animate={{opacity:1}} className="pb-24 space-y-6">
                             <div className="flex justify-between items-center">
-                                <h2 className="text-2xl font-bold">Полка</h2>
-                                <span className="bg-gray-200 text-xs font-bold px-2 py-1 rounded">{activity}</span>
+                                <h2 className="text-2xl font-bold">Отметьте наличие</h2>
                             </div>
                             
                             {Object.entries(groupedProducts).map(([line, prods]) => (
@@ -224,11 +226,11 @@ export const VisitWizard = () => {
                             <h2 className="text-2xl font-bold">Комментарий</h2>
                             <textarea 
                                 className="w-full h-40 p-4 rounded-2xl border-none shadow-sm resize-none focus:ring-2 ring-blue-500"
-                                placeholder="Как прошла встреча? Что с остатками?..."
+                                placeholder="Как прошел визит?"
                                 value={comment}
                                 onChange={e => setComment(e.target.value)}
                             ></textarea>
-                            <button onClick={handleSubmit} className="w-full bg-black text-white py-4 rounded-2xl font-bold text-lg shadow-lg">Завершить визит</button>
+                            <button onClick={handleSubmit} className="w-full bg-black text-white py-4 rounded-2xl font-bold text-lg shadow-lg">Завершить</button>
                         </motion.div>
                     )}
 
@@ -237,8 +239,7 @@ export const VisitWizard = () => {
                         <motion.div key="done" className="h-full flex flex-col items-center justify-center text-center">
                             <div className="text-6xl mb-4">✅</div>
                             <h2 className="text-3xl font-bold">Готово!</h2>
-                            <p className="text-gray-500 mt-2 mb-8">+50 XP начислено</p>
-                            <button onClick={() => navigate('/')} className="bg-gray-100 px-8 py-3 rounded-xl font-bold">На главную</button>
+                            <button onClick={() => navigate('/')} className="bg-gray-100 px-8 py-3 rounded-xl font-bold mt-8">На главную</button>
                         </motion.div>
                     )}
 

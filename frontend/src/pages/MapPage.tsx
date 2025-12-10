@@ -53,7 +53,7 @@ const MapPage: React.FC = () => {
 
         {/* 2. Контейнер карты с отступами (Мягкая рамка) */}
         {/* pt-[calc(...)] нужен, чтобы компенсировать фиксированный хедер */}
-        <div className="flex-grow pt-[calc(env(safe-area-inset-top)+56px)] pb-24 px-3 flex flex-col">
+        <div className="flex-grow pt-[calc(env(safe-area-inset-top)+56px)] pb-[calc(env(safe-area-inset-bottom)+80px)] px-3 flex flex-col">
             
             <div className="relative flex-grow w-full rounded-[2.5rem] overflow-hidden shadow-sm border border-gray-200/50 isolation-isolate">
                 {/* Поиск + плашка с количеством */}
@@ -66,7 +66,7 @@ const MapPage: React.FC = () => {
                   />
                   <div className="flex justify-center pointer-events-none">
                     <div className="bg-white/90 backdrop-blur-md text-[#1C1C1E] px-4 py-2 rounded-full text-xs font-semibold shadow-sm border border-gray-100 pointer-events-auto">
-                      Точек на карте: {filteredFacilities.length}
+                      Найдено: {filteredFacilities.length}
                     </div>
                   </div>
                 </div>

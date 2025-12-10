@@ -87,11 +87,11 @@ const FacilityPage: React.FC = () => {
     <Layout>
       <PageHeader title={cleanName(facility.name)} back />
       
-      <div className="pt-[calc(env(safe-area-inset-top)+60px)] px-4 pb-32 space-y-5">
+      <div className="pt-[calc(env(safe-area-inset-top)+60px)] px-4 pb-32 space-y-5 bg-[#F8F9FA]">
         
         {/* Адрес */}
         <div className="flex justify-center">
-             <div className="inline-flex items-center px-3 py-1.5 bg-gray-100 rounded-full text-xs font-medium text-gray-600 shadow-sm border border-gray-200">
+             <div className="inline-flex items-center px-3 py-1.5 bg-white rounded-full text-xs font-medium text-gray-600 shadow-sm border border-gray-200">
                 <MapPin size={14} className="mr-1.5 text-gray-400"/> {facility.address}
              </div>
         </div>
@@ -99,16 +99,15 @@ const FacilityPage: React.FC = () => {
         {/* 3 Главные цифры (РУССКИЕ) */}
         <div className="grid grid-cols-3 gap-3">
             <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm text-center flex flex-col justify-center h-24">
-                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Рейтинг</div>
+                <div className="text-[9px] text-gray-400 uppercase font-bold mb-1 tracking-wider leading-tight">Рейтинг<br/>заполненности</div>
                 <div className={`text-2xl font-black ${healthScore > 80 ? 'text-green-500' : healthScore > 50 ? 'text-yellow-500' : 'text-red-500'}`}>{healthScore}%</div>
             </div>
             <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm text-center flex flex-col justify-center h-24">
-                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">В наличии</div>
+                <div className="text-[9px] text-gray-400 uppercase font-bold mb-1 tracking-wider leading-tight">Позиций<br/>в наличии</div>
                 <div className="text-2xl font-black text-[#1C1C1E]">{currentStock.length}</div>
-                <div className="text-[9px] text-gray-300 font-medium">SKU</div>
             </div>
             <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm text-center flex flex-col justify-center h-24">
-                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 tracking-wider">Визиты</div>
+                <div className="text-[9px] text-gray-400 uppercase font-bold mb-1 tracking-wider leading-tight">Всего<br/>визитов</div>
                 <div className="text-2xl font-black text-[#1C1C1E]">{facility.visits.length}</div>
             </div>
         </div>
@@ -138,18 +137,16 @@ const FacilityPage: React.FC = () => {
             </div>
             
             <div className="space-y-4">
-                {stats.length === 0 ? <div className="text-center text-gray-400 text-sm py-4">Нет данных о товарах</div> : 
-                 stats.map(s => (
+                {stats.map(s => (
                     <div key={s.name}>
                         <div className="flex justify-between text-xs font-bold text-gray-700 mb-1.5">
                             <span>{s.name}</span>
-                            <span>{s.value} шт ({s.percent}%)</span>
+                            <span>{s.percent}%</span>
                         </div>
                         <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
                             <motion.div 
                                 initial={{ width: 0 }} 
                                 animate={{ width: `${s.percent}%` }} 
-                                transition={{ duration: 1, ease: "easeOut" }}
                                 className="h-full rounded-full" 
                                 style={{ backgroundColor: s.color }} 
                             />
@@ -170,21 +167,18 @@ const FacilityPage: React.FC = () => {
 
             {Object.keys(groupedMissing).length === 0 ? (
                 <div className="flex flex-col items-center py-6 text-center">
-                    <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-3">
-                        <CheckCircle2 size={24} />
-                    </div>
+                    <CheckCircle2 size={32} className="text-green-500 mb-2"/>
                     <p className="text-gray-900 font-bold">Полка идеальна!</p>
-                    <p className="text-gray-500 text-xs mt-1">Все ключевые позиции в наличии</p>
                 </div>
             ) : (
-                <div className="space-y-4">
+                <div className="space-y-3">
                     {Object.entries(groupedMissing).map(([line, items]) => (
-                        <div key={line} className="bg-orange-50/50 rounded-2xl p-3 border border-orange-100/50">
+                        <div key={line} className="bg-orange-50/80 rounded-2xl p-3 border border-orange-100/50">
                             <div className="text-[10px] font-bold text-orange-400 uppercase mb-2 tracking-widest">{line}</div>
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-1.5">
                                 {items.map(p => (
-                                    <span key={p.id} className="text-xs font-medium text-orange-800 bg-white border border-orange-100 px-2 py-1 rounded-md shadow-sm">
-                                        {cleanName(p.flavor)}
+                                    <span key={p.id} className="text-xs font-semibold text-orange-900 bg-white border border-orange-200 px-2 py-1 rounded shadow-sm">
+                                        ⚠️ {cleanName(p.flavor)}
                                     </span>
                                 ))}
                             </div>
@@ -210,34 +204,15 @@ const FacilityPage: React.FC = () => {
                         <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
                             <div className="flex justify-between items-start mb-2">
                                 <div>
-                                    <div className="text-sm font-bold text-gray-900">
-                                        {new Date(v.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}
-                                    </div>
-                                    <div className="text-xs text-gray-500 font-medium">{v.type === 'VISIT' ? 'Визит' : v.type}</div>
+                                    <div className="text-sm font-bold text-gray-900">{new Date(v.date).toLocaleDateString('ru-RU')}</div>
+                                    <div className="text-xs text-gray-500">{v.type}</div>
                                 </div>
-                                <div className="text-xs text-gray-400">{v.user?.fullName?.split(' ')[0]}</div>
                             </div>
                             
                             {/* Комментарий (если есть) */}
                             {v.comment && (
                                 <div className="text-xs text-gray-600 italic bg-white p-2 rounded-lg border border-gray-100 mb-2">
                                     "{v.comment}"
-                                </div>
-                            )}
-
-                            {/* Товары */}
-                            {v.productsAvailable && v.productsAvailable.length > 0 && (
-                                <div className="flex flex-wrap gap-1">
-                                    {v.productsAvailable.slice(0, 5).map(p => (
-                                        <span key={p.id} className="text-[9px] px-1.5 py-0.5 bg-gray-200 text-gray-600 rounded">
-                                            {cleanName(p.flavor)}
-                                        </span>
-                                    ))}
-                                    {v.productsAvailable.length > 5 && (
-                                        <span className="text-[9px] px-1.5 py-0.5 bg-gray-100 text-gray-400 rounded">
-                                            +{v.productsAvailable.length - 5}
-                                        </span>
-                                    )}
                                 </div>
                             )}
                         </div>
