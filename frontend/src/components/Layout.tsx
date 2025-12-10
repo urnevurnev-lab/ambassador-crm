@@ -8,16 +8,17 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
-  const showBottomTab = !location.pathname.startsWith('/admin');
+  // Скрываем меню только в админке и на экране входа
+  const showBottomTab = !location.pathname.startsWith('/admin') && location.pathname !== '/login';
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] flex flex-col relative">
-      {/* Контент растягивается на всю высоту */}
-      <main className="flex-grow w-full">
+    <div className="flex flex-col min-h-screen bg-[#F8F9FA]">
+      {/* Контент растягивается на всю доступную высоту */}
+      <main className={`flex-grow w-full ${showBottomTab ? 'pb-24' : ''}`}>
         {children}
       </main>
 
-      {/* Нижнее меню - ВСЕГДА ПОВЕРХ ВСЕГО (z-50) */}
+      {/* Нижнее меню: фиксировано, Z-index максимальный, чтобы карта не перекрывала */}
       {showBottomTab && (
         <div className="fixed bottom-0 left-0 right-0 z-[9999]">
           <BottomTab />

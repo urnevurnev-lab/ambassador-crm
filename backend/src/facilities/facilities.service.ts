@@ -8,8 +8,10 @@ export class FacilitiesService {
     async findAll() {
         return this.prisma.facility.findMany({
             where: {
-                // Фильтр: скрываем технические записи
-                name: { not: { startsWith: 'Активность:' } }
+                AND: [
+                    { name: { not: { startsWith: 'Активность:' } } },
+                    { name: { not: { equals: '' } } }
+                ]
             },
             select: {
                 id: true,

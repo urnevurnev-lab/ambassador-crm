@@ -29,11 +29,22 @@ interface Distributor {
 
 const getCleanFlavorName = (line: string, flavor: string) => {
   if (!line || !flavor) return flavor;
-  const escapedLine = line.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const regex = new RegExp(`^${escapedLine}\\s*`, 'i');
+  
+  // 1. Убираем название линейки из начала (нечувствительно к регистру)
+  const regex = new RegExp(`^${line}\\s*`, 'i'); 
   let cleaned = flavor.replace(regex, '').trim();
-  cleaned = cleaned.replace(/\(Tobacco\)/i, '').trim();
-  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+
+  // 2. Убираем мусор в скобках, если там написано (Tobacco)
+  cleaned = cleaned.replace(/\(Tobacco\)/gi, '').trim();
+
+  // 3. Убираем двойные пробелы
+  cleaned = cleaned.replace(/\s+/g, ' ');
+
+  // 4. Делаем первую букву заглавной
+  if (cleaned.length > 0) {
+      return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  }
+  return flavor; // Если случайно удалили всё, возвращаем оригинал
 };
 
 // --- ТИПЫ КОРЗИНЫ ---

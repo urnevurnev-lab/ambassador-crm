@@ -3,7 +3,10 @@
 @tailwind utilities;
 
 :root {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  /* Определяем безопасные зоны для телефонов с "челками" */
+  --sat: env(safe-area-inset-top);
+  --sab: env(safe-area-inset-bottom);
 }
 
 html, body {
@@ -11,13 +14,20 @@ html, body {
   width: 100%;
   margin: 0;
   padding: 0;
-  background-color: #F8F9FA; /* Светлый фон подложки */
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch; /* Плавный скролл на iOS */
+  background-color: #F8F9FA;
+  color: #1C1C1E;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
-  min-height: 100%;
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Скрываем скроллбар, но оставляем функционал */
+::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
 }

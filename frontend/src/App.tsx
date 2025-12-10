@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { TelegramNavigator } from './components/TelegramNavigator';
 
 // Импортируем все страницы
 import Dashboard from './pages/Dashboard';
@@ -17,6 +18,7 @@ const App: React.FC = () => {
   return (
     // Оборачиваем все приложение в BrowserRouter для роутинга
     <BrowserRouter>
+      <TelegramNavigator />
       <div className="App">
         <Routes>
           {/* Главная страница */}
