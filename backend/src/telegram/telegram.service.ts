@@ -25,30 +25,42 @@ export class TelegramService {
             }
 
             try {
-                const order = await this.prisma.order.update({
+                const existing = await this.prisma.order.findUnique({
                     where: { id: orderId },
-                    data: { status: action },
                     include: { user: true },
                 });
+                if (!existing) {
+                    await this.bot.answerCallbackQuery(query.id, { text: 'Заказ не найден' });
+                    return;
+                }
 
-                // Отредактировать сообщение в чате дистрибьютора
-                const statusText = action === 'APPROVED' ? 'Заказ принят ✅' : 'Заказ отклонен ❌';
+                await this.prisma.order.update({
+                    where: { id: orderId },
+                    data: { status: action },
+                });
+
+                const statusText =
+                    action === 'APPROVED'
+                        ? `✅ Заказ №${orderId} принят в работу`
+                        : `❌ Заказ №${orderId} отклонен`;
+
                 if (query.message?.chat?.id && query.message.message_id) {
-                    await this.bot.editMessageText(
-                        `${statusText}\n\n${query.message.text || ''}`,
-                        {
-                            chat_id: query.message.chat.id,
-                            message_id: query.message.message_id,
-                            reply_markup: { inline_keyboard: [] },
-                        },
-                    );
+                    await this.bot.editMessageText(statusText, {
+                        chat_id: query.message.chat.id,
+                        message_id: query.message.message_id,
+                        reply_markup: { inline_keyboard: [] },
+                    });
                 }
 
                 await this.bot.answerCallbackQuery(query.id, { text: statusText });
 
                 // Уведомление амбассадору
-                if (order.user?.telegramId) {
-                    await this.bot.sendMessage(order.user.telegramId, `Ваш заказ №${orderId} ${action === 'APPROVED' ? 'принят' : 'отклонен'}!`);
+                if (existing.user?.telegramId) {
+                    const userText =
+                        action === 'APPROVED'
+                            ? `Ваш заказ №${orderId} принят дистрибьютором! 🎉`
+                            : `К сожалению, ваш заказ №${orderId} отклонен.`;
+                    await this.bot.sendMessage(existing.user.telegramId, userText);
                 }
             } catch (e: any) {
                 this.logger.error(`Failed to process callback for order ${orderId}: ${e.message}`);
