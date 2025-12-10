@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import apiClient from '../api/apiClient';
-import { ShoppingCart, Send, ChevronDown, ChevronUp, AlertCircle, ArrowLeft } from 'lucide-react';
+import { ChevronDown, ChevronUp, AlertCircle, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import WebApp from '@twa-dev/sdk';
+import { TelegramMainButton } from '../components/TelegramMainButton';
 
 // --- ИНТЕРФЕЙСЫ ---
 interface Facility {
@@ -116,8 +118,13 @@ const OrderPage: React.FC = () => {
 
   // --- Отправка Заказа (Сохранена рабочая логика) ---
   const handleSendOrder = async () => {
-    if (!selectedFacilityId || !selectedDistributorId || cart.length === 0) {
-      setMessage("Пожалуйста, выберите заведение, дистрибьютора и добавьте товары.");
+    if (!selectedFacilityId || !selectedDistributorId) {
+      WebApp.showAlert('Пожалуйста, выберите заведение и дистрибьютора.');
+      return;
+    }
+
+    if (cart.length === 0) {
+      WebApp.showAlert('Добавьте товары в заказ перед отправкой.');
       return;
     }
 
@@ -141,6 +148,7 @@ const OrderPage: React.FC = () => {
       await apiClient.post('/api/orders', orderData);
       setMessage(`✅ Заказ на ${totalItems} позиций успешно отправлен Дистрибьютору!`);
       setCart([]);
+      WebApp.close();
     } catch (error) {
       console.error("Order submission error:", error);
       setMessage("❌ Ошибка при отправке заказа. Проверьте сеть и токен бота.");
@@ -304,31 +312,13 @@ const OrderPage: React.FC = () => {
           )}
         </div>
 
-        {/* Секция 3: Фиксированная Корзина (Bottom Bar) */}
-        {totalItems > 0 && (
-          <motion.div 
-            initial={{ y: 100 }} 
-            animate={{ y: 0 }} 
-            className="fixed bottom-20 left-0 right-0 p-4 z-20" // Поднят над BottomTab
-          >
-            <div className="max-w-xl mx-auto bg-white/95 backdrop-blur shadow-lg border border-gray-200 rounded-2xl p-2">
-              <motion.button
-                whileTap={{ scale: 0.98 }}
-                className="w-full flex justify-between items-center p-4 bg-indigo-600 text-white rounded-xl font-bold text-lg shadow-md disabled:opacity-50 transition duration-200"
-                onClick={handleSendOrder}
-                disabled={loading || !selectedFacilityId || !selectedDistributorId}
-              >
-                <div className="flex items-center">
-                  <ShoppingCart size={24} className="mr-3" />
-                  <span>{totalItems} поз.</span>
-                </div>
-                <span>{loading ? 'Отправка...' : 'Отправить Заказ'}</span>
-                <Send size={24} />
-              </motion.button>
-            </div>
-          </motion.div>
-        )}
       </div>
+      <TelegramMainButton 
+        text={`ОТПРАВИТЬ ЗАКАЗ (${totalItems} поз.)`}
+        onClick={handleSendOrder}
+        isLoading={loading}
+        isVisible={totalItems > 0}
+      />
     </Layout>
   );
 };
