@@ -40,4 +40,15 @@ export class AdminService {
         }
         return distributor;
     }
+
+    async getDashboardStats() {
+        const [users, facilities, orders, visits] = await Promise.all([
+            this.prisma.user.count({ where: { role: 'AMBASSADOR' } }),
+            this.prisma.facility.count(),
+            this.prisma.order.count({ where: { status: 'PENDING' } }),
+            this.prisma.visit.count(),
+        ]);
+
+        return { users, facilities, orders, visits };
+    }
 }

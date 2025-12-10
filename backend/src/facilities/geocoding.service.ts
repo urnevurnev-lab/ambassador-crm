@@ -10,61 +10,47 @@ export class GeocodingService {
 
     async getGeocodingStats() {
         const total = await this.prisma.facility.count();
-        const geocoded = await this.prisma.facility.count({
-            where: {
-                lat: {
-                    not: null,
-                },
-            },
-        });
-        const pending = await this.prisma.facility.count({
-            where: {
-                OR: [
-                    { lat: null },
-                    { lat: { equals: 0 } },
-                ],
-            },
-        });
-        const stats = { total, geocoded, pending };
-        this.logger.log(`STATS: Total: ${total} | Done: ${geocoded} | Pending: ${pending}`);
-        return stats;
+        const geocoded = await this.prisma.facility.count({ where: { lat: { not: null, not: 0 } } });
+        const pending = await this.prisma.facility.count({ where: { OR: [{ lat: null }, { lat: 0 }] } });
+        return { total, geocoded, pending };
     }
 
     async geocodeMissingFacilities() {
-        console.log('Starting geocoding...');
-        const stats = await this.getGeocodingStats();
+        this.logger.log('Starting SMART geocoding...');
+        
+        // Берем точки без координат
+        const facilities = await this.prisma.facility.findMany({
+            where: { OR: [{ lat: null }, { lat: 0 }] },
+            take: 50,
+        });
 
-        let facilities = [];
-        try {
-            facilities = await this.prisma.facility.findMany({
-                where: {
-                    OR: [
-                        { lat: null },
-                        { lat: { equals: 0 } },
-                    ],
-                },
-                take: 1000,
-            });
-        } catch (err: any) {
-            this.logger.error(`Failed to fetch facilities: ${err.message}`);
-            return { updated: 0, error: err.message };
-        }
-
-        console.log('Found ' + facilities.length + ' facilities to geocode');
+        console.log(`Found ${facilities.length} facilities to geocode`);
         let updated = 0;
 
         for (const facility of facilities) {
             try {
-                const query = encodeURIComponent(`${facility.address || ''}`);
-                const res = await axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`, {
+                // УМНЫЙ ЗАПРОС: Пробуем "Название + Адрес"
+                let query = `${facility.name} ${facility.address}`;
+
+                if (!facility.address || facility.address.length < 5) {
+                    console.log(`Skipping invalid address: ${facility.name}`);
+                    continue;
+                }
+
+                const encodedQuery = encodeURIComponent(query);
+
+                const res = await axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${encodedQuery}&limit=1`, {
                     headers: { 
-                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                        'Referer': 'https://google.com',
+                        'User-Agent': 'AmbassadorCRM/1.0',
+                        'Referer': 'https://telegram-app.com',
                     },
-                    timeout: 10000,
+                    timeout: 5000,
                 });
-                const [first] = res.data || [];
-                if (first && first.lat && first.lon) {
+
+                const data = res.data;
+                
+                if (data && data.length > 0) {
+                    const first = data[0];
                     await this.prisma.facility.update({
                         where: { id: facility.id },
                         data: {
@@ -73,20 +59,18 @@ export class GeocodingService {
                         },
                     });
                     updated++;
-                    console.log('Updated: ' + facility.address);
-                }
-                await new Promise((r) => setTimeout(r, 1000));
-            } catch (e: any) {
-                console.warn(`Geocoding failed for facility ${facility.id}: ${e.message}`);
-                const status = e?.response?.status;
-                if (status === 429 || status === 403) {
-                    await new Promise((r) => setTimeout(r, 5000));
+                    console.log(`✅ Geocoded: ${facility.name} -> ${first.display_name}`);
                 } else {
-                    await new Promise((r) => setTimeout(r, 1000));
+                    console.warn(`❌ Not found: ${query}. Trying address only...`);
                 }
+
+                await new Promise((r) => setTimeout(r, 1500));
+
+            } catch (e: any) {
+                console.error(`Error processing ${facility.id}: ${e.message}`);
             }
         }
 
-        return { updated, stats };
+        return { updated };
     }
 }

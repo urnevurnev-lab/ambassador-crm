@@ -2,6 +2,7 @@ import { Controller, HttpCode, Post } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { FacilitiesService } from '../facilities/facilities.service';
 import { Delete } from '@nestjs/common';
+import { Get } from '@nestjs/common';
 
 @Controller(['api/admin', 'admin'])
 export class AdminController {
@@ -38,5 +39,10 @@ export class AdminController {
     @HttpCode(200)
     async smartMerge() {
         return this.facilitiesService.smartMergeByVisits();
+    }
+
+    @Get('stats')
+    async getStats() {
+        return this.adminService.getDashboardStats();
     }
 }
