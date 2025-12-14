@@ -76,22 +76,20 @@ export const VisitWizard = () => {
         setGeoStatus('idle');
         setDeviceLocation(null);
 
-        if (facility.lat && facility.lng) {
-            setStep('lock');
-        } else {
-            WebApp.showAlert('У точки нет координат. Уточните адрес у администратора.');
-            setStep('select');
-        }
+        // Пускаем на шаг блокировки даже без координат
+        setStep('lock');
     };
 
     // 2. Проверка GPS
     const checkGeo = () => {
         if (!selectedFacility) return;
+        
+        // Если координаты точки не заданы — сразу показываем ошибку и кнопку обновления гео
         if (!selectedFacility.lat || !selectedFacility.lng) {
-            WebApp.showAlert('Геопозиция не задана, проверка пропущена');
-            setStep('activity');
+            setGeoStatus('error'); 
             return;
         }
+
         setGeoStatus('loading');
 
         if (!navigator.geolocation) {
