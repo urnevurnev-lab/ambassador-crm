@@ -39,6 +39,7 @@ export const VisitWizard = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const preselectedId = searchParams.get('facilityId');
+    const smartEntry = searchParams.get('smart') === '1';
 
     // 1. Загрузка данных
     useEffect(() => {
@@ -58,7 +59,7 @@ export const VisitWizard = () => {
                 if (preselectedId) {
                     const found = facRes.data.find(f => f.id === Number(preselectedId));
                     if (found) {
-                        handleFacilitySelect(found);
+                        handleFacilitySelect(found, { smart: smartEntry });
                     }
                 }
             } catch (e) {
@@ -69,24 +70,65 @@ export const VisitWizard = () => {
             }
         };
         loadData();
-    }, [preselectedId]);
+    }, [preselectedId, smartEntry]);
 
-    const handleFacilitySelect = (facility: Facility) => {
+    const handleFacilitySelect = (facility: Facility, opts?: { smart?: boolean }) => {
         setSelectedFacility(facility);
         setGeoStatus('idle');
         setDeviceLocation(null);
 
-        // Пускаем на шаг блокировки даже без координат
-        setStep('lock');
+        if (opts?.smart) {
+            setStep('activity');
+            checkGeo({ facility, autoProceed: true });
+        } else {
+            setStep('lock');
+        }
     };
 
     // 2. Проверка GPS
-    const checkGeo = () => {
+    const bindLocation = () => {
         if (!selectedFacility) return;
+        if (!navigator.geolocation) {
+            WebApp.showAlert('Геолокация недоступна');
+            return;
+        }
+        setGeoStatus('loading');
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const { latitude, longitude } = position.coords;
+                setDeviceLocation({ lat: latitude, lng: longitude });
+                try {
+                    await apiClient.patch(`/api/facilities/${selectedFacility.id}`, {
+                        lat: latitude,
+                        lng: longitude,
+                    });
+                    const updated = { ...selectedFacility, lat: latitude, lng: longitude };
+                    setSelectedFacility(updated);
+                    WebApp.HapticFeedback.notificationOccurred('success');
+                    WebApp.showAlert('Координаты точки обновлены! Продолжаем визит.');
+                    setGeoStatus('success');
+                    setStep('activity');
+                } catch (e) {
+                    WebApp.showAlert('Не удалось обновить координаты');
+                    setGeoStatus('error');
+                }
+            },
+            () => {
+                WebApp.showAlert('Не удалось получить геопозицию');
+                setGeoStatus('error');
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+    };
+
+    const checkGeo = (options?: { facility?: Facility; autoProceed?: boolean }) => {
+        const targetFacility = options?.facility || selectedFacility;
+        if (!targetFacility) return;
         
-        // Если координаты точки не заданы — сразу показываем ошибку и кнопку обновления гео
-        if (!selectedFacility.lat || !selectedFacility.lng) {
+        // Если координаты точки не заданы — позволяем привязать их вручную
+        if (!targetFacility.lat || !targetFacility.lng) {
             setGeoStatus('error'); 
+            if (options?.autoProceed) setStep('lock');
             return;
         }
 
@@ -94,6 +136,7 @@ export const VisitWizard = () => {
 
         if (!navigator.geolocation) {
             setGeoStatus('error');
+            if (options?.autoProceed) setStep('lock');
             return;
         }
 
@@ -101,20 +144,27 @@ export const VisitWizard = () => {
             (position) => {
                 const { latitude, longitude } = position.coords;
                 setDeviceLocation({ lat: latitude, lng: longitude });
-                const dist = getDistanceFromLatLonInKm(latitude, longitude, selectedFacility.lat, selectedFacility.lng);
+                const dist = getDistanceFromLatLonInKm(latitude, longitude, targetFacility.lat, targetFacility.lng);
                 
                 // 150 метров
                 if (dist < 0.15) {
                     WebApp.HapticFeedback.notificationOccurred('success');
                     setGeoStatus('success');
-                    // Ждем анимацию и переходим к активности
-                    setTimeout(() => setStep('activity'), 1200); 
+                    if (options?.autoProceed) {
+                        setStep('activity');
+                    } else {
+                        setTimeout(() => setStep('activity'), 1200); 
+                    }
                 } else {
                     WebApp.HapticFeedback.notificationOccurred('error');
                     setGeoStatus('error');
+                    if (options?.autoProceed) setStep('lock');
                 }
             },
-            () => setGeoStatus('error'),
+            () => {
+                setGeoStatus('error');
+                if (options?.autoProceed) setStep('lock');
+            },
             { enableHighAccuracy: true, timeout: 10000 }
         );
     };
@@ -170,6 +220,7 @@ export const VisitWizard = () => {
                 WebApp.showAlert(res.data.alert);
             }
             WebApp.HapticFeedback.notificationOccurred('success');
+            window.dispatchEvent(new Event('visit:created'));
             setStep('done');
         } catch (e) {
             const msg = (e as any)?.response?.data?.message;
@@ -242,35 +293,13 @@ export const VisitWizard = () => {
                                     </p>
                                     
                                     <button 
-                                        onClick={async () => {
-                                            if (!deviceLocation) return;
-                                            try {
-                                                setLoading(true);
-                                                await apiClient.patch(`/api/facilities/${selectedFacility.id}`, {
-                                                    lat: deviceLocation.lat,
-                                                    lng: deviceLocation.lng
-                                                });
-                                                
-                                                const updated = { ...selectedFacility, lat: deviceLocation.lat, lng: deviceLocation.lng };
-                                                setSelectedFacility(updated);
-                                                
-                                                WebApp.HapticFeedback.notificationOccurred('success');
-                                                WebApp.showAlert('Координаты точки обновлены! Доступ открыт.');
-                                                
-                                                setGeoStatus('success');
-                                                setTimeout(() => setStep('activity'), 500);
-                                            } catch (e) {
-                                                WebApp.showAlert('Ошибка обновления координат');
-                                            } finally {
-                                                setLoading(false);
-                                            }
-                                        }}
+                                        onClick={bindLocation}
                                         className="bg-blue-100 text-blue-700 px-6 py-3 rounded-xl font-bold text-sm mb-4 active:scale-95 transition"
                                     >
-                                        📍 Я здесь! Обновить геопозцию
+                                        📍 Я здесь! Привязать геолокацию
                                     </button>
                                     
-                                    <button onClick={checkGeo} className="text-gray-400 text-sm underline">
+                                    <button onClick={() => checkGeo()} className="text-gray-400 text-sm underline">
                                         Попробовать проверить еще раз
                                     </button>
                                 </div>
@@ -278,7 +307,7 @@ export const VisitWizard = () => {
                             {geoStatus === 'success' && <div className="text-green-600 font-bold mb-4">Доступ открыт!</div>}
 
                             {geoStatus !== 'success' && (
-                                <button onClick={checkGeo} className="w-full max-w-xs bg-black text-white py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition">
+                                <button onClick={() => checkGeo()} className="w-full max-w-xs bg-black text-white py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition">
                                     📍 Открыть смену
                                 </button>
                             )}

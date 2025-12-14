@@ -44,6 +44,7 @@ export class VisitsController {
         const employeeLat = body.lat;
         const employeeLng = body.lng;
         let isValidGeo = false;
+        let isSuspicious = false;
 
         if (facility.lat !== null && facility.lat !== undefined && facility.lng !== null && facility.lng !== undefined) {
             if (employeeLat === null || employeeLat === undefined || employeeLng === null || employeeLng === undefined) {
@@ -60,10 +61,10 @@ export class VisitsController {
                 employeeLatNum,
                 employeeLngNum,
             );
-            if (distance > this.MAX_DISTANCE_METERS) {
-                throw new ForbiddenException('Слишком далеко от точки');
+            isValidGeo = distance <= this.MAX_DISTANCE_METERS;
+            if (distance > 500) {
+                isSuspicious = true;
             }
-            isValidGeo = true;
         }
 
         const telegramUser = (req as any).user as { telegramId?: string; fullName?: string } | undefined;
@@ -87,6 +88,7 @@ export class VisitsController {
                 activityId: body.activityId ?? null,
                 type: body.type || 'VISIT',
                 isValidGeo,
+                isSuspicious,
                 comment: body.comment,
                 data: body.data ?? null,
                 productsAvailable: {

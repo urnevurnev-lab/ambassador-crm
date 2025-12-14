@@ -47,18 +47,16 @@ export class FacilitiesService {
             throw new ConflictException('Такое заведение уже есть');
         }
 
-        // Геокодируем при создании
-        const coords = await this.geocodingService.tryGeocode(data.name, data.address);
         const newFacility = await this.prisma.facility.create({
             data: {
                 ...data,
-                lat: coords?.lat ?? null,
-                lng: coords?.lng ?? null,
+                lat: data.lat ?? null,
+                lng: data.lng ?? null,
                 requiredProducts: data.requiredProducts ?? [],
             },
         });
 
-        return { facility: newFacility, geocoded: !!coords };
+        return { facility: newFacility, geocoded: false };
     }
 
     async update(id: number, data: any) {

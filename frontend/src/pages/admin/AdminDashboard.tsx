@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
 import { PageHeader } from '../../components/PageHeader';
 import { StatCard } from '../../components/StatCard';
-import { Users, ShoppingBag, MapPin, Activity, Download } from 'lucide-react';
+import { Users, ShoppingBag, MapPin, Activity, Download, Edit3, Trash2, Plus } from 'lucide-react';
 import apiClient from '../../api/apiClient';
 import WebApp from '@twa-dev/sdk';
 
@@ -18,6 +18,14 @@ interface Visit {
   data?: any;
 }
 
+interface Product {
+  id: number;
+  line: string;
+  flavor: string;
+  sku: string;
+  category: string;
+}
+
 export const AdminDashboard = () => {
   const [stats, setStats] = useState({
     users: 0,
@@ -28,6 +36,11 @@ export const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [visits, setVisits] = useState<Visit[]>([]);
   const [visitsLoading, setVisitsLoading] = useState(true);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [filterLine, setFilterLine] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
+  const [editing, setEditing] = useState<Partial<Product> | null>(null);
   const navigate = useNavigate();
 
   const ensureAuth = () => {
@@ -78,10 +91,29 @@ export const AdminDashboard = () => {
     }
   };
 
+  const fetchProducts = async () => {
+    if (!ensureAuth()) return;
+    setProductsLoading(true);
+    try {
+      const res = await apiClient.get<Product[]>('/api/products');
+      setProducts(res.data || []);
+    } catch (e) {
+      console.error('Failed to load products', e);
+      if ((e as any)?.response?.status === 401 || (e as any)?.response?.status === 403) {
+        handleAuthError();
+        return;
+      }
+      WebApp.showAlert('Не удалось загрузить продукты');
+    } finally {
+      setProductsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!ensureAuth()) return;
     fetchStats();
     fetchVisits();
+    fetchProducts();
   }, []);
 
   const handleLogout = () => {
@@ -134,6 +166,60 @@ export const AdminDashboard = () => {
     if (isNaN(d.getTime())) return '';
     return d.toLocaleString('ru-RU');
   };
+
+  const saveProduct = async () => {
+    if (!editing?.sku || !editing.line || !editing.flavor) {
+      WebApp.showAlert('Заполните line, flavor и sku');
+      return;
+    }
+    try {
+      if (editing.id) {
+        await apiClient.patch(`/api/products/${editing.id}`, {
+          line: editing.line,
+          flavor: editing.flavor,
+          sku: editing.sku,
+          category: editing.category || 'UNKNOWN',
+        });
+      } else {
+        await apiClient.post('/api/products', {
+          line: editing.line,
+          flavor: editing.flavor,
+          sku: editing.sku,
+          category: editing.category || 'UNKNOWN',
+        });
+      }
+      setEditing(null);
+      fetchProducts();
+      WebApp.showAlert('Сохранено');
+    } catch (e) {
+      WebApp.showAlert('Ошибка сохранения SKU');
+    }
+  };
+
+  const startEdit = (product?: Product) => {
+    if (product) {
+      setEditing(product);
+    } else {
+      setEditing({ line: '', flavor: '', sku: '', category: 'UNKNOWN' });
+    }
+  };
+
+  const deleteProduct = async (id: number) => {
+    const confirmed = window.confirm('Удалить товар?');
+    if (!confirmed) return;
+    try {
+      await apiClient.delete(`/api/products/${id}`);
+      fetchProducts();
+    } catch (e) {
+      WebApp.showAlert('Не удалось удалить товар');
+    }
+  };
+
+  const filteredProducts = products.filter((p) => {
+    const okLine = filterLine ? p.line === filterLine : true;
+    const okCat = filterCategory ? p.category === filterCategory : true;
+    return okLine && okCat;
+  });
 
   return (
     <Layout>
@@ -198,6 +284,136 @@ export const AdminDashboard = () => {
             >
               Очистить
             </button>
+          </div>
+        </div>
+
+        {/* Управление продуктами */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-semibold text-sm">Каталог SKU</div>
+              <div className="text-xs text-gray-400">Добавляйте и редактируйте товары</div>
+            </div>
+            <button
+              onClick={() => startEdit()}
+              className="bg-black text-white px-3 py-2 rounded-xl text-xs font-bold active:scale-95 transition flex items-center gap-1"
+            >
+              <Plus size={14}/> Добавить
+            </button>
+          </div>
+
+          <div className="flex gap-3">
+            <select
+              value={filterLine}
+              onChange={(e) => setFilterLine(e.target.value)}
+              className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
+            >
+              <option value="">Все линейки</option>
+              {Array.from(new Set(products.map(p => p.line))).map(line => (
+                <option key={line} value={line}>{line}</option>
+              ))}
+            </select>
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
+            >
+              <option value="">Все категории</option>
+              {Array.from(new Set(products.map(p => p.category))).map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+
+          {editing && (
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 space-y-3">
+              <div className="flex gap-2">
+                <input
+                  value={editing.line || ''}
+                  onChange={(e) => setEditing({ ...editing, line: e.target.value })}
+                  placeholder="Line"
+                  className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                />
+                <input
+                  value={editing.category || ''}
+                  onChange={(e) => setEditing({ ...editing, category: e.target.value })}
+                  placeholder="Category"
+                  className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="flex gap-2">
+                <input
+                  value={editing.flavor || ''}
+                  onChange={(e) => setEditing({ ...editing, flavor: e.target.value })}
+                  placeholder="Flavor"
+                  className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                />
+                <input
+                  value={editing.sku || ''}
+                  onChange={(e) => setEditing({ ...editing, sku: e.target.value })}
+                  placeholder="SKU"
+                  className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={saveProduct}
+                  className="flex-1 bg-black text-white py-2 rounded-lg text-sm font-semibold active:scale-95 transition"
+                >
+                  Сохранить
+                </button>
+                <button
+                  onClick={() => setEditing(null)}
+                  className="flex-1 bg-white text-gray-600 border border-gray-200 py-2 rounded-lg text-sm font-semibold active:scale-95 transition"
+                >
+                  Отмена
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="overflow-auto border border-gray-100 rounded-xl">
+            <table className="min-w-full text-sm">
+              <thead className="bg-gray-50 text-gray-500">
+                <tr>
+                  <th className="px-3 py-2 text-left">Line</th>
+                  <th className="px-3 py-2 text-left">Category</th>
+                  <th className="px-3 py-2 text-left">Flavor</th>
+                  <th className="px-3 py-2 text-left">SKU</th>
+                  <th className="px-3 py-2 text-right">Действия</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {productsLoading ? (
+                  <tr><td colSpan={5} className="px-3 py-4 text-center text-gray-400">Загрузка...</td></tr>
+                ) : filteredProducts.length === 0 ? (
+                  <tr><td colSpan={5} className="px-3 py-4 text-center text-gray-400">Ничего не найдено</td></tr>
+                ) : (
+                  filteredProducts.map((p) => (
+                    <tr key={p.id}>
+                      <td className="px-3 py-2">{p.line}</td>
+                      <td className="px-3 py-2">{p.category}</td>
+                      <td className="px-3 py-2">{p.flavor}</td>
+                      <td className="px-3 py-2">{p.sku}</td>
+                      <td className="px-3 py-2 text-right flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => startEdit(p)}
+                          className="text-blue-500 hover:text-blue-700"
+                        >
+                          <Edit3 size={16} />
+                        </button>
+                        <button
+                          onClick={() => deleteProduct(p.id)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
 

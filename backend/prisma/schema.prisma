@@ -58,6 +58,7 @@ model Visit {
   data        Json?
   productsAvailable Product[] @relation("VisitProducts")
   isValidGeo  Boolean  @default(false)
+  isSuspicious Boolean @default(false)
   comment     String?
   createdAt   DateTime @default(now())
 }

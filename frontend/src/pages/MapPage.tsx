@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import apiClient from '../api/apiClient';
 import { Layout } from '../components/Layout';
@@ -21,6 +21,9 @@ const MOSCOW_CENTER: [number, number] = [55.7558, 37.6173];
 const MapPage: React.FC = () => {
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [search, setSearch] = useState('');
+  const [mapCenter, setMapCenter] = useState<[number, number]>(MOSCOW_CENTER);
+  const mapRef = useRef<L.Map | null>(null);
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   
   useEffect(() => {
     apiClient.get<Facility[]>('/api/facilities').then(res => setFacilities(res.data)).catch(() => {});
@@ -33,7 +36,29 @@ const MapPage: React.FC = () => {
     return validFacilities.filter((f) => f.name.toLowerCase().includes(term));
   }, [search, validFacilities]);
 
-  const center = validFacilities[0] ? [validFacilities[0].lat, validFacilities[0].lng] : MOSCOW_CENTER;
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const coords: [number, number] = [position.coords.latitude, position.coords.longitude];
+        setUserLocation(coords);
+        setMapCenter(coords);
+        if (mapRef.current) {
+          mapRef.current.flyTo(coords, 14, { duration: 0.75 });
+        }
+      },
+      () => {},
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  }, []);
+
+  useEffect(() => {
+    if (userLocation) return;
+    if (validFacilities[0]) {
+      const fallback: [number, number] = [validFacilities[0].lat, validFacilities[0].lng];
+      setMapCenter(fallback);
+    }
+  }, [validFacilities, userLocation]);
 
   return (
     <Layout>
@@ -61,10 +86,11 @@ const MapPage: React.FC = () => {
             </div>
 
             <MapContainer
-              center={center as [number, number]}
+              center={mapCenter as [number, number]}
               zoom={11}
               zoomControl={false}
               attributionControl={false}
+              ref={(instance) => { mapRef.current = instance; }}
               className="w-full h-full"
             >
               <TileLayer 

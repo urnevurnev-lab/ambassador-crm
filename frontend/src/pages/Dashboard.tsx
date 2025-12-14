@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import apiClient from '../api/apiClient';
-import { Link } from 'react-router-dom';
 import { Briefcase, ShoppingCart, MapPin, CheckCircle, Package, ArrowUpRight, Play, Megaphone, Loader2, Navigation } from 'lucide-react';
 import { motion } from 'framer-motion';
 import WebApp from '@twa-dev/sdk';
@@ -14,6 +14,7 @@ interface DashboardStats {
 }
 
 interface Target {
+  id: number;
   name: string;
   address: string;
   lat?: number;
@@ -30,6 +31,7 @@ interface Post {
 }
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +41,9 @@ const Dashboard: React.FC = () => {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
+  const [visitsToday, setVisitsToday] = useState(0);
+  const DAILY_TARGET = 15;
+  const NEARBY_RADIUS = 150; // meters
 
   const telegramUser = useMemo(() => WebApp.initDataUnsafe?.user, []);
   const displayName = telegramUser
@@ -58,13 +63,21 @@ const Dashboard: React.FC = () => {
           apiClient.get<Post[]>('/api/posts'),
         ]);
 
+        const visits = visitRes.data || [];
+        const todayCount = visits.filter((v: any) => {
+          const d = new Date(v.date || v.createdAt);
+          const now = new Date();
+          return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        }).length;
+
         setStats({
           totalFacilities: facRes.data.length,
           totalProducts: prodRes.data.length,
-          totalVisits: visitRes.data.length,
+          totalVisits: visits.length,
         });
         setFacilities(facRes.data || []);
         setPosts(postsRes.data || []);
+        setVisitsToday(todayCount);
 
       } catch (err) {
         console.error("Dashboard data load error:", err);
@@ -95,6 +108,26 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     requestLocation();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const handleVisitCreated = async () => {
+      try {
+        const res = await apiClient.get('/api/visits');
+        const visits = res.data || [];
+        const todayCount = visits.filter((v: any) => {
+          const d = new Date(v.date || v.createdAt);
+          const now = new Date();
+          return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        }).length;
+        setVisitsToday(todayCount);
+        setStats((prev) => prev ? { ...prev, totalVisits: visits.length } : prev);
+      } catch (e) {
+        console.error('Failed to refresh visits', e);
+      }
+    };
+    window.addEventListener('visit:created', handleVisitCreated as EventListener);
+    return () => window.removeEventListener('visit:created', handleVisitCreated as EventListener);
   }, []);
 
   useEffect(() => {
@@ -209,12 +242,12 @@ const Dashboard: React.FC = () => {
                 <CheckCircle size={20} className="text-green-500" />
                 <p className="text-sm text-[#8E8E93]">Визиты сегодня</p>
               </div>
-              <span className="text-xs text-[#1C1C1E] font-semibold">12/15</span>
+              <span className="text-xs text-[#1C1C1E] font-semibold">{visitsToday}/{DAILY_TARGET}</span>
             </div>
             <div className="flex flex-col items-center">
-              <p className="text-2xl font-bold text-[#1C1C1E]">12 / 15</p>
+              <p className="text-2xl font-bold text-[#1C1C1E]">{visitsToday} / {DAILY_TARGET}</p>
               <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden mt-3">
-                <div className="h-full bg-purple-600" style={{ width: '80%' }} />
+                <div className="h-full bg-purple-600" style={{ width: `${Math.min(100, Math.round((visitsToday / DAILY_TARGET) * 100))}%` }} />
               </div>
             </div>
           </motion.div>
@@ -296,15 +329,24 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Start Visit CTA */}
-        <Link to="/map" className="block">
-          <motion.button
-            whileTap={{ scale: 0.98 }}
-            className="w-full h-[72px] bg-[#1C1C1E] rounded-full text-white text-lg font-semibold flex items-center justify-between px-8 mt-8 shadow-lg active:scale-95 transition-transform"
-          >
-            <span>Начать визит</span>
-            <Play size={22} />
-          </motion.button>
-        </Link>
+        <motion.button
+          whileTap={{ scale: 0.98 }}
+          onClick={() => {
+            if (nearest && nearest.distance < NEARBY_RADIUS) {
+              navigate(`/visit?facilityId=${nearest.facility.id}&smart=1`);
+            } else {
+              navigate('/map');
+            }
+          }}
+          className="w-full h-[72px] bg-[#1C1C1E] rounded-full text-white text-lg font-semibold flex items-center justify-between px-8 mt-8 shadow-lg active:scale-95 transition-transform"
+        >
+          <span>
+            {nearest && nearest.distance < NEARBY_RADIUS
+              ? `Визит в ${nearest.facility.name}`
+              : 'Начать визит'}
+          </span>
+          <Play size={22} />
+        </motion.button>
       </div>
     </Layout>
   );
