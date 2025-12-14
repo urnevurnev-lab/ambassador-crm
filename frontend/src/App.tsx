@@ -2,12 +2,14 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { TelegramNavigator } from './components/TelegramNavigator';
 
-// Ленивая загрузка страниц
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const MapPage = lazy(() => import('./pages/MapPage'));
-const OrderPage = lazy(() => import('./pages/OrderPage'));
-const FacilityPage = lazy(() => import('./pages/FacilityPage'));
-const FacilitiesListPage = lazy(() => import('./pages/FacilitiesListPage'));
+// --- ИСПРАВЛЕНИЕ: Главные страницы грузим СРАЗУ, чтобы переключение было мгновенным ---
+import Dashboard from './pages/Dashboard';
+import MapPage from './pages/MapPage';
+import OrderPage from './pages/OrderPage';
+import FacilitiesListPage from './pages/FacilitiesListPage';
+import FacilityPage from './pages/FacilityPage';
+
+// Ленивая загрузка только для тяжелых/редких страниц
 const NewFacilityPage = lazy(() => import('./pages/NewFacilityPage'));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
 const AdminLogin = lazy(() => import('./pages/admin/AdminLogin').then((m) => ({ default: m.AdminLogin })));
@@ -22,30 +24,39 @@ const NotFound = () => <div className="p-10 text-center">404 | Страница 
 
 const App: React.FC = () => {
   return (
-    // Оборачиваем все приложение в BrowserRouter для роутинга
     <BrowserRouter>
       <TelegramNavigator />
       <div className="App">
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            {/* Главная страница */}
-            <Route path="/" element={<Dashboard />} />
-            
-            {/* Основные страницы приложения */}
-            <Route path="/map" element={<MapPage />} />
-            <Route path="/orders" element={<OrderPage />} />
-            <Route path="/facility/:id" element={<FacilityPage />} />
-            <Route path="/facility/new" element={<NewFacilityPage />} />
-            <Route path="/facilities" element={<FacilitiesListPage />} />
-            
-            {/* Админ-панель */}
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/login" element={<AdminLogin />} />
-            
-            {/* Обработка несуществующих маршрутов */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Suspense>
+        {/* Suspense теперь нужен только для редких роутов */}
+        <Routes>
+          {/* Главные страницы (мгновенная загрузка) */}
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/map" element={<MapPage />} />
+          <Route path="/orders" element={<OrderPage />} />
+          <Route path="/facility/:id" element={<FacilityPage />} />
+          <Route path="/facilities" element={<FacilitiesListPage />} />
+          
+          {/* Редкие страницы (с лоадером) */}
+          <Route path="/facility/new" element={
+            <Suspense fallback={<PageLoader />}>
+              <NewFacilityPage />
+            </Suspense>
+          } />
+          
+          {/* Админ-панель */}
+          <Route path="/admin" element={
+            <Suspense fallback={<PageLoader />}>
+              <AdminDashboard />
+            </Suspense>
+          } />
+          <Route path="/admin/login" element={
+            <Suspense fallback={<PageLoader />}>
+              <AdminLogin />
+            </Suspense>
+          } />
+          
+          <Route path="*" element={<NotFound />} />
+        </Routes>
       </div>
     </BrowserRouter>
   );

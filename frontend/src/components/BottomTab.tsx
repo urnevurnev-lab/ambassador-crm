@@ -22,7 +22,7 @@ const TabButton: React.FC<{ tab: TabItem; isActive: boolean }> = ({ tab, isActiv
   const inactiveColor = '#C7C7CC';
 
   return (
-    <div className="flex-1 flex justify-center group">
+    <div className="flex-1 flex justify-center group pointer-events-auto">
       <Link to={tab.path} className="flex flex-col items-center justify-center w-full h-full pt-1">
         <Icon 
           size={26} 
@@ -45,7 +45,7 @@ export const BottomTab: React.FC = () => {
 
   return (
     <div 
-      className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-[30px] shadow-[0_-10px_60px_rgba(0,0,0,0.05)]"
+      className="fixed bottom-0 left-0 right-0 z-[2000] bg-white rounded-t-[30px] shadow-[0_-10px_60px_rgba(0,0,0,0.05)]"
       style={{ 
         paddingBottom: 'env(safe-area-inset-bottom)', 
         height: 'calc(80px + env(safe-area-inset-bottom))'
