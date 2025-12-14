@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Layout } from '../components/Layout';
 import apiClient from '../api/apiClient';
 import { Link } from 'react-router-dom';
-import { Briefcase, ShoppingCart, MapPin, CheckCircle, Package, ArrowUpRight, Play, Megaphone, Loader2 } from 'lucide-react';
+import { Briefcase, ShoppingCart, MapPin, CheckCircle, Package, ArrowUpRight, Play, Megaphone, Loader2, Navigation } from 'lucide-react';
 import { motion } from 'framer-motion';
+import WebApp from '@twa-dev/sdk';
 
 // Интерфейсы для статистики
 interface DashboardStats {
@@ -32,9 +33,18 @@ const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentTarget] = useState<Target | null>(null);
+  const [facilities, setFacilities] = useState<Target[]>([]);
+  const [nearest, setNearest] = useState<{ facility: Target; distance: number } | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
+
+  const telegramUser = useMemo(() => WebApp.initDataUnsafe?.user, []);
+  const displayName = telegramUser
+    ? [telegramUser.first_name, telegramUser.last_name].filter(Boolean).join(' ') || telegramUser.username || 'Амбассадор'
+    : 'Амбассадор';
+  const avatarUrl = telegramUser?.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=0D8ABC&color=fff`;
 
   // --- Загрузка базовой статистики (Сохранена рабочая логика) ---
   useEffect(() => {
@@ -53,6 +63,7 @@ const Dashboard: React.FC = () => {
           totalProducts: prodRes.data.length,
           totalVisits: visitRes.data.length,
         });
+        setFacilities(facRes.data || []);
         setPosts(postsRes.data || []);
 
       } catch (err) {
@@ -65,6 +76,49 @@ const Dashboard: React.FC = () => {
     };
     fetchStats();
   }, []);
+
+  const requestLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError('Геолокация недоступна на устройстве');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
+        setLocationError(null);
+      },
+      () => setLocationError('Включите GPS, чтобы показать ближайшее заведение'),
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  };
+
+  useEffect(() => {
+    requestLocation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!userLocation || facilities.length === 0) {
+      setNearest(null);
+      return;
+    }
+    const validFacilities = facilities.filter(f => f.lat && f.lng);
+    if (validFacilities.length === 0) {
+      setNearest(null);
+      return;
+    }
+
+    let best = validFacilities[0];
+    let bestDist = getDistance(userLocation.lat, userLocation.lng, best.lat!, best.lng!);
+    for (const fac of validFacilities.slice(1)) {
+      const d = getDistance(userLocation.lat, userLocation.lng, fac.lat!, fac.lng!);
+      if (d < bestDist) {
+        best = fac;
+        bestDist = d;
+      }
+    }
+    setNearest({ facility: best, distance: bestDist });
+  }, [userLocation, facilities]);
 
   if (loading) {
     return <Layout><div className="p-4 text-center mt-8 text-indigo-600">Загрузка Панели...</div></Layout>;
@@ -81,45 +135,52 @@ const Dashboard: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-4xl font-bold text-[#1C1C1E] leading-tight">
-              Добрый день,<br />Виктор 👋
+              Добрый день,<br />{displayName} 👋
             </h1>
           </div>
           <img
-            src="https://ui-avatars.com/api/?name=Victor&background=0D8ABC&color=fff"
-            alt="Avatar"
+            src={avatarUrl}
+            alt={displayName}
             className="w-12 h-12 rounded-full bg-white shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-100 object-cover"
           />
         </div>
 
         {/* Current Target */}
         <motion.div
-          whileHover={{ scale: currentTarget ? 1.01 : 1 }}
+          whileHover={{ scale: nearest ? 1.01 : 1 }}
           className="relative bg-white rounded-[35px] h-[200px] overflow-hidden shadow-soft col-span-2"
         >
-          {currentTarget ? (
+          {nearest ? (
             <>
-              <img
-                src="https://a.tile.openstreetmap.org/15/19304/10899.png"
-                alt="map preview"
-                className="absolute inset-0 w-full h-full object-cover opacity-50"
-              />
-              <div className="absolute inset-0 bg-gradient-to-br from-white/50 to-white/80" />
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-white" />
               <div className="relative h-full w-full p-6 flex flex-col justify-between">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs uppercase tracking-wide text-[#8E8E93]">Текущая цель</p>
+                  <p className="text-xs uppercase tracking-wide text-[#8E8E93]">Ближайшая точка</p>
                   <ArrowUpRight size={18} className="text-indigo-500" />
                 </div>
                 <div>
-                  <p className="text-xl font-bold text-[#1C1C1E]">{currentTarget.name}</p>
-                  <p className="text-sm text-[#8E8E93]">{currentTarget.address}</p>
+                  <p className="text-xl font-bold text-[#1C1C1E]">{nearest.facility.name}</p>
+                  <p className="text-sm text-[#8E8E93]">{nearest.facility.address}</p>
+                  <div className="flex items-center gap-2 mt-3 text-sm text-[#1C1C1E] font-semibold">
+                    <Navigation size={16} className="text-indigo-500" />
+                    {nearest.distance.toFixed(0)} м
+                  </div>
                 </div>
               </div>
             </>
           ) : (
             <div className="relative h-full w-full p-6 flex flex-col justify-center items-start bg-gradient-to-br from-gray-50 to-white">
               <p className="text-xs uppercase tracking-wide text-[#8E8E93] mb-2">Текущая цель</p>
-              <p className="text-lg font-semibold text-[#1C1C1E]">Цель не выбрана</p>
-              <p className="text-sm text-[#8E8E93] mt-1">Выберите точку на карте, чтобы запланировать визит.</p>
+              <p className="text-lg font-semibold text-[#1C1C1E]">Не удалось определить локацию</p>
+              <p className="text-sm text-[#8E8E93] mt-1 mb-4">
+                {locationError || 'Включите GPS, чтобы показать ближайшее заведение'}
+              </p>
+              <button
+                onClick={requestLocation}
+                className="px-4 py-2 rounded-full bg-black text-white text-sm font-semibold shadow-sm active:scale-95 transition"
+              >
+                Включить GPS
+              </button>
             </div>
           )}
         </motion.div>
@@ -248,5 +309,14 @@ const Dashboard: React.FC = () => {
     </Layout>
   );
 };
+
+function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371000; // meters
+  const toRad = (deg: number) => deg * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 export default Dashboard;

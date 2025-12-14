@@ -1,7 +1,7 @@
-import { BadRequestException, ForbiddenException, Controller, Post, Body, Get, Req } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Controller, Post, Body, Get, Req, UseGuards } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { Request } from 'express';
-import { parseTelegramUserFromAuthHeader } from '../telegram/telegram.utils';
+import { TelegramAuthGuard } from '../telegram/telegram.guard';
 
 @Controller('visits')
 export class VisitsController {
@@ -21,16 +21,14 @@ export class VisitsController {
     }
 
     @Post()
+    @UseGuards(TelegramAuthGuard)
     async createVisit(@Body() body: {
-        userId?: number; // Берется из токена/авторизации (или передается с фронта временно)
         facilityId: number;
         type?: string;
         activityId?: number;
         productsAvailable?: number[]; // Массив ID продуктов
-        lat?: number; // @deprecated: оставлено для совместимости
-        lng?: number; // @deprecated: оставлено для совместимости
-        userLat?: number;
-        userLng?: number;
+        lat?: number; // координаты пользователя
+        lng?: number; // координаты пользователя
         data?: any;
         comment?: string;
     }, @Req() req: Request) {
@@ -43,8 +41,8 @@ export class VisitsController {
             throw new BadRequestException('Заведение не найдено');
         }
 
-        const employeeLat = body.userLat ?? body.lat;
-        const employeeLng = body.userLng ?? body.lng;
+        const employeeLat = body.lat;
+        const employeeLng = body.lng;
         let isValidGeo = false;
 
         if (facility.lat !== null && facility.lat !== undefined && facility.lng !== null && facility.lng !== undefined) {
@@ -68,20 +66,18 @@ export class VisitsController {
             isValidGeo = true;
         }
 
-        let userId = body.userId;
-        if (!userId) {
-            const telegramUser = parseTelegramUserFromAuthHeader(req.headers.authorization as string | undefined);
-            if (telegramUser) {
-                const ambassador = await this.prisma.user.upsert({
-                    where: { telegramId: telegramUser.telegramId },
-                    update: { fullName: telegramUser.fullName },
-                    create: { telegramId: telegramUser.telegramId, fullName: telegramUser.fullName },
-                });
-                userId = ambassador.id;
-            } else {
-                throw new BadRequestException('Не удалось определить пользователя');
-            }
+        const telegramUser = (req as any).user as { telegramId?: string; fullName?: string } | undefined;
+        if (!telegramUser?.telegramId) {
+            throw new BadRequestException('Не удалось определить пользователя');
         }
+
+        const ambassador = await this.prisma.user.upsert({
+            where: { telegramId: telegramUser.telegramId },
+            update: { fullName: telegramUser.fullName ?? telegramUser.telegramId },
+            create: { telegramId: telegramUser.telegramId, fullName: telegramUser.fullName ?? telegramUser.telegramId },
+        });
+        (req as any).user = { id: ambassador.id, telegramId: ambassador.telegramId, fullName: ambassador.fullName };
+        const userId = ambassador.id;
 
         // 1. Создаем визит
         const visit = await this.prisma.visit.create({

@@ -79,8 +79,8 @@ export const VisitWizard = () => {
         if (facility.lat && facility.lng) {
             setStep('lock');
         } else {
-            WebApp.showAlert('Геопозиция не задана, проверка пропущена');
-            setStep('activity');
+            WebApp.showAlert('У точки нет координат. Уточните адрес у администратора.');
+            setStep('select');
         }
     };
 
@@ -99,23 +99,14 @@ export const VisitWizard = () => {
             return;
         }
 
-        const isDev = import.meta.env.DEV; 
-        if (isDev && selectedFacility.lat && selectedFacility.lng) {
-            setDeviceLocation({ lat: selectedFacility.lat, lng: selectedFacility.lng });
-            WebApp.HapticFeedback.notificationOccurred('success');
-            setGeoStatus('success');
-            setTimeout(() => setStep('activity'), 800);
-            return;
-        }
-
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 const { latitude, longitude } = position.coords;
                 setDeviceLocation({ lat: latitude, lng: longitude });
                 const dist = getDistanceFromLatLonInKm(latitude, longitude, selectedFacility.lat, selectedFacility.lng);
                 
-                // 200 метров
-                if (dist < 0.2) {
+                // 150 метров
+                if (dist < 0.15) {
                     WebApp.HapticFeedback.notificationOccurred('success');
                     setGeoStatus('success');
                     // Ждем анимацию и переходим к активности
@@ -143,13 +134,17 @@ export const VisitWizard = () => {
             setStep('lock');
             return;
         }
+        if (!deviceLocation) {
+            WebApp.showAlert('Не удалось получить координаты. Включите GPS.');
+            return;
+        }
         const payload: any = {
             facilityId: selectedFacility.id,
             activityId: selectedActivity.id,
             type: selectedActivity.code || 'VISIT',
             productsAvailable: selectedProducts,
-            userLat: deviceLocation?.lat,
-            userLng: deviceLocation?.lng,
+            lat: deviceLocation.lat,
+            lng: deviceLocation.lng,
             comment: comment
         };
 

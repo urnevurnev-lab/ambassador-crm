@@ -1,5 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { createHmac } from 'crypto';
+import { parseTelegramUserFromAuthHeader } from './telegram.utils';
 
 @Injectable()
 export class TelegramAuthGuard implements CanActivate {
@@ -17,6 +18,12 @@ export class TelegramAuthGuard implements CanActivate {
 
         if (!this.validateInitData(initData)) {
             throw new UnauthorizedException('Подпись Telegram недействительна');
+        }
+
+        const telegramUser = parseTelegramUserFromAuthHeader(authHeader);
+        if (telegramUser) {
+            request.user = telegramUser;
+            request.telegramUser = telegramUser;
         }
 
         return true;
