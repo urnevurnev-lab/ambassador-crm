@@ -6,7 +6,7 @@ import { Get } from '@nestjs/common';
 import { Response } from 'express';
 import { AdminAuthGuard } from '../auth/admin-auth.guard';
 
-@Controller(['api/admin', 'admin'])
+@Controller('admin')
 @UseGuards(AdminAuthGuard)
 export class AdminController {
     constructor(
