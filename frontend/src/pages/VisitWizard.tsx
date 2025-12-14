@@ -5,8 +5,9 @@ import WebApp from '@twa-dev/sdk';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import apiClient from '../api/apiClient';
 import { PageHeader } from '../components/PageHeader';
-import { StandardVisitForm } from '../components/activities/StandardVisitForm';
-import { InventoryForm } from '../components/activities/InventoryForm';
+import { VisitForm } from '../components/activities/VisitForm';
+import { ContactForm } from '../components/activities/ContactForm';
+import { OpenShiftForm } from '../components/activities/OpenShiftForm';
 
 interface Facility { id: number; name: string; address: string; lat: number; lng: number; }
 interface Product { id: number; flavor: string; line: string; sku: string; }
@@ -25,8 +26,10 @@ export const VisitWizard = () => {
     const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
     const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
     const [comment, setComment] = useState('');
-    const [standardNote, setStandardNote] = useState('');
-    const [inventoryNote, setInventoryNote] = useState('');
+    const [contacts, setContacts] = useState('');
+    const [startTime, setStartTime] = useState('');
+    const [endTime, setEndTime] = useState('');
+    const [cups, setCups] = useState('');
     
     const [geoStatus, setGeoStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
     const [loading, setLoading] = useState(true);
@@ -108,16 +111,36 @@ export const VisitWizard = () => {
             setStep('activity');
             return;
         }
+        const payload: any = {
+            facilityId: selectedFacility.id,
+            activityId: selectedActivity.id,
+            type: selectedActivity.code || 'VISIT',
+            productsAvailable: selectedProducts,
+            lat: selectedFacility.lat,
+            lng: selectedFacility.lng,
+            comment: comment
+        };
+
+        // Собираем специфичные данные по активности
+        if (selectedActivity.code === 'visit') {
+            payload.data = {
+                contacts,
+                products: selectedProducts,
+            };
+        } else if (selectedActivity.code === 'tasting' || selectedActivity.code === 'b2b') {
+            payload.data = {
+                contacts,
+                note: comment,
+            };
+        } else if (selectedActivity.code === 'open_shift') {
+            payload.data = {
+                startTime,
+                endTime,
+                cups: cups ? Number(cups) : null,
+            };
+        }
         try {
-            await apiClient.post('/api/visits', {
-                facilityId: selectedFacility.id,
-                activityId: selectedActivity.id,
-                type: selectedActivity.code || 'VISIT',
-                productsAvailable: selectedProducts,
-                lat: selectedFacility.lat,
-                lng: selectedFacility.lng,
-                comment: comment
-            });
+            await apiClient.post('/api/visits', payload);
             WebApp.HapticFeedback.notificationOccurred('success');
             setStep('done');
         } catch (e) {
@@ -218,28 +241,41 @@ export const VisitWizard = () => {
                     {/* 4. ФОРМА ПОД АКТИВНОСТЬ */}
                     {step === 'form' && selectedActivity && (
                         <motion.div key="form" initial={{opacity:0}} animate={{opacity:1}} className="space-y-4">
-                            {selectedActivity.code === 'inventory' ? (
-                                <InventoryForm
+                            {selectedActivity.code === 'visit' ? (
+                                <VisitForm
                                     products={products}
                                     selectedProducts={selectedProducts}
                                     onToggleProduct={(id) => setSelectedProducts(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
-                                    note={inventoryNote}
-                                    onNoteChange={setInventoryNote}
-                                    onSubmit={() => {
-                                        if (!comment && inventoryNote) setComment(inventoryNote);
-                                        setStep('summary');
-                                    }}
+                                    contacts={contacts}
+                                    onContactsChange={setContacts}
+                                    comment={comment}
+                                    onCommentChange={setComment}
+                                    onSubmit={() => setStep('summary')}
                                 />
-                            ) : (
-                                <StandardVisitForm
-                                    note={standardNote}
-                                    onChange={setStandardNote}
-                                    onSubmit={() => {
-                                        if (!comment && standardNote) setComment(standardNote);
-                                        setStep('summary');
-                                    }}
+                            ) : selectedActivity.code === 'tasting' || selectedActivity.code === 'b2b' ? (
+                                <ContactForm
+                                    contacts={contacts}
+                                    onContactsChange={setContacts}
+                                    comment={comment}
+                                    onCommentChange={setComment}
+                                    onSubmit={() => setStep('summary')}
+                                    title={selectedActivity.code === 'tasting' ? 'Дегустация' : 'B2B Визит'}
                                 />
-                            )}
+                            ) : selectedActivity.code === 'open_shift' ? (
+                                <OpenShiftForm
+                                    startTime={startTime}
+                                    endTime={endTime}
+                                    cups={cups}
+                                    comment={comment}
+                                    onChange={(field, value) => {
+                                        if (field === 'startTime') setStartTime(value);
+                                        if (field === 'endTime') setEndTime(value);
+                                        if (field === 'cups') setCups(value);
+                                        if (field === 'comment') setComment(value);
+                                    }}
+                                    onSubmit={() => setStep('summary')}
+                                />
+                            ) : null}
                         </motion.div>
                     )}
 

@@ -225,9 +225,9 @@ const FacilityPage: React.FC = () => {
       </div>
 
       {/* Кнопка действия */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-xl border-t border-gray-100 z-40 pb-[calc(env(safe-area-inset-bottom)+16px)]">
-            <Link to={`/visit/new?facilityId=${facility.id}`}>
-                <motion.button whileTap={{ scale: 0.98 }} className="w-full h-14 bg-[#1C1C1E] text-white rounded-2xl font-bold text-lg shadow-xl flex items-center justify-center gap-2">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-xl border-t border-gray-100 z-40 pb-[calc(env(safe-area-inset-bottom)+16px)]">
+            <Link to={`/visit?facilityId=${facility.id}`}>
+                <motion.button whileTap={{ scale: 0.98 }} className="w-full h-16 bg-gradient-to-r from-[#1C1C1E] to-[#111] text-white rounded-2xl font-bold text-lg shadow-2xl flex items-center justify-center gap-2">
                     Начать визит <ArrowRight size={20}/>
                 </motion.button>
             </Link>
