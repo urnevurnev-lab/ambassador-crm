@@ -2,323 +2,151 @@ import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import apiClient from '../api/apiClient';
-import { ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Plus, Minus, Send, Store } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
-import { TelegramMainButton } from '../components/TelegramMainButton';
 
-// --- ИНТЕРФЕЙСЫ ---
-interface Facility {
-  id: number;
-  name: string;
-  address: string;
-  lat?: number | null;
-  lng?: number | null;
-}
+interface Product { id: number; flavor: string; line: string; sku: string; }
+interface Facility { id: number; name: string; address: string; }
+interface Distributor { id: number; name: string; }
 
-interface Product {
-  id: number;
-  sku: string;
-  line: string;
-  flavor: string;
-}
-
-interface Distributor {
-  id: number;
-  fullName: string;
-  chatId: string;
-}
-
-const getCleanFlavorName = (line: string, flavor: string) => {
-  if (!line || !flavor) return flavor;
-  
-  // 1. Убираем название линейки из начала (нечувствительно к регистру)
-  const regex = new RegExp(`^${line}\\s*`, 'i'); 
-  let cleaned = flavor.replace(regex, '').trim();
-
-  // 2. Убираем мусор в скобках, если там написано (Tobacco)
-  cleaned = cleaned.replace(/\(Tobacco\)/gi, '').trim();
-
-  // 3. Убираем двойные пробелы
-  cleaned = cleaned.replace(/\s+/g, ' ');
-
-  // 4. Делаем первую букву заглавной
-  if (cleaned.length > 0) {
-      return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
-  }
-  return flavor; // Если случайно удалили всё, возвращаем оригинал
-};
-
-// --- ТИПЫ КОРЗИНЫ ---
-interface CartItem {
-  product: Product;
-  quantity: number;
-}
-
-// --- КОМПОНЕНТ ---
-const OrderPage: React.FC = () => {
+export const OrderPage: React.FC = () => {
+  const [step, setStep] = useState<1 | 2>(1);
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [distributors, setDistributors] = useState<Distributor[]>([]);
   
-  const [selectedFacilityId, setSelectedFacilityId] = useState<number | null>(null);
-  const [selectedDistributorId, setSelectedDistributorId] = useState<number | null>(null);
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [updatingGps, setUpdatingGps] = useState(false);
-  
+  const [selectedFacility, setSelectedFacility] = useState<number | null>(null);
+  const [cart, setCart] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState<string | null>(null);
 
-  // --- Загрузка данных (Сохранена рабочая логика) ---
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [facRes, prodRes, distRes] = await Promise.all([
-          apiClient.get<Facility[]>('/api/facilities'),
-          apiClient.get<Product[]>('/api/products'),
-          apiClient.get<Distributor[]>('/api/distributors'),
-        ]);
-
-        const validFacilities = facRes.data.filter(f => f.name && f.address);
-
-        setFacilities(validFacilities);
-        setProducts(prodRes.data);
-        setDistributors(distRes.data.filter(d => d.fullName)); // Только с именем
-      } catch (err) {
-        console.error("Data loading error:", err);
-        setMessage("❌ Ошибка загрузки данных. Проверьте Backend и Proxy.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    Promise.all([
+        apiClient.get('/api/facilities'),
+        apiClient.get('/api/products'),
+        apiClient.get('/api/distributors') // Бэкенд должен отдавать список
+    ]).then(([facRes, prodRes, distRes]) => {
+        setFacilities(facRes.data || []);
+        setProducts(prodRes.data || []);
+        setDistributors(distRes.data || []);
+    }).finally(() => setLoading(false));
   }, []);
-  
-  // --- Функции Корзины (Сохранена рабочая логика) ---
-  const handleQuantityChange = (product: Product, delta: number) => {
-    setCart((prevCart) => {
-      const existingItem = prevCart.find((item) => item.product.id === product.id);
-      
-      if (existingItem) {
-        const newQuantity = existingItem.quantity + delta;
-        if (newQuantity <= 0) {
-          return prevCart.filter((item) => item.product.id !== product.id);
-        }
-        return prevCart.map((item) =>
-          item.product.id === product.id ? { ...item, quantity: newQuantity } : item
-        );
-      } else if (delta > 0) {
-        return [...prevCart, { product, quantity: delta }];
-      }
-      return prevCart;
+
+  const updateCart = (pid: number, delta: number) => {
+    setCart(prev => {
+        const next = { ...prev };
+        const newCount = (next[pid] || 0) + delta;
+        if (newCount <= 0) delete next[pid];
+        else next[pid] = newCount;
+        return next;
     });
   };
 
-  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-
-  // --- Отправка Заказа (Сохранена рабочая логика) ---
   const handleSendOrder = async () => {
-    if (!selectedFacilityId || !selectedDistributorId) {
-      WebApp.showAlert('Пожалуйста, выберите заведение и дистрибьютора.');
-      return;
-    }
-
-    if (cart.length === 0) {
-      WebApp.showAlert('Добавьте товары в заказ перед отправкой.');
-      return;
-    }
-
-    setLoading(true);
-    setMessage(null);
-
-    const orderData: {
-      facilityId: number;
-      distributorId: number;
-      items: { sku: string; quantity: number }[];
-    } = {
-      facilityId: selectedFacilityId,
-      distributorId: selectedDistributorId,
-      items: cart.map(item => ({
-        sku: item.product.sku,
-        quantity: item.quantity,
-      })),
-    };
-
+    if (!selectedFacility) return;
     try {
-      await apiClient.post('/api/orders', orderData);
-      setMessage(`✅ Заказ на ${totalItems} позиций успешно отправлен Дистрибьютору!`);
-      setCart([]);
-      WebApp.close();
-    } catch (error) {
-      console.error("Order submission error:", error);
-      setMessage("❌ Ошибка при отправке заказа. Проверьте сеть и токен бота.");
-    } finally {
-      setLoading(false);
+        await apiClient.post('/api/orders', {
+            facilityId: selectedFacility,
+            items: Object.entries(cart).map(([pid, qty]) => ({ productId: Number(pid), quantity: qty }))
+        });
+        WebApp.showAlert('Заказ отправлен дистрибьютору!');
+        setCart({});
+        setStep(1);
+    } catch (e) {
+        WebApp.showAlert('Ошибка отправки заказа');
     }
   };
 
-  // --- Рендеринг Каталога: Группировка Товаров ---
-  const groupedProducts = products.reduce((acc, product) => {
-    acc[product.line] = acc[product.line] || [];
-    acc[product.line].push(product);
-    return acc;
-  }, {} as Record<string, Product[]>);
+  if (loading) return <Layout><div className="h-screen flex items-center justify-center text-gray-400">Загрузка...</div></Layout>;
 
-  if (loading && totalItems === 0) {
-    return <Layout><div className="text-center mt-8 text-indigo-600">Загрузка данных...</div></Layout>;
-  }
+  // Группировка товаров по линейкам
+  const groupedProducts = products.reduce((acc, p) => {
+      if (!acc[p.line]) acc[p.line] = [];
+      acc[p.line].push(p);
+      return acc;
+  }, {} as Record<string, Product[]>);
 
   return (
     <Layout>
-      <PageHeader title="Новый Заказ" back />
-
-      <div className="pt-[calc(env(safe-area-inset-top)+60px)] px-4 pb-32 space-y-6 min-h-screen">
-        {/* Секция 1: Выбор Заведения и Дистрибьютора */}
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="bg-white p-4 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] space-y-3 border border-gray-100"
-        >
-          <select
-            className="w-full p-3 border border-gray-200 rounded-2xl bg-white shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150"
-            value={selectedFacilityId || ''}
-            onChange={(e) => setSelectedFacilityId(Number(e.target.value))}
-          >
-            <option value="" disabled>
-              -- Выберите Заведение --
-            </option>
-            {facilities.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name} ({f.address.substring(0, 30)}...)
-              </option>
-            ))}
-          </select>
-          {selectedFacilityId && (
-            <button
-              onClick={async () => {
-                setUpdatingGps(true);
-                if (!navigator.geolocation) {
-                  setMessage('GPS недоступен');
-                  setUpdatingGps(false);
-                  return;
-                }
-                navigator.geolocation.getCurrentPosition(
-                  async (pos) => {
-                    try {
-                      await apiClient.patch(`/api/facilities/${selectedFacilityId}/fix-location`, {
-                        lat: pos.coords.latitude,
-                        lng: pos.coords.longitude,
-                      });
-                      setMessage('📍 Геопозиция обновлена');
-                    } catch (e) {
-                      setMessage('Ошибка обновления геопозиции');
-                    } finally {
-                      setUpdatingGps(false);
-                    }
-                  },
-                  () => {
-                    setMessage('Не удалось получить GPS');
-                    setUpdatingGps(false);
-                  },
-                  { enableHighAccuracy: true }
-                );
-              }}
-              className="text-xs text-indigo-600 underline"
-              disabled={updatingGps}
-            >
-              {updatingGps ? 'Обновление...' : '📍 Обновить геопозицию'}
-            </button>
-          )}
-
-          <select
-            className="w-full p-3 border border-gray-200 rounded-2xl bg-white shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150"
-            value={selectedDistributorId || ''}
-            onChange={(e) => setSelectedDistributorId(Number(e.target.value))}
-          >
-            <option value="" disabled>
-              -- Выберите Дистрибьютора --
-            </option>
-            {distributors.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.fullName}
-              </option>
-            ))}
-          </select>
-        </motion.div>
-
-        {/* Секция 2: Каталог Товаров */}
-        <div className="space-y-6">
-          <h3 className="text-xl font-semibold border-b pb-2 text-gray-800">Каталог ({products.length} SKUs)</h3>
-
-          {Object.entries(groupedProducts).map(([line, prods]) => (
-            <motion.div
-              key={line}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.3 }}
-              className="bg-white p-4 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-100"
-            >
-              <h4 className="text-xl font-bold mb-4 text-indigo-700">{line}</h4>
-              <div className="space-y-3">
-                {prods.map((product) => {
-                  const item = cart.find((i) => i.product.id === product.id);
-                  const quantity = item?.quantity || 0;
-                  const flavor = getCleanFlavorName(product.line, product.flavor);
-                  return (
-                    <div
-                      key={product.sku}
-                      className="flex justify-between items-center py-3 px-3 bg-white rounded-2xl border border-gray-100 shadow-[0_1px_6px_rgba(0,0,0,0.06)]"
-                    >
-                      <div className="flex flex-col">
-                        <span className="font-medium text-gray-800">{flavor}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <motion.button
-                          whileTap={{ scale: 0.9 }}
-                          className="p-1 bg-gray-100 rounded-full text-gray-600 disabled:opacity-30 transition duration-150"
-                          onClick={() => handleQuantityChange(product, -1)}
-                          disabled={quantity === 0}
+      <PageHeader title="Новый заказ" back={step === 2} onBack={() => setStep(1)} />
+      
+      <div className="pt-[calc(env(safe-area-inset-top)+60px)] px-4 pb-32">
+        
+        {/* Шаг 1: Выбор точки */}
+        {step === 1 && (
+            <div className="space-y-4">
+                <div className="text-sm text-gray-400 font-bold uppercase ml-1">Выберите заведение</div>
+                <div className="space-y-2">
+                    {facilities.map(f => (
+                        <div 
+                            key={f.id} 
+                            onClick={() => { setSelectedFacility(f.id); setStep(2); }}
+                            className="bg-white p-4 rounded-2xl border border-gray-100 flex items-center justify-between active:scale-95 transition"
                         >
-                          <ChevronDown size={20} />
-                        </motion.button>
-                        <span className="w-6 text-center font-bold text-lg text-gray-800">{quantity}</span>
-                        <motion.button
-                          whileTap={{ scale: 0.9 }}
-                          className="p-1 bg-indigo-100 rounded-full text-indigo-600 transition duration-150"
-                          onClick={() => handleQuantityChange(product, 1)}
-                        >
-                          <ChevronUp size={20} />
-                        </motion.button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Сообщения */}
-        {message && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`p-4 rounded-xl font-semibold flex items-center shadow-sm ${
-              message.startsWith('✅') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-            }`}
-          >
-            <AlertCircle size={20} className="mr-3" />
-            {message}
-          </motion.div>
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center">
+                                    <Store size={20}/>
+                                </div>
+                                <div>
+                                    <div className="font-bold text-[#1C1C1E]">{f.name}</div>
+                                    <div className="text-xs text-gray-400">{f.address}</div>
+                                </div>
+                            </div>
+                            <div className="w-6 h-6 rounded-full border-2 border-gray-200"></div>
+                        </div>
+                    ))}
+                </div>
+            </div>
         )}
-      </div>
 
-      <TelegramMainButton 
-        text={`ОТПРАВИТЬ ЗАКАЗ (${totalItems} поз.)`}
-        onClick={handleSendOrder}
-        isLoading={loading}
-        isVisible={totalItems > 0}
-      />
+        {/* Шаг 2: Формирование корзины */}
+        {step === 2 && (
+            <div className="space-y-6">
+                {Object.entries(groupedProducts).map(([line, items]) => (
+                    <div key={line} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                        <h3 className="font-bold text-lg mb-4 text-[#1C1C1E]">{line}</h3>
+                        <div className="space-y-4">
+                            {items.map(p => (
+                                <div key={p.id} className="flex justify-between items-center">
+                                    <div className="text-sm font-medium text-gray-700">{p.flavor}</div>
+                                    
+                                    <div className="flex items-center bg-gray-50 rounded-lg p-1">
+                                        <button 
+                                            onClick={() => updateCart(p.id, -1)}
+                                            className="w-8 h-8 flex items-center justify-center bg-white rounded-md shadow-sm text-gray-600 active:scale-90 transition"
+                                        >
+                                            <Minus size={16}/>
+                                        </button>
+                                        <div className="w-10 text-center font-bold text-[#1C1C1E]">
+                                            {cart[p.id] || 0}
+                                        </div>
+                                        <button 
+                                            onClick={() => updateCart(p.id, 1)}
+                                            className="w-8 h-8 flex items-center justify-center bg-[#1C1C1E] text-white rounded-md shadow-sm active:scale-90 transition"
+                                        >
+                                            <Plus size={16}/>
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        )}
+
+        {/* Плашка итого (только на шаге 2) */}
+        {step === 2 && Object.keys(cart).length > 0 && (
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 z-50 pb-[calc(env(safe-area-inset-bottom)+20px)]">
+                <button 
+                    onClick={handleSendOrder}
+                    className="w-full h-14 bg-[#1C1C1E] text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-2 active:scale-95 transition shadow-lg"
+                >
+                    <Send size={20}/> Отправить заказ ({Object.values(cart).reduce((a,b)=>a+b,0)} шт.)
+                </button>
+            </div>
+        )}
+
+      </div>
     </Layout>
   );
 };

@@ -2,447 +2,251 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
 import { PageHeader } from '../../components/PageHeader';
-import { StatCard } from '../../components/StatCard';
-import { Users, ShoppingBag, MapPin, Activity, Download, Plus } from 'lucide-react';
+import { Users, Package, MessageCircle, Trash2, Plus } from 'lucide-react';
 import apiClient from '../../api/apiClient';
 import WebApp from '@twa-dev/sdk';
 
-interface Visit {
-  id: number;
-  date: string;
-  type: string;
-  comment?: string;
-  user?: { fullName: string };
-  facility?: { name: string; address?: string };
-  activity?: { name: string; code: string };
-  data?: any;
-}
-
-interface Product {
-  id: number;
-  line: string;
-  flavor: string;
-  sku: string;
-  category: string;
-}
+// --- Interfaces ---
+interface Product { id: number; line: string; flavor: string; sku: string; category: string; }
+interface UserData { id: number; fullName: string; telegramId: string; role: string; }
+interface Distributor { id: number; name: string; telegramChatId: string; }
 
 export const AdminDashboard = () => {
-  const [stats, setStats] = useState({
-    users: 0,
-    orders: 0,
-    facilities: 0,
-    visits: 0,
-  });
-  const [loading, setLoading] = useState(true);
-  const [visits, setVisits] = useState<Visit[]>([]);
-  const [visitsLoading, setVisitsLoading] = useState(true);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [productsLoading, setProductsLoading] = useState(true);
-  const [filterLine, setFilterLine] = useState('');
-  const [filterCategory, setFilterCategory] = useState('');
-  const [editing, setEditing] = useState<Partial<Product> | null>(null);
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'products' | 'users' | 'chats'>('products');
+  
+  // Data State
+  const [products, setProducts] = useState<Product[]>([]);
+  const [users, setUsers] = useState<UserData[]>([]);
+  const [distributors, setDistributors] = useState<Distributor[]>([]);
+  
+  // Forms State
+  const [selectedLine, setSelectedLine] = useState('');
+  const [newLineName, setNewLineName] = useState(''); // Если выбрана "Новая линейка"
+  const [flavorName, setFlavorName] = useState('');
+  
+  const [newUserName, setNewUserName] = useState('');
+  const [newUserTgId, setNewUserTgId] = useState('');
 
-  const ensureAuth = () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
-    if (!token) {
-      navigate('/admin/login');
-      return false;
-    }
-    return true;
-  };
-
-  const handleAuthError = () => {
-    localStorage.removeItem('adminToken');
-    navigate('/admin/login');
-  };
-
-  const fetchStats = async () => {
-    if (!ensureAuth()) return;
-    try {
-      const res = await apiClient.get('/api/admin/stats');
-      setStats(res.data);
-    } catch (e) {
-      console.error('Failed to load stats', e);
-      if ((e as any)?.response?.status === 401 || (e as any)?.response?.status === 403) {
-        handleAuthError();
-        return;
-      }
-      WebApp.showAlert('Не удалось загрузить статистику');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchVisits = async () => {
-    if (!ensureAuth()) return;
-    try {
-      const res = await apiClient.get<Visit[]>('/api/visits');
-      setVisits(res.data || []);
-    } catch (e) {
-      console.error('Failed to load visits', e);
-      if ((e as any)?.response?.status === 401 || (e as any)?.response?.status === 403) {
-        handleAuthError();
-        return;
-      }
-      WebApp.showAlert('Не удалось загрузить визиты');
-    } finally {
-      setVisitsLoading(false);
-    }
-  };
-
-  const fetchProducts = async () => {
-    if (!ensureAuth()) return;
-    setProductsLoading(true);
-    try {
-      const res = await apiClient.get<Product[]>('/api/products');
-      setProducts(res.data || []);
-    } catch (e) {
-      console.error('Failed to load products', e);
-      if ((e as any)?.response?.status === 401 || (e as any)?.response?.status === 403) {
-        handleAuthError();
-        return;
-      }
-      WebApp.showAlert('Не удалось загрузить продукты');
-    } finally {
-      setProductsLoading(false);
-    }
-  };
+  const [newChatName, setNewChatName] = useState('');
+  const [newChatId, setNewChatId] = useState('');
 
   useEffect(() => {
-    if (!ensureAuth()) return;
-    fetchStats();
-    fetchVisits();
-    fetchProducts();
+    loadAll();
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('adminToken');
-    navigate('/admin/login');
-  };
-
-  const runGeocoding = async () => {
-    WebApp.showAlert('Запуск геокодинга... Это займет время.');
+  const loadAll = async () => {
     try {
-      await apiClient.post('/api/admin/geocode');
-      WebApp.showAlert('Пакет обработан. Обновите страницу через минуту.');
-      fetchStats();
-    } catch (e) {
-      WebApp.showAlert('Ошибка запуска.');
-    }
+        const [pRes, uRes, dRes] = await Promise.all([
+            apiClient.get('/api/products'),
+            apiClient.get('/api/users'),
+            apiClient.get('/api/distributors') // Нужно убедиться, что такой эндпоинт есть, иначе добавить
+        ]);
+        setProducts(pRes.data || []);
+        setUsers(uRes.data || []);
+        setDistributors(dRes.data || []);
+    } catch (e) { console.error(e); }
   };
 
-  const runCleanDb = async () => {
-    const confirmed = window.confirm('Удалить мусорные записи?');
-    if (!confirmed) return;
-    WebApp.showAlert('Запускаем очистку базы...');
+  // --- Logic: Products ---
+  const uniqueLines = Array.from(new Set(products.map(p => p.line))).sort();
+  
+  const handleAddProduct = async () => {
+    const finalLine = selectedLine === 'NEW_LINE' ? newLineName : selectedLine;
+    if (!finalLine || !flavorName) {
+        WebApp.showAlert('Заполните Линейку и Вкус');
+        return;
+    }
+    // Генерируем SKU автоматически или берем название
+    const generatedSku = `${finalLine.toUpperCase()}-${flavorName.toUpperCase().replace(/\s+/g, '_')}`;
+
     try {
-      await apiClient.post('/api/admin/clean-db');
-      WebApp.showAlert('Очистка завершена');
-      fetchStats();
-    } catch (e) {
-      WebApp.showAlert('Ошибка очистки');
-    }
-  };
-
-  const downloadReport = async () => {
-    try {
-      const res = await apiClient.get('/api/admin/export/visits', { responseType: 'arraybuffer' });
-      const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'visits.xlsx';
-      a.click();
-      window.URL.revokeObjectURL(url);
-    } catch (e) {
-      console.error('Export error', e);
-      WebApp.showAlert('Не удалось скачать отчет');
-    }
-  };
-
-  const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return '';
-    return d.toLocaleString('ru-RU');
-  };
-
-  const saveProduct = async () => {
-    if (!editing?.sku || !editing.line || !editing.flavor) {
-      WebApp.showAlert('Заполните line, flavor и sku');
-      return;
-    }
-    try {
-      if (editing.id) {
-        await apiClient.patch(`/api/products/${editing.id}`, {
-          line: editing.line,
-          flavor: editing.flavor,
-          sku: editing.sku,
-          category: editing.category || 'UNKNOWN',
-        });
-      } else {
         await apiClient.post('/api/products', {
-          line: editing.line,
-          flavor: editing.flavor,
-          sku: editing.sku,
-          category: editing.category || 'UNKNOWN',
+            line: finalLine,
+            flavor: flavorName,
+            sku: generatedSku,
+            category: 'TOBACCO' // Default
         });
-      }
-      setEditing(null);
-      fetchProducts();
-      WebApp.showAlert('Сохранено');
+        WebApp.showAlert('Вкус добавлен!');
+        setFlavorName('');
+        setNewLineName('');
+        loadAll();
     } catch (e) {
-      WebApp.showAlert('Ошибка сохранения SKU');
+        WebApp.showAlert('Ошибка добавления');
     }
   };
 
-  const startEdit = (product?: Product) => {
-    if (product) {
-      setEditing(product);
-    } else {
-      setEditing({ line: '', flavor: '', sku: '', category: 'UNKNOWN' });
-    }
-  };
-
-  const deleteProduct = async (id: number) => {
-    const confirmed = window.confirm('Удалить товар?');
-    if (!confirmed) return;
+  // --- Logic: Users ---
+  const handleAddUser = async () => {
+    if (!newUserName || !newUserTgId) return;
     try {
-      await apiClient.delete(`/api/products/${id}`);
-      fetchProducts();
-    } catch (e) {
-      WebApp.showAlert('Не удалось удалить товар');
-    }
+        await apiClient.post('/api/users', {
+            fullName: newUserName,
+            telegramId: newUserTgId,
+            role: 'AMBASSADOR'
+        });
+        WebApp.showAlert('Сотрудник добавлен');
+        setNewUserName('');
+        setNewUserTgId('');
+        loadAll();
+    } catch (e) { WebApp.showAlert('Ошибка создания сотрудника'); }
   };
 
-  const filteredProducts = products.filter((p) => {
-    const okLine = filterLine ? p.line === filterLine : true;
-    const okCat = filterCategory ? p.category === filterCategory : true;
-    return okLine && okCat;
-  });
+  // --- Logic: Chats (Distributors) ---
+  const handleAddChat = async () => {
+    if (!newChatName || !newChatId) return;
+    try {
+        await apiClient.post('/api/distributors', {
+            name: newChatName,
+            telegramChatId: newChatId
+        });
+        WebApp.showAlert('Чат добавлен');
+        setNewChatName('');
+        setNewChatId('');
+        loadAll();
+    } catch (e) { WebApp.showAlert('Ошибка сохранения чата'); }
+  };
 
   return (
     <Layout>
-      <PageHeader
-        title="Админ-панель"
-        rightContent={
-          <button
-            onClick={handleLogout}
-            className="text-xs font-semibold text-red-500"
-          >
-            Выйти
-          </button>
-        }
-      />
-      <div className="pt-[calc(env(safe-area-inset-top)+60px)] px-4 pb-32 space-y-6">
-        <div className="grid grid-cols-2 gap-3">
-          <StatCard
-            title="Амбассадоры"
-            value={loading ? '...' : stats.users}
-            icon={<Users className="text-blue-500" />}
-          />
-          <StatCard
-            title="Активные Заказы"
-            value={loading ? '...' : stats.orders}
-            icon={<ShoppingBag className="text-orange-500" />}
-          />
-          <StatCard
-            title="Заведения (Всего)"
-            value={loading ? '...' : stats.facilities}
-            icon={<MapPin className="text-purple-500" />}
-          />
-          <StatCard
-            title="Визиты"
-            value={loading ? '...' : stats.visits}
-            icon={<Activity className="text-green-500" />}
-          />
+      <PageHeader title="Управление" rightContent={<div onClick={() => navigate('/')} className="text-gray-400 text-xs">Выход</div>} />
+      
+      <div className="pt-[calc(env(safe-area-inset-top)+60px)] px-4 pb-32">
+        
+        {/* Tabs */}
+        <div className="flex bg-gray-100 p-1 rounded-xl mb-6">
+            <button onClick={() => setActiveTab('products')} className={`flex-1 py-2 text-sm font-medium rounded-lg transition ${activeTab === 'products' ? 'bg-white shadow-sm text-black' : 'text-gray-500'}`}>Товары</button>
+            <button onClick={() => setActiveTab('users')} className={`flex-1 py-2 text-sm font-medium rounded-lg transition ${activeTab === 'users' ? 'bg-white shadow-sm text-black' : 'text-gray-500'}`}>Люди</button>
+            <button onClick={() => setActiveTab('chats')} className={`flex-1 py-2 text-sm font-medium rounded-lg transition ${activeTab === 'chats' ? 'bg-white shadow-sm text-black' : 'text-gray-500'}`}>Чаты</button>
         </div>
 
-        <h3 className="font-bold text-lg mt-4">Управление базой</h3>
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="font-semibold text-sm">Геокодинг базы</div>
-              <div className="text-xs text-gray-400">Найти координаты для новых точек</div>
-            </div>
-            <button
-              onClick={runGeocoding}
-              className="bg-black text-white px-4 py-2 rounded-xl text-xs font-bold active:scale-95 transition"
-            >
-              Запустить
-            </button>
-          </div>
-
-          <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-            <div>
-              <div className="font-semibold text-sm">🗑 Очистить мусор</div>
-              <div className="text-xs text-gray-400">Удалить активности, дубликаты и пустые адреса</div>
-            </div>
-            <button
-              onClick={runCleanDb}
-              className="bg-red-500 text-white px-4 py-2 rounded-xl text-xs font-bold active:scale-95 transition"
-            >
-              Очистить
-            </button>
-          </div>
-        </div>
-
-        {/* Управление продуктами */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="font-semibold text-sm">Каталог SKU</div>
-              <div className="text-xs text-gray-400">Добавляйте и редактируйте товары</div>
-            </div>
-            <button
-              onClick={() => startEdit()}
-              className="bg-black text-white px-3 py-2 rounded-xl text-xs font-bold active:scale-95 transition flex items-center gap-1"
-            >
-              <Plus size={14}/> Добавить
-            </button>
-          </div>
-
-          <div className="flex gap-3">
-            <select
-              value={filterLine}
-              onChange={(e) => setFilterLine(e.target.value)}
-              className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
-            >
-              <option value="">Все линейки</option>
-              {Array.from(new Set(products.map(p => p.line))).map(line => (
-                <option key={line} value={line}>{line}</option>
-              ))}
-            </select>
-            <select
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
-            >
-              <option value="">Все категории</option>
-              {Array.from(new Set(products.map(p => p.category))).map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-          </div>
-
-          {editing && (
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 space-y-3">
-              <div className="flex gap-2">
-                <input
-                  value={editing.line || ''}
-                  onChange={(e) => setEditing({ ...editing, line: e.target.value })}
-                  placeholder="Line"
-                  className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                />
-                <input
-                  value={editing.category || ''}
-                  onChange={(e) => setEditing({ ...editing, category: e.target.value })}
-                  placeholder="Category"
-                  className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                />
-              </div>
-              <div className="flex gap-2">
-                <input
-                  value={editing.flavor || ''}
-                  onChange={(e) => setEditing({ ...editing, flavor: e.target.value })}
-                  placeholder="Flavor"
-                  className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                />
-                <input
-                  value={editing.sku || ''}
-                  onChange={(e) => setEditing({ ...editing, sku: e.target.value })}
-                  placeholder="SKU"
-                  className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm"
-                />
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={saveProduct}
-                  className="flex-1 bg-black text-white py-2 rounded-lg text-sm font-semibold active:scale-95 transition"
-                >
-                  Сохранить
-                </button>
-                <button
-                  onClick={() => setEditing(null)}
-                  className="flex-1 bg-white text-gray-600 border border-gray-200 py-2 rounded-lg text-sm font-semibold active:scale-95 transition"
-                >
-                  Отмена
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="flex flex-col gap-3">
-            {productsLoading ? (
-              <div className="text-center text-gray-400 py-4">Загрузка...</div>
-            ) : filteredProducts.length === 0 ? (
-              <div className="text-center text-gray-400 py-4">Ничего не найдено</div>
-            ) : (
-              filteredProducts.map((p) => (
-                <div key={p.id} className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm space-y-2">
-                  <div className="flex justify-between text-sm font-semibold text-gray-900">
-                    <span>Line: {p.line}</span>
-                    <span>SKU: {p.sku}</span>
-                  </div>
-                  <div className="text-sm text-gray-700">Category: {p.category}</div>
-                  <div className="text-sm text-gray-700">Flavor: {p.flavor}</div>
-                  <div className="flex gap-2 pt-2">
-                    <button
-                      onClick={() => startEdit(p)}
-                      className="flex-1 bg-gray-100 text-gray-800 py-2 rounded-xl font-semibold active:scale-95 transition"
-                    >
-                      Редактировать
-                    </button>
-                    <button
-                      onClick={() => deleteProduct(p.id)}
-                      className="flex-1 bg-red-100 text-red-700 py-2 rounded-xl font-semibold active:scale-95 transition"
-                    >
-                      Удалить
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between mt-6">
-          <h3 className="font-bold text-lg">Визиты</h3>
-          <button
-            onClick={downloadReport}
-            className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded-xl text-xs font-bold active:scale-95 transition shadow-sm"
-          >
-            <Download size={14}/> 📥 Скачать отчет (Excel)
-          </button>
-        </div>
-
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-          {visitsLoading ? (
-            <div className="text-gray-500 text-sm">Загрузка визитов...</div>
-          ) : visits.length === 0 ? (
-            <div className="text-center text-gray-400">Визитов пока нет</div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {visits.map((v) => {
-                const data = (v.data as any) || {};
-                return (
-                  <div key={v.id} className="bg-gray-50 border border-gray-100 rounded-2xl p-4 shadow-sm space-y-2">
-                    <div className="flex justify-between text-xs text-gray-500">
-                      <span>{formatDate(v.date)}</span>
-                      <span>{v.activity?.name || v.type || '—'}</span>
+        {/* --- PRODUCTS TAB --- */}
+        {activeTab === 'products' && (
+            <div className="space-y-6">
+                <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+                    <h3 className="font-bold flex items-center gap-2"><Package size={18}/> Добавить вкус</h3>
+                    
+                    {/* 1. Выбор линейки */}
+                    <div>
+                        <label className="text-xs text-gray-400 font-bold uppercase ml-1">Линейка</label>
+                        <select 
+                            value={selectedLine} 
+                            onChange={e => setSelectedLine(e.target.value)}
+                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 mt-1 outline-none focus:border-black"
+                        >
+                            <option value="">-- Выберите линейку --</option>
+                            {uniqueLines.map(l => <option key={l} value={l}>{l}</option>)}
+                            <option value="NEW_LINE">+ Создать новую линейку...</option>
+                        </select>
                     </div>
-                    <div className="font-semibold text-gray-900">{v.facility?.name || '—'}</div>
-                    {v.facility?.address && <div className="text-xs text-gray-500">{v.facility.address}</div>}
-                    <div className="text-sm text-gray-700">Амбассадор: {v.user?.fullName || '—'}</div>
-                    <div className="text-sm text-gray-700">Контакты: {data.contacts || '—'}</div>
-                    <div className="text-sm text-gray-700">Чашки: {data.cups ?? '—'}</div>
-                    <div className="text-sm text-gray-700">{v.comment || '—'}</div>
-                  </div>
-                );
-              })}
+
+                    {/* Если новая линейка */}
+                    {selectedLine === 'NEW_LINE' && (
+                        <input 
+                            type="text" 
+                            placeholder="Название новой линейки"
+                            value={newLineName}
+                            onChange={e => setNewLineName(e.target.value)}
+                            className="w-full bg-white border-2 border-indigo-100 rounded-xl p-3 outline-none"
+                        />
+                    )}
+
+                    {/* 2. Название вкуса */}
+                    {selectedLine && (
+                        <div className="animate-fade-in">
+                            <label className="text-xs text-gray-400 font-bold uppercase ml-1">Название вкуса</label>
+                            <input 
+                                type="text" 
+                                placeholder="Например: Berry Mint"
+                                value={flavorName}
+                                onChange={e => setFlavorName(e.target.value)}
+                                className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 mt-1 outline-none focus:border-black"
+                            />
+                            
+                            <button 
+                                onClick={handleAddProduct}
+                                className="w-full bg-black text-white font-bold rounded-xl py-3 mt-4 active:scale-95 transition"
+                            >
+                                Сохранить
+                            </button>
+                        </div>
+                    )}
+                </div>
+                
+                <div className="text-sm text-gray-400 text-center">Всего SKU в базе: {products.length}</div>
             </div>
-          )}
-        </div>
+        )}
+
+        {/* --- USERS TAB --- */}
+        {activeTab === 'users' && (
+            <div className="space-y-6">
+                <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+                    <h3 className="font-bold flex items-center gap-2"><Users size={18}/> Новый сотрудник</h3>
+                    <input 
+                        className="w-full bg-gray-50 rounded-xl p-3 border border-gray-200 text-sm"
+                        placeholder="Имя Фамилия"
+                        value={newUserName}
+                        onChange={e => setNewUserName(e.target.value)}
+                    />
+                    <input 
+                        className="w-full bg-gray-50 rounded-xl p-3 border border-gray-200 text-sm"
+                        placeholder="Telegram ID (цифры)"
+                        value={newUserTgId}
+                        onChange={e => setNewUserTgId(e.target.value)}
+                    />
+                    <button onClick={handleAddUser} className="w-full bg-black text-white font-bold rounded-xl py-3 text-sm">Добавить</button>
+                </div>
+
+                <div className="space-y-2">
+                    {users.map(u => (
+                        <div key={u.id} className="bg-white p-3 rounded-xl border border-gray-100 flex justify-between items-center">
+                            <div>
+                                <div className="font-bold text-sm">{u.fullName}</div>
+                                <div className="text-xs text-gray-400">ID: {u.telegramId}</div>
+                            </div>
+                            <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500">{u.role}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )}
+
+        {/* --- CHATS TAB --- */}
+        {activeTab === 'chats' && (
+            <div className="space-y-6">
+                <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+                    <h3 className="font-bold flex items-center gap-2"><MessageCircle size={18}/> Добавить чат для заявок</h3>
+                    <div className="text-xs text-gray-400 mb-2">Сотрудники будут видеть только название, ID скрыт.</div>
+                    
+                    <input 
+                        className="w-full bg-gray-50 rounded-xl p-3 border border-gray-200 text-sm"
+                        placeholder="Название чата (например: Склад Центр)"
+                        value={newChatName}
+                        onChange={e => setNewChatName(e.target.value)}
+                    />
+                    <input 
+                        className="w-full bg-gray-50 rounded-xl p-3 border border-gray-200 text-sm"
+                        placeholder="ID чата (-100...)"
+                        value={newChatId}
+                        onChange={e => setNewChatId(e.target.value)}
+                    />
+                    <button onClick={handleAddChat} className="w-full bg-black text-white font-bold rounded-xl py-3 text-sm">Привязать чат</button>
+                </div>
+
+                <div className="space-y-2">
+                    {distributors.map(d => (
+                        <div key={d.id} className="bg-white p-3 rounded-xl border border-gray-100 flex justify-between items-center">
+                            <div>
+                                <div className="font-bold text-sm">{d.name}</div>
+                                <div className="text-xs text-gray-400 font-mono">{d.telegramChatId}</div>
+                            </div>
+                            <button className="text-red-400 p-2"><Trash2 size={16}/></button>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )}
+
       </div>
     </Layout>
   );

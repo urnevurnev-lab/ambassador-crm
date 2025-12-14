@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Map, PlusCircle, User } from 'lucide-react';
+import { Home, Map, PlusCircle, Settings } from 'lucide-react';
 
 interface TabItem {
   path: string;
@@ -9,31 +9,32 @@ interface TabItem {
 }
 
 const tabs: TabItem[] = [
-  { path: '/', icon: Home, label: 'Панель' },
-  { path: '/facilities', icon: Map, label: 'Заведения' },
+  { path: '/', icon: Home, label: 'Главная' },
+  { path: '/facilities', icon: Map, label: 'Точки' },
   { path: '/orders', icon: PlusCircle, label: 'Заказ' },
-  { path: '/admin', icon: User, label: 'Профиль' },
+  { path: '/admin', icon: Settings, label: 'Меню' }, // Изменил на Settings/Меню для логики
 ];
 
 const TabButton: React.FC<{ tab: TabItem; isActive: boolean }> = ({ tab, isActive }) => {
   const Icon = tab.icon;
-  const activeColor = '#4F46E5'; 
-  const inactiveColor = '#C7C7CC';
+  // Используем только цвет иконки, без фона
+  const color = isActive ? '#1C1C1E' : '#C7C7CC'; 
 
   return (
     <div className="flex-1 flex justify-center group pointer-events-auto">
       <Link
         to={tab.path}
-        className={`w-full h-full flex flex-col items-center justify-center pt-1 transition ${isActive ? 'bg-indigo-50' : ''}`}
+        className="w-full h-full flex flex-col items-center justify-center pt-1"
       >
         <Icon 
           size={26} 
           strokeWidth={isActive ? 2.5 : 2} 
-          color={isActive ? activeColor : inactiveColor} 
+          color={color}
           className="transition-transform duration-200 group-active:scale-95"
         />
         <span 
-          className={`text-[11px] mt-1 font-medium transition-colors duration-200 ${isActive ? 'text-indigo-600 drop-shadow-sm' : 'text-gray-400'}`}
+          className="text-[10px] mt-1 font-medium transition-colors duration-200"
+          style={{ color }}
         >
           {tab.label}
         </span>
@@ -47,18 +48,18 @@ export const BottomTab: React.FC = () => {
 
   return (
     <div 
-      className="fixed bottom-0 left-0 right-0 z-[2000] bg-white rounded-t-[30px] shadow-[0_-10px_60px_rgba(0,0,0,0.05)]"
+      className="fixed bottom-0 left-0 right-0 z-[2000] bg-white border-t border-gray-100"
       style={{ 
         paddingBottom: 'env(safe-area-inset-bottom)', 
-        height: 'calc(80px + env(safe-area-inset-bottom))'
+        height: 'calc(60px + env(safe-area-inset-bottom))'
       }}
     >
-      <div className="flex items-center justify-between h-[80px] px-6">
+      <div className="flex items-center justify-between h-[60px] px-6">
         {tabs.map((tab) => (
           <TabButton
             key={tab.path}
             tab={tab}
-            isActive={location.pathname === tab.path || (tab.path !== '/' && location.pathname.startsWith(tab.path))}
+            isActive={location.pathname === tab.path}
           />
         ))}
       </div>

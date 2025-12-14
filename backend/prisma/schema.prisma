@@ -28,6 +28,7 @@ model User {
   balance     Float    @default(0)
   visits      Visit[]
   orders      Order[]
+  allowedDistributors Distributor[] @relation("UserDistributors")
   createdAt   DateTime @default(now())
 }
 
@@ -112,6 +113,7 @@ model Distributor {
   name           String
   telegramChatId String
   orders         Order[]
+  users          User[]   @relation("UserDistributors")
 }
 
 model Post {

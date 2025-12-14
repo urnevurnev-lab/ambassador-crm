@@ -1,147 +1,87 @@
-import { BadRequestException, ForbiddenException, Controller, Post, Body, Get, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
-import { Request } from 'express';
-import { TelegramAuthGuard } from '../telegram/telegram.guard';
+
+// Функция расчета расстояния (в метрах)
+function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
+    const R = 6371e3; // Радиус Земли в метрах
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c;
+}
 
 @Controller('visits')
 export class VisitsController {
-    private readonly MAX_DISTANCE_METERS = 200;
-    constructor(private readonly prisma: PrismaService) { }
-
-    private calculateDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
-        const R = 6371e3; // meters
-        const toRad = (deg: number) => deg * (Math.PI / 180);
-        const dLat = toRad(lat2 - lat1);
-        const dLon = toRad(lon2 - lon1);
-        const a = Math.sin(dLat / 2) ** 2 +
-            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-            Math.sin(dLon / 2) ** 2;
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
-    }
+    constructor(private readonly prisma: PrismaService) {}
 
     @Post()
-    @UseGuards(TelegramAuthGuard)
-    async createVisit(@Body() body: {
-        facilityId: number;
-        type?: string;
-        activityId?: number;
-        productsAvailable?: number[]; // Массив ID продуктов
-        lat?: number; // координаты пользователя
-        lng?: number; // координаты пользователя
-        data?: any;
+    async createVisit(@Body() data: { 
+        userId: number; 
+        facilityId: number; 
+        activityId?: number; // Теперь привязываем к активности
+        type: string; 
+        userLat?: number; 
+        userLng?: number;
         comment?: string;
-    }, @Req() req: Request) {
+    }) {
+        // 1. Получаем координаты заведения
         const facility = await this.prisma.facility.findUnique({
-            where: { id: body.facilityId },
-            select: { lat: true, lng: true, requiredProducts: true },
+            where: { id: data.facilityId }
         });
 
-        if (!facility) {
-            throw new BadRequestException('Заведение не найдено');
-        }
-
-        const employeeLat = body.lat;
-        const employeeLng = body.lng;
+        // 2. Проверяем геопозицию
         let isValidGeo = false;
         let isSuspicious = false;
-
-        if (facility.lat !== null && facility.lat !== undefined && facility.lng !== null && facility.lng !== undefined) {
-            if (employeeLat === null || employeeLat === undefined || employeeLng === null || employeeLng === undefined) {
-                throw new ForbiddenException('Не переданы координаты сотрудника');
-            }
-            const employeeLatNum = Number(employeeLat);
-            const employeeLngNum = Number(employeeLng);
-            if (!Number.isFinite(employeeLatNum) || !Number.isFinite(employeeLngNum)) {
-                throw new BadRequestException('Некорректные координаты сотрудника');
-            }
-            const distance = this.calculateDistanceInMeters(
-                facility.lat,
-                facility.lng,
-                employeeLatNum,
-                employeeLngNum,
-            );
-            isValidGeo = distance <= this.MAX_DISTANCE_METERS;
-            if (distance > 500) {
-                isSuspicious = true;
+        
+        if (facility?.lat && facility?.lng && data.userLat && data.userLng) {
+            const distance = getDistanceInMeters(data.userLat, data.userLng, facility.lat, facility.lng);
+            console.log(`Проверка гео: Дистанция ${distance.toFixed(0)}м`);
+            
+            if (distance <= 500) { // Допуск 500 метров
+                isValidGeo = true;
+            } else {
+                isSuspicious = true; // Слишком далеко
             }
         }
 
-        const telegramUser = (req as any).user as { telegramId?: string; fullName?: string } | undefined;
-        if (!telegramUser?.telegramId) {
-            throw new BadRequestException('Не удалось определить пользователя');
-        }
-
-        const ambassador = await this.prisma.user.upsert({
-            where: { telegramId: telegramUser.telegramId },
-            update: { fullName: telegramUser.fullName ?? telegramUser.telegramId },
-            create: { telegramId: telegramUser.telegramId, fullName: telegramUser.fullName ?? telegramUser.telegramId },
-        });
-        (req as any).user = { id: ambassador.id, telegramId: ambassador.telegramId, fullName: ambassador.fullName };
-        const userId = ambassador.id;
-
-        // 1. Создаем визит
+        // 3. Создаем визит
         const visit = await this.prisma.visit.create({
             data: {
-                userId,
-                facilityId: body.facilityId,
-                activityId: body.activityId ?? null,
-                type: body.type || 'VISIT',
+                userId: data.userId,
+                facilityId: data.facilityId,
+                activityId: data.activityId, // ID выбранной активности
+                type: data.type,
+                comment: data.comment,
                 isValidGeo,
                 isSuspicious,
-                comment: body.comment,
-                data: body.data ?? null,
-                productsAvailable: {
-                    connect: body.productsAvailable?.map(id => ({ id })) || []
+                // Сохраняем "сырые" данные локации на всякий случай
+                data: {
+                    userLat: data.userLat,
+                    userLng: data.userLng
                 }
-            },
-            include: {
-                productsAvailable: true,
-            },
+            }
         });
 
-        // 2. Геймификация: Начисляем XP пользователю
-        const XP_PER_VISIT = 50;
-        const user = await this.prisma.user.findUnique({ where: { id: userId } });
-        
-        if (user) {
-            const newXp = user.xp + XP_PER_VISIT;
-            // Простая формула уровня: Каждые 1000 XP = 1 уровень
-            const newLevel = Math.floor(newXp / 1000) + 1;
-
-            await this.prisma.user.update({
-                where: { id: user.id },
-                data: {
-                    xp: newXp,
-                    level: newLevel
-                }
-            });
-        }
-
-        const requiredProducts = facility.requiredProducts || [];
-        const missingProductIds = requiredProducts.filter((id) => !(body.productsAvailable || []).includes(id));
-        let alert: string | null = null;
-        let missingProducts = [];
-
-        if (missingProductIds.length > 0) {
-            missingProducts = await this.prisma.product.findMany({ where: { id: { in: missingProductIds } } });
-            const names = missingProducts
-                .map((p) => p.flavor || p.line || p.sku)
-                .filter(Boolean);
-            if (names.length) {
-                alert = `Срочно предложи заказать ${names.join(', ')}!`;
-            }
-        }
-
-        return { visit, alert, missingProducts };
+        return visit;
     }
 
     @Get()
-    async getHistory() {
+    async getVisits() {
         return this.prisma.visit.findMany({
-            include: { facility: true, user: true, productsAvailable: true, activity: true },
-            orderBy: { createdAt: 'desc' },
-            take: 50
+            orderBy: { date: 'desc' },
+            take: 100, // Чтобы не грузить всё сразу
+            include: {
+                user: { select: { fullName: true } },
+                facility: { select: { name: true, address: true } },
+                activity: true
+            }
         });
     }
 }
