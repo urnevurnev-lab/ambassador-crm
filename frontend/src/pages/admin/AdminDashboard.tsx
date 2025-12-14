@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
 import { PageHeader } from '../../components/PageHeader';
 import { StatCard } from '../../components/StatCard';
-import { Users, ShoppingBag, MapPin, Activity, Download, Edit3, Trash2, Plus } from 'lucide-react';
+import { Users, ShoppingBag, MapPin, Activity, Download, Plus } from 'lucide-react';
 import apiClient from '../../api/apiClient';
 import WebApp from '@twa-dev/sdk';
 
@@ -372,48 +372,37 @@ export const AdminDashboard = () => {
             </div>
           )}
 
-          <div className="overflow-auto border border-gray-100 rounded-xl">
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-50 text-gray-500">
-                <tr>
-                  <th className="px-3 py-2 text-left">Line</th>
-                  <th className="px-3 py-2 text-left">Category</th>
-                  <th className="px-3 py-2 text-left">Flavor</th>
-                  <th className="px-3 py-2 text-left">SKU</th>
-                  <th className="px-3 py-2 text-right">Действия</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {productsLoading ? (
-                  <tr><td colSpan={5} className="px-3 py-4 text-center text-gray-400">Загрузка...</td></tr>
-                ) : filteredProducts.length === 0 ? (
-                  <tr><td colSpan={5} className="px-3 py-4 text-center text-gray-400">Ничего не найдено</td></tr>
-                ) : (
-                  filteredProducts.map((p) => (
-                    <tr key={p.id}>
-                      <td className="px-3 py-2">{p.line}</td>
-                      <td className="px-3 py-2">{p.category}</td>
-                      <td className="px-3 py-2">{p.flavor}</td>
-                      <td className="px-3 py-2">{p.sku}</td>
-                      <td className="px-3 py-2 text-right flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => startEdit(p)}
-                          className="text-blue-500 hover:text-blue-700"
-                        >
-                          <Edit3 size={16} />
-                        </button>
-                        <button
-                          onClick={() => deleteProduct(p.id)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+          <div className="flex flex-col gap-3">
+            {productsLoading ? (
+              <div className="text-center text-gray-400 py-4">Загрузка...</div>
+            ) : filteredProducts.length === 0 ? (
+              <div className="text-center text-gray-400 py-4">Ничего не найдено</div>
+            ) : (
+              filteredProducts.map((p) => (
+                <div key={p.id} className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm space-y-2">
+                  <div className="flex justify-between text-sm font-semibold text-gray-900">
+                    <span>Line: {p.line}</span>
+                    <span>SKU: {p.sku}</span>
+                  </div>
+                  <div className="text-sm text-gray-700">Category: {p.category}</div>
+                  <div className="text-sm text-gray-700">Flavor: {p.flavor}</div>
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      onClick={() => startEdit(p)}
+                      className="flex-1 bg-gray-100 text-gray-800 py-2 rounded-xl font-semibold active:scale-95 transition"
+                    >
+                      Редактировать
+                    </button>
+                    <button
+                      onClick={() => deleteProduct(p.id)}
+                      className="flex-1 bg-red-100 text-red-700 py-2 rounded-xl font-semibold active:scale-95 transition"
+                    >
+                      Удалить
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -427,47 +416,31 @@ export const AdminDashboard = () => {
           </button>
         </div>
 
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 overflow-auto">
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
           {visitsLoading ? (
             <div className="text-gray-500 text-sm">Загрузка визитов...</div>
+          ) : visits.length === 0 ? (
+            <div className="text-center text-gray-400">Визитов пока нет</div>
           ) : (
-            <table className="min-w-full text-left text-sm">
-              <thead>
-                <tr className="text-gray-500">
-                  <th className="py-2 pr-4">Дата</th>
-                  <th className="py-2 pr-4">Амбассадор</th>
-                  <th className="py-2 pr-4">Заведение</th>
-                  <th className="py-2 pr-4">Активность</th>
-                  <th className="py-2 pr-4">Контакты</th>
-                  <th className="py-2 pr-4">Чашки</th>
-                  <th className="py-2">Комментарий</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {visits.map((v) => {
-                  const data = (v.data as any) || {};
-                  return (
-                    <tr key={v.id} className="align-top">
-                      <td className="py-2 pr-4 whitespace-nowrap">{formatDate(v.date)}</td>
-                      <td className="py-2 pr-4">{v.user?.fullName || '—'}</td>
-                      <td className="py-2 pr-4">
-                        <div className="font-semibold">{v.facility?.name || '—'}</div>
-                        {v.facility?.address && <div className="text-xs text-gray-500">{v.facility.address}</div>}
-                      </td>
-                      <td className="py-2 pr-4">{v.activity?.name || v.type || '—'}</td>
-                      <td className="py-2 pr-4">{data.contacts || '—'}</td>
-                      <td className="py-2 pr-4">{data.cups ?? '—'}</td>
-                      <td className="py-2 text-gray-700">{v.comment || '—'}</td>
-                    </tr>
-                  );
-                })}
-                {visits.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="py-3 text-center text-gray-400">Визитов пока нет</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+            <div className="flex flex-col gap-3">
+              {visits.map((v) => {
+                const data = (v.data as any) || {};
+                return (
+                  <div key={v.id} className="bg-gray-50 border border-gray-100 rounded-2xl p-4 shadow-sm space-y-2">
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>{formatDate(v.date)}</span>
+                      <span>{v.activity?.name || v.type || '—'}</span>
+                    </div>
+                    <div className="font-semibold text-gray-900">{v.facility?.name || '—'}</div>
+                    {v.facility?.address && <div className="text-xs text-gray-500">{v.facility.address}</div>}
+                    <div className="text-sm text-gray-700">Амбассадор: {v.user?.fullName || '—'}</div>
+                    <div className="text-sm text-gray-700">Контакты: {data.contacts || '—'}</div>
+                    <div className="text-sm text-gray-700">Чашки: {data.cups ?? '—'}</div>
+                    <div className="text-sm text-gray-700">{v.comment || '—'}</div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       </div>

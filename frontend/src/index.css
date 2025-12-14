@@ -24,6 +24,7 @@ body {
   color: #1C1C1E;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: none;
 }
 
 #root {

@@ -17,13 +17,15 @@ const tabs: TabItem[] = [
 
 const TabButton: React.FC<{ tab: TabItem; isActive: boolean }> = ({ tab, isActive }) => {
   const Icon = tab.icon;
-  // Используем акцентный цвет для активной иконки
   const activeColor = '#4F46E5'; 
   const inactiveColor = '#C7C7CC';
 
   return (
     <div className="flex-1 flex justify-center group pointer-events-auto">
-      <Link to={tab.path} className="flex flex-col items-center justify-center w-full h-full pt-1">
+      <Link
+        to={tab.path}
+        className={`w-full h-full flex flex-col items-center justify-center pt-1 transition ${isActive ? 'bg-indigo-50' : ''}`}
+      >
         <Icon 
           size={26} 
           strokeWidth={isActive ? 2.5 : 2} 
@@ -31,7 +33,7 @@ const TabButton: React.FC<{ tab: TabItem; isActive: boolean }> = ({ tab, isActiv
           className="transition-transform duration-200 group-active:scale-95"
         />
         <span 
-          className={`text-[10px] mt-1 font-medium transition-colors duration-200 ${isActive ? 'text-indigo-600' : 'text-gray-400'}`}
+          className={`text-[11px] mt-1 font-medium transition-colors duration-200 ${isActive ? 'text-indigo-600 drop-shadow-sm' : 'text-gray-400'}`}
         >
           {tab.label}
         </span>

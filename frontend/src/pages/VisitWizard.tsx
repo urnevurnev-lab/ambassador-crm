@@ -35,6 +35,8 @@ export const VisitWizard = () => {
     
     const [geoStatus, setGeoStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
     const [loading, setLoading] = useState(true);
+    const [showGhostButton, setShowGhostButton] = useState(false);
+    const [isInputFocused, setIsInputFocused] = useState(false);
     
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -93,6 +95,13 @@ export const VisitWizard = () => {
             return;
         }
         setGeoStatus('loading');
+        setShowGhostButton(false);
+
+        setTimeout(() => {
+            if (geoStatus === 'loading') {
+                setShowGhostButton(true);
+            }
+        }, 5000);
         navigator.geolocation.getCurrentPosition(
             async (position) => {
                 const { latitude, longitude } = position.coords;
@@ -233,7 +242,7 @@ export const VisitWizard = () => {
         <div className="h-full bg-[#F8F9FA] flex flex-col">
             <PageHeader title="Визит" back={step === 'select'} />
             
-            <div className="flex-grow pt-[calc(env(safe-area-inset-top)+60px)] pb-10 px-4 relative overflow-hidden">
+            <div className={`flex-grow pt-[calc(env(safe-area-inset-top)+60px)] ${isInputFocused ? 'pb-64' : 'pb-10'} px-4 relative overflow-hidden`}>
                 <AnimatePresence mode="wait">
                     
                     {/* 1. ВЫБОР (если не пришли с карты) */}
@@ -307,9 +316,23 @@ export const VisitWizard = () => {
                             {geoStatus === 'success' && <div className="text-green-600 font-bold mb-4">Доступ открыт!</div>}
 
                             {geoStatus !== 'success' && (
-                                <button onClick={() => checkGeo()} className="w-full max-w-xs bg-black text-white py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition">
-                                    📍 Открыть смену
-                                </button>
+                                <>
+                                    <button onClick={() => checkGeo()} className="w-full max-w-xs bg-black text-white py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition">
+                                        📍 Открыть смену
+                                    </button>
+                                    {showGhostButton && (
+                                        <button
+                                            onClick={() => {
+                                                WebApp.showAlert('Сделайте фото фасада для отчёта');
+                                                setGeoStatus('success');
+                                                setStep('activity');
+                                            }}
+                                            className="mt-3 w-full max-w-xs border border-gray-300 text-gray-700 py-3 rounded-2xl font-semibold text-sm active:scale-95 transition bg-white/70"
+                                        >
+                                            Я на месте, но GPS не ловит
+                                        </button>
+                                    )}
+                                </>
                             )}
                         </motion.div>
                     )}
@@ -403,6 +426,8 @@ export const VisitWizard = () => {
                                 placeholder="Как прошел визит?"
                                 value={comment}
                                 onChange={e => setComment(e.target.value)}
+                                onFocus={() => setIsInputFocused(true)}
+                                onBlur={() => setIsInputFocused(false)}
                             ></textarea>
                             <button onClick={handleSubmit} className="w-full bg-black text-white py-4 rounded-2xl font-bold text-lg shadow-lg">Завершить</button>
                         </motion.div>

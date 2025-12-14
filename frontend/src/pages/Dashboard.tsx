@@ -184,25 +184,22 @@ const Dashboard: React.FC = () => {
           className="relative bg-white rounded-[35px] h-[200px] overflow-hidden shadow-soft col-span-2"
         >
           {nearest ? (
-            <>
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-white" />
-              <div className="relative h-full w-full p-6 flex flex-col justify-between">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs uppercase tracking-wide text-[#8E8E93]">Ближайшая точка</p>
-                  <ArrowUpRight size={18} className="text-indigo-500" />
-                </div>
-                <div>
-                  <p className="text-xl font-bold text-[#1C1C1E]">{nearest.facility.name}</p>
-                  <p className="text-sm text-[#8E8E93]">{nearest.facility.address}</p>
-                  <div className="flex items-center gap-2 mt-3 text-sm text-[#1C1C1E] font-semibold">
-                    <Navigation size={16} className="text-indigo-500" />
-                    {nearest.distance.toFixed(0)} м
-                  </div>
+            <div className="relative h-full w-full p-6 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <p className="text-xs uppercase tracking-wide text-[#8E8E93]">Ближайшая точка</p>
+                <ArrowUpRight size={18} className="text-indigo-500" />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-[#1C1C1E]">{nearest.facility.name}</p>
+                <p className="text-sm text-[#8E8E93]">{nearest.facility.address}</p>
+                <div className="flex items-center gap-2 mt-3 text-sm text-[#1C1C1E] font-semibold">
+                  <Navigation size={16} className="text-indigo-500" />
+                  {nearest.distance.toFixed(0)} м
                 </div>
               </div>
-            </>
+            </div>
           ) : (
-            <div className="relative h-full w-full p-6 flex flex-col justify-center items-start bg-gradient-to-br from-gray-50 to-white">
+            <div className="relative h-full w-full p-6 flex flex-col justify-center items-start bg-white">
               <p className="text-xs uppercase tracking-wide text-[#8E8E93] mb-2">Текущая цель</p>
               <p className="text-lg font-semibold text-[#1C1C1E]">Не удалось определить локацию</p>
               <p className="text-sm text-[#8E8E93] mt-1 mb-4">
@@ -210,7 +207,7 @@ const Dashboard: React.FC = () => {
               </p>
               <button
                 onClick={requestLocation}
-                className="px-4 py-2 rounded-full bg-black text-white text-sm font-semibold shadow-sm active:scale-95 transition"
+                className="w-full bg-[#4F46E5] text-white text-base font-semibold px-4 py-3 rounded-2xl shadow-md active:scale-98 transition"
               >
                 Включить GPS
               </button>
@@ -222,20 +219,26 @@ const Dashboard: React.FC = () => {
         <div className="grid grid-cols-2 gap-3">
           <motion.div
             whileHover={{ scale: 1.02 }}
-            className="bg-gradient-to-br from-white to-[#F2F3F7] h-[160px] p-6 rounded-[35px] shadow-soft flex flex-col justify-between"
+            className="bg-white h-[160px] p-6 rounded-[35px] shadow-soft flex flex-col justify-between"
           >
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Package size={20} className="text-indigo-500" />
-                <p className="text-sm text-[#8E8E93]">Заработано</p>
+                <p className="text-sm text-[#8E8E93]">План на смену</p>
+              </div>
+              <span className="text-xs text-[#1C1C1E] font-semibold">{visitsToday}/{DAILY_TARGET}</span>
+            </div>
+            <div className="flex flex-col gap-2">
+              <p className="text-2xl font-bold text-[#1C1C1E]">Визитов: {visitsToday}</p>
+              <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                <div className="h-full bg-indigo-500" style={{ width: `${Math.min(100, Math.round((visitsToday / DAILY_TARGET) * 100))}%` }} />
               </div>
             </div>
-            <p className="text-3xl font-bold text-[#1C1C1E]">0 ₽</p>
           </motion.div>
 
           <motion.div
             whileHover={{ scale: 1.02 }}
-            className="bg-gradient-to-br from-white to-[#F2F3F7] h-[160px] p-6 rounded-[35px] shadow-soft flex flex-col justify-between"
+            className="bg-white h-[160px] p-6 rounded-[35px] shadow-soft flex flex-col justify-between"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -255,7 +258,7 @@ const Dashboard: React.FC = () => {
           <Link to="/facilities">
             <motion.div
               whileHover={{ scale: 1.01 }}
-              className="bg-gradient-to-br from-white to-[#F2F3F7] p-5 rounded-3xl shadow-soft col-span-2 cursor-pointer"
+              className="bg-white p-5 rounded-3xl shadow-soft col-span-2 cursor-pointer"
             >
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
@@ -275,7 +278,7 @@ const Dashboard: React.FC = () => {
           <motion.div whileTap={{ scale: 0.98 }}>
             <Link
               to="/map"
-              className="flex items-center justify-between bg-gradient-to-br from-white to-[#F2F3F7] p-4 rounded-2xl shadow-soft text-indigo-700 font-medium"
+              className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-soft text-indigo-700 font-medium"
             >
               <div className="flex items-center">
                 <MapPin size={24} className="mr-4 text-indigo-500" />
@@ -288,7 +291,7 @@ const Dashboard: React.FC = () => {
           <motion.div whileTap={{ scale: 0.98 }}>
             <Link
               to="/orders"
-              className="flex items-center justify-between bg-gradient-to-br from-white to-[#F2F3F7] p-4 rounded-2xl shadow-soft text-indigo-700 font-medium"
+              className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-soft text-indigo-700 font-medium"
             >
               <div className="flex items-center">
                 <ShoppingCart size={24} className="mr-4 text-indigo-500" />
