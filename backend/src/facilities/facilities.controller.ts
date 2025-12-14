@@ -39,6 +39,15 @@ export class FacilitiesController {
         });
     }
 
+    @Patch(':id')
+    async updateFacility(@Param('id') id: string, @Body() data: any) {
+        // Позволяем менять координаты и прочие поля; числа приводим явно
+        const prepared = { ...data };
+        if (prepared.lat !== undefined) prepared.lat = Number(prepared.lat);
+        if (prepared.lng !== undefined) prepared.lng = Number(prepared.lng);
+        return this.facilitiesService.update(Number(id), prepared);
+    }
+
     @Get(':id')
     async getFacility(@Param('id') id: string) {
         const visitCount = await this.facilitiesService['prisma'].visit.count({ where: { facilityId: Number(id) } });

@@ -234,7 +234,49 @@ export const VisitWizard = () => {
                                  <Lock size={64}/>}
                             </motion.div>
 
-                            {geoStatus === 'error' && <div className="text-red-500 font-bold mb-4">Вы слишком далеко!</div>}
+                            {geoStatus === 'error' && (
+                                <div className="flex flex-col items-center animate-in fade-in slide-in-from-bottom-4">
+                                    <div className="text-red-500 font-bold mb-2">
+                                        {selectedFacility.lat ? 'Вы далеко от точки!' : 'У точки нет координат!'}
+                                    </div>
+                                    <p className="text-xs text-gray-500 mb-4 max-w-[200px]">
+                                        Если вы действительно находитесь в заведении, обновите его координаты.
+                                    </p>
+                                    
+                                    <button 
+                                        onClick={async () => {
+                                            if (!deviceLocation) return;
+                                            try {
+                                                setLoading(true);
+                                                await apiClient.patch(`/api/facilities/${selectedFacility.id}`, {
+                                                    lat: deviceLocation.lat,
+                                                    lng: deviceLocation.lng
+                                                });
+                                                
+                                                const updated = { ...selectedFacility, lat: deviceLocation.lat, lng: deviceLocation.lng };
+                                                setSelectedFacility(updated);
+                                                
+                                                WebApp.HapticFeedback.notificationOccurred('success');
+                                                WebApp.showAlert('Координаты точки обновлены! Доступ открыт.');
+                                                
+                                                setGeoStatus('success');
+                                                setTimeout(() => setStep('activity'), 500);
+                                            } catch (e) {
+                                                WebApp.showAlert('Ошибка обновления координат');
+                                            } finally {
+                                                setLoading(false);
+                                            }
+                                        }}
+                                        className="bg-blue-100 text-blue-700 px-6 py-3 rounded-xl font-bold text-sm mb-4 active:scale-95 transition"
+                                    >
+                                        📍 Я здесь! Обновить геопозцию
+                                    </button>
+                                    
+                                    <button onClick={checkGeo} className="text-gray-400 text-sm underline">
+                                        Попробовать проверить еще раз
+                                    </button>
+                                </div>
+                            )}
                             {geoStatus === 'success' && <div className="text-green-600 font-bold mb-4">Доступ открыт!</div>}
 
                             {geoStatus !== 'success' && (
