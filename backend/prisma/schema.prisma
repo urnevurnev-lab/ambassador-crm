@@ -53,6 +53,7 @@ model Visit {
   activity    Activity? @relation(fields: [activityId], references: [id])
   type        String   @default("UNKNOWN")
   date        DateTime @default(now())
+  data        Json?
   productsAvailable Product[] @relation("VisitProducts")
   photoUrl    String?
   isValidGeo  Boolean  @default(false)

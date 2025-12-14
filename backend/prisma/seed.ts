@@ -36,8 +36,10 @@ async function main() {
     });
 
     const activities = [
-        { code: 'standard_visit', name: 'Стандартный визит', description: 'Базовый сценарий: отметки и комментарии.' },
-        { code: 'inventory', name: 'Инвентаризация', description: 'Проверка наличия и выкладки SKU.' },
+        { code: 'visit', name: 'Проезд', description: 'Наличие вкусов, контакты, комментарий' },
+        { code: 'tasting', name: 'Дегустация', description: 'Сбор контактов участников' },
+        { code: 'b2b', name: 'B2B Визит', description: 'Переговоры, контакты ЛПР' },
+        { code: 'open_shift', name: 'Открытая смена', description: 'Время работы и количество чашек' },
     ];
 
     for (const activity of activities) {
