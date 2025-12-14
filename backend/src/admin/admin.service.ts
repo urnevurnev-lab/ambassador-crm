@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { GeocodingService } from '../facilities/geocoding.service';
+import * as XLSX from 'xlsx';
 
 @Injectable()
 export class AdminService {
@@ -123,5 +124,35 @@ export class AdminService {
             orders,
             visits
         };
+    }
+
+    async exportVisitsExcel(): Promise<Buffer> {
+        const visits = await this.prisma.visit.findMany({
+            include: { user: true, facility: true, activity: true },
+            orderBy: { date: 'desc' }
+        });
+
+        const hasCups = visits.some((v: any) => v.data && (v.data as any).cups !== undefined);
+        const hasContacts = visits.some((v: any) => v.data && (v.data as any).contacts);
+
+        const rows = visits.map((v: any) => {
+            const payload = (v.data as any) || {};
+            const row: any = {
+                'Дата': v.date ? new Date(v.date).toLocaleString('ru-RU') : '',
+                'Амбассадор': v.user?.fullName || '',
+                'Заведение': v.facility?.name || '',
+                'Тип Активности': v.activity?.name || v.type || '',
+                'Комментарий': v.comment || '',
+            };
+            if (hasContacts) row['Контакты'] = payload.contacts || '';
+            if (hasCups) row['Чашки'] = payload.cups ?? '';
+            return row;
+        });
+
+        const workbook = XLSX.utils.book_new();
+        const sheet = XLSX.utils.json_to_sheet(rows);
+        XLSX.utils.book_append_sheet(workbook, sheet, 'Visits');
+        const buffer: Buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }) as Buffer;
+        return buffer;
     }
 }

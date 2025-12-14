@@ -19,6 +19,7 @@ type Step = 'select' | 'lock' | 'activity' | 'form' | 'summary' | 'done';
 export const VisitWizard = () => {
     const [step, setStep] = useState<Step>('select');
     const [facilities, setFacilities] = useState<Facility[]>([]);
+    const [searchTerm, setSearchTerm] = useState('');
     const [products, setProducts] = useState<Product[]>([]);
     const [activities, setActivities] = useState<Activity[]>([]);
     
@@ -48,17 +49,15 @@ export const VisitWizard = () => {
                     apiClient.get<Activity[]>('/api/activities')
                 ]);
                 
-                const valid = facRes.data.filter(f => f.lat && f.lng);
-                setFacilities(valid);
+                setFacilities(facRes.data);
                 setProducts(prodRes.data);
                 setActivities(actRes.data);
 
                 // ЛОГИКА АВТО-ВЫБОРА И ЗАМКА
                 if (preselectedId) {
-                    const found = valid.find(f => f.id === Number(preselectedId));
+                    const found = facRes.data.find(f => f.id === Number(preselectedId));
                     if (found) {
-                        setSelectedFacility(found);
-                        setStep('lock'); // <--- ПРИНУДИТЕЛЬНО СТАВИМ ЗАМОК
+                        handleFacilitySelect(found);
                     }
                 }
             } catch (e) {
@@ -71,9 +70,26 @@ export const VisitWizard = () => {
         loadData();
     }, [preselectedId]);
 
+    const handleFacilitySelect = (facility: Facility) => {
+        setSelectedFacility(facility);
+        setGeoStatus('idle');
+
+        if (facility.lat && facility.lng) {
+            setStep('lock');
+        } else {
+            WebApp.showAlert('Геопозиция не задана, проверка пропущена');
+            setStep('activity');
+        }
+    };
+
     // 2. Проверка GPS
     const checkGeo = () => {
         if (!selectedFacility) return;
+        if (!selectedFacility.lat || !selectedFacility.lng) {
+            WebApp.showAlert('Геопозиция не задана, проверка пропущена');
+            setStep('activity');
+            return;
+        }
         setGeoStatus('loading');
 
         if (!navigator.geolocation) {
@@ -159,14 +175,29 @@ export const VisitWizard = () => {
                     {/* 1. ВЫБОР (если не пришли с карты) */}
                     {step === 'select' && (
                         <motion.div key="select" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="space-y-3">
-                            <h2 className="text-xl font-bold mb-4">Выберите заведение</h2>
+                            <h2 className="text-xl font-bold mb-2">Выберите заведение</h2>
+                            <input
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder="Поиск заведения..."
+                                className="w-full bg-white p-3 rounded-2xl border border-gray-200 shadow-sm focus:ring-2 ring-blue-500"
+                            />
                             {loading ? <Loader2 className="animate-spin mx-auto"/> : 
-                             facilities.map(f => (
-                                <div key={f.id} onClick={() => { setSelectedFacility(f); setStep('lock'); }} className="bg-white p-4 rounded-2xl shadow-sm flex justify-between items-center active:scale-95 transition">
-                                    <div className="font-bold">{f.name}</div>
-                                    <ChevronRight className="text-gray-300"/>
-                                </div>
-                            ))}
+                             facilities
+                                .filter(f => {
+                                    const term = searchTerm.toLowerCase().trim();
+                                    if (!term) return true;
+                                    return f.name.toLowerCase().includes(term) || f.address.toLowerCase().includes(term);
+                                })
+                                .map(f => (
+                                    <div key={f.id} onClick={() => handleFacilitySelect(f)} className="bg-white p-4 rounded-2xl shadow-sm flex justify-between items-center active:scale-95 transition">
+                                        <div>
+                                            <div className="font-bold">{f.name}</div>
+                                            <div className="text-xs text-gray-500">{f.address}</div>
+                                        </div>
+                                        <ChevronRight className="text-gray-300"/>
+                                    </div>
+                                ))}
                         </motion.div>
                     )}
 

@@ -1,8 +1,9 @@
-import { Controller, HttpCode, Post } from '@nestjs/common';
+import { Controller, HttpCode, Post, Res } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { FacilitiesService } from '../facilities/facilities.service';
 import { Delete } from '@nestjs/common';
 import { Get } from '@nestjs/common';
+import { Response } from 'express';
 
 @Controller(['api/admin', 'admin'])
 export class AdminController {
@@ -50,5 +51,13 @@ export class AdminController {
     @HttpCode(200)
     async cleanDb() {
         return this.adminService.cleanDatabase();
+    }
+
+    @Get('export/visits')
+    async exportVisits(@Res() res: Response) {
+        const buffer = await this.adminService.exportVisitsExcel();
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename="visits.xlsx"');
+        return res.send(buffer);
     }
 }
