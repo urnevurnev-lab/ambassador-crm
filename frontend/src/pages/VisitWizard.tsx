@@ -1,34 +1,32 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, Check, Loader2, Lock, Unlock } from 'lucide-react';
+import { ChevronRight, Loader2, Lock, Unlock } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import apiClient from '../api/apiClient';
 import { PageHeader } from '../components/PageHeader';
+import { StandardVisitForm } from '../components/activities/StandardVisitForm';
+import { InventoryForm } from '../components/activities/InventoryForm';
 
 interface Facility { id: number; name: string; address: string; lat: number; lng: number; }
 interface Product { id: number; flavor: string; line: string; sku: string; }
+interface Activity { id: number; code: string; name: string; description?: string; }
 
 // Этапы визита
-type Step = 'select' | 'lock' | 'activity' | 'stock' | 'summary' | 'done';
-
-const ACTIVITIES = [
-    { id: 'Проезд', label: '🚗 Проезд (мимо)' },
-    { id: 'Открытая смена', label: '🕗 Открытая смена' },
-    { id: 'B2B', label: '🤝 B2B Встреча' },
-    { id: 'Дегустация', label: '💨 Дегустация' },
-    { id: 'VISIT', label: '📋 Обычный визит' }
-];
+type Step = 'select' | 'lock' | 'activity' | 'form' | 'summary' | 'done';
 
 export const VisitWizard = () => {
     const [step, setStep] = useState<Step>('select');
     const [facilities, setFacilities] = useState<Facility[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
+    const [activities, setActivities] = useState<Activity[]>([]);
     
     const [selectedFacility, setSelectedFacility] = useState<Facility | null>(null);
+    const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
     const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
-    const [activity, setActivity] = useState('VISIT');
     const [comment, setComment] = useState('');
+    const [standardNote, setStandardNote] = useState('');
+    const [inventoryNote, setInventoryNote] = useState('');
     
     const [geoStatus, setGeoStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
     const [loading, setLoading] = useState(true);
@@ -41,14 +39,16 @@ export const VisitWizard = () => {
     useEffect(() => {
         const loadData = async () => {
             try {
-                const [facRes, prodRes] = await Promise.all([
+                const [facRes, prodRes, actRes] = await Promise.all([
                     apiClient.get<Facility[]>('/api/facilities'),
-                    apiClient.get<Product[]>('/api/products')
+                    apiClient.get<Product[]>('/api/products'),
+                    apiClient.get<Activity[]>('/api/activities')
                 ]);
                 
                 const valid = facRes.data.filter(f => f.lat && f.lng);
                 setFacilities(valid);
                 setProducts(prodRes.data);
+                setActivities(actRes.data);
 
                 // ЛОГИКА АВТО-ВЫБОРА И ЗАМКА
                 if (preselectedId) {
@@ -103,10 +103,16 @@ export const VisitWizard = () => {
     // 3. Отправка
     const handleSubmit = async () => {
         if (!selectedFacility) return;
+        if (!selectedActivity) {
+            WebApp.showAlert('Выберите активность');
+            setStep('activity');
+            return;
+        }
         try {
             await apiClient.post('/api/visits', {
                 facilityId: selectedFacility.id,
-                type: activity, // Отправляем выбранную активность
+                activityId: selectedActivity.id,
+                type: selectedActivity.code || 'VISIT',
                 productsAvailable: selectedProducts,
                 lat: selectedFacility.lat,
                 lng: selectedFacility.lng,
@@ -118,14 +124,6 @@ export const VisitWizard = () => {
             WebApp.showAlert('Ошибка отправки');
         }
     };
-
-    // Группировка продуктов
-    const groupedProducts = useMemo(() => {
-        return products.reduce((acc, p) => {
-            (acc[p.line] = acc[p.line] || []).push(p);
-            return acc;
-        }, {} as Record<string, Product[]>);
-    }, [products]);
 
     // --- RENDER ---
     return (
@@ -182,41 +180,66 @@ export const VisitWizard = () => {
                     {step === 'activity' && (
                         <motion.div key="activity" initial={{x:50, opacity:0}} animate={{x:0, opacity:1}} exit={{x:-50, opacity:0}} className="space-y-4">
                             <h2 className="text-2xl font-bold">Что делаем сегодня?</h2>
-                            <div className="grid grid-cols-1 gap-3">
-                                {ACTIVITIES.map(act => (
-                                    <button key={act.id} onClick={() => { setActivity(act.id); setStep('stock'); }} className="p-5 bg-white rounded-2xl shadow-sm text-left font-bold text-lg flex justify-between items-center active:scale-95 transition border border-gray-100">
-                                        {act.label} <ChevronRight className="text-gray-300"/>
-                                    </button>
-                                ))}
-                            </div>
+                            {loading ? (
+                                <Loader2 className="animate-spin mx-auto"/>
+                            ) : (
+                                <div className="grid grid-cols-1 gap-3">
+                                    {activities.map(act => (
+                                        <button
+                                            key={act.id}
+                                            onClick={() => { setSelectedActivity(act); setStep('form'); }}
+                                            className="p-5 bg-white rounded-2xl shadow-sm text-left flex justify-between items-center active:scale-95 transition border border-gray-100"
+                                        >
+                                            <div>
+                                                <div className="font-bold text-lg">{act.name}</div>
+                                                {act.description && <div className="text-sm text-gray-500 mt-1">{act.description}</div>}
+                                            </div>
+                                            <ChevronRight className="text-gray-300"/>
+                                        </button>
+                                    ))}
+
+                                    {activities.length === 0 && (
+                                        <button
+                                            onClick={() => {
+                                                const fallback = { id: 0, code: 'standard_visit', name: 'Стандартный визит', description: 'Резерв, если не пришли данные с сервера' };
+                                                setSelectedActivity(fallback);
+                                                setStep('form');
+                                            }}
+                                            className="p-4 bg-blue-50 rounded-2xl border border-blue-100 text-left font-semibold text-blue-900"
+                                        >
+                                            Данные не пришли. Продолжить как «Стандартный визит».
+                                        </button>
+                                    )}
+                                </div>
+                            )}
                         </motion.div>
                     )}
 
-                    {/* 4. ПОЛКА (ТОВАРЫ) */}
-                    {step === 'stock' && (
-                        <motion.div key="stock" initial={{opacity:0}} animate={{opacity:1}} className="pb-24 space-y-6">
-                            <div className="flex justify-between items-center">
-                                <h2 className="text-2xl font-bold">Отметьте наличие</h2>
-                            </div>
-                            
-                            {Object.entries(groupedProducts).map(([line, prods]) => (
-                                <div key={line} className="bg-white p-4 rounded-3xl shadow-sm">
-                                    <div className="text-xs font-bold text-gray-400 uppercase mb-3">{line}</div>
-                                    <div className="space-y-2">
-                                        {prods.map(p => {
-                                            const isSelected = selectedProducts.includes(p.id);
-                                            return (
-                                                <div key={p.id} onClick={() => setSelectedProducts(prev => isSelected ? prev.filter(x => x !== p.id) : [...prev, p.id])} 
-                                                     className={`flex justify-between p-3 rounded-xl border transition cursor-pointer ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-100'}`}>
-                                                    <span className="font-medium">{p.flavor}</span>
-                                                    {isSelected && <Check size={18} className="text-blue-500"/>}
-                                                </div>
-                                            )
-                                        })}
-                                    </div>
-                                </div>
-                            ))}
-                            <button onClick={() => setStep('summary')} className="fixed bottom-6 left-4 right-4 bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-xl z-50">Далее</button>
+                    {/* 4. ФОРМА ПОД АКТИВНОСТЬ */}
+                    {step === 'form' && selectedActivity && (
+                        <motion.div key="form" initial={{opacity:0}} animate={{opacity:1}} className="space-y-4">
+                            {selectedActivity.code === 'inventory' ? (
+                                <InventoryForm
+                                    products={products}
+                                    selectedProducts={selectedProducts}
+                                    onToggleProduct={(id) => setSelectedProducts(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+                                    note={inventoryNote}
+                                    onNoteChange={setInventoryNote}
+                                    onSubmit={() => {
+                                        if (!comment && inventoryNote) setComment(inventoryNote);
+                                        setStep('summary');
+                                    }}
+                                />
+                            ) : (
+                                <StandardVisitForm
+                                    note={standardNote}
+                                    onChange={setStandardNote}
+                                    onSubmit={() => {
+                                        if (!comment && standardNote) setComment(standardNote);
+                                        setStep('summary');
+                                    }}
+                                />
+                            )}
                         </motion.div>
                     )}
 

@@ -49,12 +49,23 @@ model Visit {
   user        User     @relation(fields: [userId], references: [id])
   facilityId  Int
   facility    Facility @relation(fields: [facilityId], references: [id])
+  activityId  Int?
+  activity    Activity? @relation(fields: [activityId], references: [id])
   type        String   @default("UNKNOWN")
   date        DateTime @default(now())
   productsAvailable Product[] @relation("VisitProducts")
   photoUrl    String?
   isValidGeo  Boolean  @default(false)
   comment     String?
+  createdAt   DateTime @default(now())
+}
+
+model Activity {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique
+  name        String
+  description String?
+  visits      Visit[]
   createdAt   DateTime @default(now())
 }
 

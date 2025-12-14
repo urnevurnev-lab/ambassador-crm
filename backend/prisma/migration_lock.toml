@@ -1,0 +1,2 @@
+# Generated manually for non-interactive migration management
+provider = "postgresql"

@@ -9,10 +9,11 @@ import { OrderModule } from './orders/order.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { ImportsModule } from './imports/imports.module';
 import { AdminModule } from './admin/admin.module';
+import { ActivitiesController } from './activities/activities.controller';
 
 @Module({
     imports: [OrderModule, FacilitiesModule, TelegramModule, ImportsModule, AdminModule],
-    controllers: [UsersController, VisitsController, ProductsController, DistributorsController],
+    controllers: [UsersController, VisitsController, ProductsController, DistributorsController, ActivitiesController],
     providers: [PrismaService],
 })
 export class AppModule { }

@@ -35,9 +35,23 @@ async function main() {
         },
     });
 
+    const activities = [
+        { code: 'standard_visit', name: 'Стандартный визит', description: 'Базовый сценарий: отметки и комментарии.' },
+        { code: 'inventory', name: 'Инвентаризация', description: 'Проверка наличия и выкладки SKU.' },
+    ];
+
+    for (const activity of activities) {
+        await prisma.activity.upsert({
+            where: { code: activity.code },
+            update: { name: activity.name, description: activity.description },
+            create: activity,
+        });
+    }
+
     console.log('✅ Facility:', facilityRecord);
     console.log('✅ Distributor:', distributorRecord);
     console.log('✅ Product:', product);
+    console.log('✅ Activities:', activities.map(a => a.code).join(', '));
     console.log('Done.');
 }
 

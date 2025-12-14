@@ -9,7 +9,8 @@ export class VisitsController {
     async createVisit(@Body() body: {
         userId: number; // Берется из токена/авторизации (или передается с фронта временно)
         facilityId: number;
-        type: string;
+        type?: string;
+        activityId?: number;
         productsAvailable?: number[]; // Массив ID продуктов
         lat?: number;
         lng?: number;
@@ -20,6 +21,7 @@ export class VisitsController {
             data: {
                 userId: body.userId,
                 facilityId: body.facilityId,
+                activityId: body.activityId ?? null,
                 type: body.type || 'VISIT',
                 isValidGeo: true, // Мы проверили это на фронте (Geo-Lock)
                 comment: body.comment,
@@ -53,7 +55,7 @@ export class VisitsController {
     @Get()
     async getHistory() {
         return this.prisma.visit.findMany({
-            include: { facility: true, user: true, productsAvailable: true },
+            include: { facility: true, user: true, productsAvailable: true, activity: true },
             orderBy: { createdAt: 'desc' },
             take: 50
         });
