@@ -34,10 +34,19 @@ export class TelegramService {
                     return;
                 }
 
+                const wasAlreadyApproved = existing.status === 'APPROVED';
+
                 await this.prisma.order.update({
                     where: { id: orderId },
                     data: { status: action },
                 });
+
+                if (action === 'APPROVED' && existing.user?.id && !wasAlreadyApproved) {
+                    await this.prisma.user.update({
+                        where: { id: existing.user.id },
+                        data: { balance: { increment: 500 } },
+                    });
+                }
 
                 const statusText =
                     action === 'APPROVED'

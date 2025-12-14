@@ -1,22 +1,37 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
+import apiClient from '../../api/apiClient';
 
 export const AdminLogin = () => {
     const [pin, setPin] = useState('');
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
-    const correctPin = '2024';
 
     useEffect(() => {
-        if (pin.length === 4) {
-            if (pin === correctPin) {
-                WebApp.HapticFeedback.notificationOccurred('success');
-                navigate('/admin/dashboard');
-            } else {
+        const tryLogin = async () => {
+            if (pin.length !== 4) return;
+            setLoading(true);
+            try {
+                const res = await apiClient.post('/api/auth/admin', { password: pin });
+                const token = res.data?.token;
+                if (token) {
+                    localStorage.setItem('adminToken', token);
+                    WebApp.HapticFeedback.notificationOccurred('success');
+                    navigate('/admin');
+                    return;
+                }
+                throw new Error('Token missing');
+            } catch (e) {
                 WebApp.HapticFeedback.notificationOccurred('error');
+                WebApp.showAlert('Неверный код доступа');
                 setPin('');
+            } finally {
+                setLoading(false);
             }
-        }
+        };
+
+        tryLogin();
     }, [pin, navigate]);
 
     const handlePress = (num: number) => {
@@ -50,7 +65,8 @@ export const AdminLogin = () => {
                     <button
                         key={num}
                         onClick={() => handlePress(num)}
-                        className="w-16 h-16 rounded-full bg-white text-2xl font-medium shadow-sm active:bg-gray-100 flex items-center justify-center text-black"
+                        disabled={loading}
+                        className="w-16 h-16 rounded-full bg-white text-2xl font-medium shadow-sm active:bg-gray-100 flex items-center justify-center text-black disabled:opacity-50"
                     >
                         {num}
                     </button>
@@ -58,7 +74,8 @@ export const AdminLogin = () => {
                 <div className="col-start-2">
                     <button
                         onClick={() => handlePress(0)}
-                        className="w-16 h-16 rounded-full bg-white text-2xl font-medium shadow-sm active:bg-gray-100 flex items-center justify-center text-black"
+                        disabled={loading}
+                        className="w-16 h-16 rounded-full bg-white text-2xl font-medium shadow-sm active:bg-gray-100 flex items-center justify-center text-black disabled:opacity-50"
                     >
                         0
                     </button>
@@ -66,7 +83,8 @@ export const AdminLogin = () => {
                 <div className="col-start-3 flex items-center justify-center">
                     <button
                         onClick={handleDelete}
-                        className="w-16 h-16 flex items-center justify-center text-gray-500 active:text-gray-700"
+                        disabled={loading}
+                        className="w-16 h-16 flex items-center justify-center text-gray-500 active:text-gray-700 disabled:opacity-50"
                     >
                         ⌫
                     </button>
@@ -74,7 +92,7 @@ export const AdminLogin = () => {
             </div>
 
             <button
-                onClick={() => navigate('/profile')}
+                onClick={() => navigate('/')}
                 className="mt-12 text-blue-500 font-medium"
             >
                 Отмена

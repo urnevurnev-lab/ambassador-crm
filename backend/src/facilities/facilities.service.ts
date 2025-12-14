@@ -20,6 +20,7 @@ export class FacilitiesService {
                 address: true,
                 lat: true,
                 lng: true,
+                requiredProducts: true,
             }
         });
     }
@@ -53,6 +54,7 @@ export class FacilitiesService {
                 ...data,
                 lat: coords?.lat ?? null,
                 lng: coords?.lng ?? null,
+                requiredProducts: data.requiredProducts ?? [],
             },
         });
 

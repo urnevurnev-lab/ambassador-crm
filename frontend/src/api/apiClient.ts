@@ -15,6 +15,11 @@ apiClient.interceptors.request.use((config) => {
     if (WebApp.initData) {
         config.headers.Authorization = `tma ${WebApp.initData}`;
     }
+    const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
+    const url = config.url || '';
+    if (adminToken && url.includes('/api/admin')) {
+        config.headers['x-admin-token'] = adminToken;
+    }
     return config;
 });
 

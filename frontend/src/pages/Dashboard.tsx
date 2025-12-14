@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import apiClient from '../api/apiClient';
 import { Link } from 'react-router-dom';
-import { Briefcase, ShoppingCart, MapPin, CheckCircle, Package, ArrowUpRight, Play } from 'lucide-react';
+import { Briefcase, ShoppingCart, MapPin, CheckCircle, Package, ArrowUpRight, Play, Megaphone, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 // Интерфейсы для статистики
@@ -19,20 +19,33 @@ interface Target {
   lng?: number;
 }
 
+interface Post {
+  id: number;
+  title: string;
+  content: string;
+  imageUrl?: string;
+  importance: number;
+  createdAt: string;
+}
+
 const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentTarget] = useState<Target | null>(null);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
 
   // --- Загрузка базовой статистики (Сохранена рабочая логика) ---
   useEffect(() => {
     const fetchStats = async () => {
+      setPostsLoading(true);
       try {
-        const [facRes, prodRes, visitRes] = await Promise.all([
+        const [facRes, prodRes, visitRes, postsRes] = await Promise.all([
           apiClient.get('/api/facilities'),
           apiClient.get('/api/products'),
           apiClient.get('/api/visits'),
+          apiClient.get<Post[]>('/api/posts'),
         ]);
 
         setStats({
@@ -40,12 +53,14 @@ const Dashboard: React.FC = () => {
           totalProducts: prodRes.data.length,
           totalVisits: visitRes.data.length,
         });
+        setPosts(postsRes.data || []);
 
       } catch (err) {
         console.error("Dashboard data load error:", err);
         setError("Не удалось загрузить ключевые данные.");
       } finally {
         setLoading(false);
+        setPostsLoading(false);
       }
     };
     fetchStats();
@@ -188,6 +203,35 @@ const Dashboard: React.FC = () => {
               <span className="text-lg">&gt;</span>
             </Link>
           </motion.div>
+        </div>
+
+        {/* News */}
+        <div className="bg-white rounded-3xl p-5 shadow-soft border border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Megaphone size={18} className="text-orange-500" />
+              <h3 className="font-bold text-lg text-[#1C1C1E]">Новости</h3>
+            </div>
+            {postsLoading && <Loader2 size={18} className="animate-spin text-gray-400" />}
+          </div>
+          {posts.length === 0 && !postsLoading ? (
+            <div className="text-sm text-gray-500">Нет свежих новостей</div>
+          ) : (
+            <div className="space-y-3">
+              {posts.slice(0, 3).map((post) => (
+                <div key={post.id} className="p-4 rounded-2xl border border-gray-100 bg-gradient-to-br from-white to-[#F8F9F8] shadow-sm">
+                  <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
+                    <span>{new Date(post.createdAt).toLocaleDateString('ru-RU')}</span>
+                    {post.importance > 0 && <span className="text-[10px] font-bold text-red-500 uppercase">Важно</span>}
+                  </div>
+                  <div className="font-semibold text-[#1C1C1E]">{post.title}</div>
+                  <div className="text-sm text-gray-600 mt-1 overflow-hidden text-ellipsis whitespace-normal">
+                    {post.content}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Start Visit CTA */}

@@ -1,11 +1,13 @@
-import { Controller, HttpCode, Post, Res } from '@nestjs/common';
+import { Controller, HttpCode, Post, Res, UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { FacilitiesService } from '../facilities/facilities.service';
 import { Delete } from '@nestjs/common';
 import { Get } from '@nestjs/common';
 import { Response } from 'express';
+import { AdminAuthGuard } from '../auth/admin-auth.guard';
 
 @Controller(['api/admin', 'admin'])
+@UseGuards(AdminAuthGuard)
 export class AdminController {
     constructor(
         private readonly adminService: AdminService,

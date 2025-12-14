@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
 import { PageHeader } from '../../components/PageHeader';
 import { StatCard } from '../../components/StatCard';
@@ -27,13 +28,33 @@ export const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [visits, setVisits] = useState<Visit[]>([]);
   const [visitsLoading, setVisitsLoading] = useState(true);
+  const navigate = useNavigate();
+
+  const ensureAuth = () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
+    if (!token) {
+      navigate('/admin/login');
+      return false;
+    }
+    return true;
+  };
+
+  const handleAuthError = () => {
+    localStorage.removeItem('adminToken');
+    navigate('/admin/login');
+  };
 
   const fetchStats = async () => {
+    if (!ensureAuth()) return;
     try {
       const res = await apiClient.get('/api/admin/stats');
       setStats(res.data);
     } catch (e) {
       console.error('Failed to load stats', e);
+      if ((e as any)?.response?.status === 401 || (e as any)?.response?.status === 403) {
+        handleAuthError();
+        return;
+      }
       WebApp.showAlert('Не удалось загрузить статистику');
     } finally {
       setLoading(false);
@@ -41,11 +62,16 @@ export const AdminDashboard = () => {
   };
 
   const fetchVisits = async () => {
+    if (!ensureAuth()) return;
     try {
       const res = await apiClient.get<Visit[]>('/api/visits');
       setVisits(res.data || []);
     } catch (e) {
       console.error('Failed to load visits', e);
+      if ((e as any)?.response?.status === 401 || (e as any)?.response?.status === 403) {
+        handleAuthError();
+        return;
+      }
       WebApp.showAlert('Не удалось загрузить визиты');
     } finally {
       setVisitsLoading(false);
@@ -53,9 +79,15 @@ export const AdminDashboard = () => {
   };
 
   useEffect(() => {
+    if (!ensureAuth()) return;
     fetchStats();
     fetchVisits();
   }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('adminToken');
+    navigate('/admin/login');
+  };
 
   const runGeocoding = async () => {
     WebApp.showAlert('Запуск геокодинга... Это займет время.');
@@ -105,7 +137,17 @@ export const AdminDashboard = () => {
 
   return (
     <Layout>
-      <PageHeader title="Админ-панель" />
+      <PageHeader
+        title="Админ-панель"
+        rightContent={
+          <button
+            onClick={handleLogout}
+            className="text-xs font-semibold text-red-500"
+          >
+            Выйти
+          </button>
+        }
+      />
       <div className="pt-[calc(env(safe-area-inset-top)+60px)] px-4 pb-32 space-y-6">
         <div className="grid grid-cols-2 gap-3">
           <StatCard

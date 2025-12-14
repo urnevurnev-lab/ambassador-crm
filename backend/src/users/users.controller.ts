@@ -6,7 +6,7 @@ export class UsersController {
     constructor(private readonly prisma: PrismaService) { }
 
     @Post('auth')
-    async authUser(@Body() data: { telegramId: string; fullName: string; username?: string; photoUrl?: string }) {
+    async authUser(@Body() data: { telegramId: string; fullName: string; username?: string }) {
         // ... existing auth logic
         const user = await this.prisma.user.findUnique({
             where: { telegramId: data.telegramId },

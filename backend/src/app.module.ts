@@ -10,10 +10,12 @@ import { TelegramModule } from './telegram/telegram.module';
 import { ImportsModule } from './imports/imports.module';
 import { AdminModule } from './admin/admin.module';
 import { ActivitiesController } from './activities/activities.controller';
+import { AuthModule } from './auth/auth.module';
+import { PostsController } from './posts/posts.controller';
 
 @Module({
-    imports: [OrderModule, FacilitiesModule, TelegramModule, ImportsModule, AdminModule],
-    controllers: [UsersController, VisitsController, ProductsController, DistributorsController, ActivitiesController],
+    imports: [OrderModule, FacilitiesModule, TelegramModule, ImportsModule, AdminModule, AuthModule],
+    controllers: [UsersController, VisitsController, ProductsController, DistributorsController, ActivitiesController, PostsController],
     providers: [PrismaService],
 })
 export class AppModule { }

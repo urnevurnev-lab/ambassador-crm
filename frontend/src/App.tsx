@@ -12,6 +12,7 @@ import NewFacilityPage from './pages/NewFacilityPage';
 
 // ИСПРАВЛЕННАЯ СТРОКА: Используем named import { AdminDashboard }
 import { AdminDashboard } from './pages/admin/AdminDashboard'; 
+import { AdminLogin } from './pages/admin/AdminLogin';
 // Убедитесь, что у вас есть заглушка для страниц, которых еще нет
 const NotFound = () => <div>404 | Страница не найдена</div>; 
 
@@ -34,6 +35,7 @@ const App: React.FC = () => {
           
           {/* Админ-панель: ИСПРАВЛЕНО */}
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/login" element={<AdminLogin />} />
           
           {/* Обработка несуществующих маршрутов */}
           <Route path="*" element={<NotFound />} />

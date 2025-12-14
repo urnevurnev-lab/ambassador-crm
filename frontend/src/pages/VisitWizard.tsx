@@ -26,6 +26,7 @@ export const VisitWizard = () => {
     const [selectedFacility, setSelectedFacility] = useState<Facility | null>(null);
     const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
     const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
+    const [deviceLocation, setDeviceLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [comment, setComment] = useState('');
     const [contacts, setContacts] = useState('');
     const [startTime, setStartTime] = useState('');
@@ -73,6 +74,7 @@ export const VisitWizard = () => {
     const handleFacilitySelect = (facility: Facility) => {
         setSelectedFacility(facility);
         setGeoStatus('idle');
+        setDeviceLocation(null);
 
         if (facility.lat && facility.lng) {
             setStep('lock');
@@ -97,14 +99,23 @@ export const VisitWizard = () => {
             return;
         }
 
+        const isDev = import.meta.env.DEV; 
+        if (isDev && selectedFacility.lat && selectedFacility.lng) {
+            setDeviceLocation({ lat: selectedFacility.lat, lng: selectedFacility.lng });
+            WebApp.HapticFeedback.notificationOccurred('success');
+            setGeoStatus('success');
+            setTimeout(() => setStep('activity'), 800);
+            return;
+        }
+
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 const { latitude, longitude } = position.coords;
+                setDeviceLocation({ lat: latitude, lng: longitude });
                 const dist = getDistanceFromLatLonInKm(latitude, longitude, selectedFacility.lat, selectedFacility.lng);
                 
-                // 100 метров или DEV режим
-                const isDev = import.meta.env.DEV; 
-                if (dist < 0.1 || isDev) {
+                // 200 метров
+                if (dist < 0.2) {
                     WebApp.HapticFeedback.notificationOccurred('success');
                     setGeoStatus('success');
                     // Ждем анимацию и переходим к активности
@@ -127,13 +138,18 @@ export const VisitWizard = () => {
             setStep('activity');
             return;
         }
+        if (selectedFacility?.lat && selectedFacility?.lng && !deviceLocation) {
+            WebApp.showAlert('Подтвердите геопозицию перед отправкой');
+            setStep('lock');
+            return;
+        }
         const payload: any = {
             facilityId: selectedFacility.id,
             activityId: selectedActivity.id,
             type: selectedActivity.code || 'VISIT',
             productsAvailable: selectedProducts,
-            lat: selectedFacility.lat,
-            lng: selectedFacility.lng,
+            userLat: deviceLocation?.lat,
+            userLng: deviceLocation?.lng,
             comment: comment
         };
 
@@ -156,11 +172,15 @@ export const VisitWizard = () => {
             };
         }
         try {
-            await apiClient.post('/api/visits', payload);
+            const res = await apiClient.post('/api/visits', payload);
+            if (res.data?.alert) {
+                WebApp.showAlert(res.data.alert);
+            }
             WebApp.HapticFeedback.notificationOccurred('success');
             setStep('done');
         } catch (e) {
-            WebApp.showAlert('Ошибка отправки');
+            const msg = (e as any)?.response?.data?.message;
+            WebApp.showAlert(Array.isArray(msg) ? msg.join(', ') : msg || 'Ошибка отправки');
         }
     };
 
