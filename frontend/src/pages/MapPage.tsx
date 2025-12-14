@@ -6,7 +6,7 @@ import { PageHeader } from '../components/PageHeader';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { Link } from 'react-router-dom';
-import { Navigation } from 'lucide-react';
+import { Navigation, Plus } from 'lucide-react';
 
 // Фикс иконок
 import iconUrl from 'leaflet/dist/images/marker-icon.png';
@@ -37,18 +37,10 @@ const MapPage: React.FC = () => {
 
   return (
     <Layout>
-      <div className="flex flex-col h-full bg-[#F8F9FA]">
+      <div className="flex flex-col h-full bg-[#F8F9FA] relative">
         <PageHeader
           title="Карта заведений"
           className="bg-white/70 backdrop-blur-xl border-none"
-          rightContent={
-            <Link
-              to="/facility/new"
-              className="w-9 h-9 rounded-full bg-[#007AFF] text-white flex items-center justify-center text-lg font-bold shadow-md"
-            >
-              +
-            </Link>
-          }
         />
 
         <div className="flex-1 pt-[calc(env(safe-area-inset-top)+56px)] pb-[calc(env(safe-area-inset-bottom)+100px)]">
@@ -88,6 +80,15 @@ const MapPage: React.FC = () => {
                 </Marker>
               ))}
             </MapContainer>
+
+            {/* Новая кнопка добавления точки */}
+            <Link
+              to="/facility/new"
+              className="absolute right-4 z-[1000] flex h-12 w-12 items-center justify-center rounded-full bg-[#007AFF] text-white shadow-lg transition active:scale-90"
+              style={{ bottom: 'calc(env(safe-area-inset-bottom) + 150px)' }}
+            >
+              <Plus size={24} />
+            </Link>
 
             {/* Кнопка навигации (поднята над табом) */}
             <div
