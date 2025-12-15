@@ -17,26 +17,26 @@ interface Distributor {
 }
 
 export const FastOrderWizard: React.FC<FastOrderWizardProps> = ({ isOpen, onClose, facilityId, items }) => {
-    const [step, setStep] = useState<1 | 2>(1);
+    const [step, setStep] = useState<1 | 2 | 3>(1);
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
-    const [distributors, setDistributors] = useState<Distributor[]>([]);
+
+    // Realistic Distributors
+    const [distributors] = useState<Distributor[]>([
+        { id: 1, name: 'HookahMarket' },
+        { id: 2, name: 'Oshisha' },
+        { id: 3, name: 'PiterSmoke' },
+        { id: 4, name: 'S2B' }
+    ]);
     const [selectedDistributor, setSelectedDistributor] = useState<number | null>(null);
     const [loading, setLoading] = useState(false);
 
+    // Reset state on open
     useEffect(() => {
         if (isOpen) {
-            // Загружаем список дистрибьюторов (мокируем пока, если нет апи)
-            // В идеале: apiClient.get('/api/distributors')
-            setDistributors([
-                { id: 1, name: 'Основной Склад' },
-                { id: 2, name: 'Премиум Табак' },
-                { id: 3, name: 'HoReCa Service' }
-            ]);
-
-            // Пытаемся предзаполнить имя
+            setStep(1);
             if (WebApp.initDataUnsafe?.user) {
-                // setName(WebApp.initDataUnsafe.user.first_name); // Не будем заполнять собой, нужно имя ЛПР
+                // Pre-fill if needed, or leave empty
             }
         }
     }, [isOpen]);
@@ -50,13 +50,13 @@ export const FastOrderWizard: React.FC<FastOrderWizardProps> = ({ isOpen, onClos
                 distributorId: selectedDistributor,
                 contactName: name,
                 contactPhone: phone,
-                items: items.map(i => ({ sku: i.flavor, quantity: 1 })) // Пока по 1 шт
+                items: items.map(i => ({ sku: i.flavor, quantity: 1 }))
             });
             WebApp.showAlert('Заказ успешно отправлен!');
             onClose();
         } catch (e) {
             console.error(e);
-            WebApp.showAlert('Ошибка отправки. Проверьте консоль.');
+            WebApp.showAlert('Ошибка отправки.');
         } finally {
             setLoading(false);
         }
@@ -66,73 +66,65 @@ export const FastOrderWizard: React.FC<FastOrderWizardProps> = ({ isOpen, onClos
 
     return (
         <div className="fixed inset-0 z-[5000] flex items-end sm:items-center justify-center">
-            {/* Backdrop - Explicit z-0 */}
             <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-black/40 backdrop-blur-sm z-0"
+                className="absolute inset-0 bg-black/60 backdrop-blur-md z-0"
                 onClick={onClose}
             />
 
-            {/* Modal - Explicit z-10 to stay above backdrop */}
             <motion.div
                 initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-                className="bg-white w-full max-w-md rounded-t-[30px] p-6 pb-12 h-[85vh] flex flex-col relative z-10 shadow-2xl"
+                className="bg-[#F2F2F7] w-full max-w-md rounded-t-[32px] sm:rounded-[32px] p-6 pb-12 h-[85vh] flex flex-col relative z-10 shadow-2xl overflow-hidden"
             >
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-bold text-[#1C1C1E]">
-                        {step === 1 ? 'Контактные данные' : 'Выбор дистрибьютора'}
-                    </h2>
-                    <button onClick={onClose} className="p-2 bg-gray-100 rounded-full text-gray-500 active:scale-95 transition">
+                {/* Header */}
+                <div className="flex justify-between items-center mb-6 px-1">
+                    <div>
+                        <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">
+                            Шаг {step} из 3
+                        </div>
+                        <h2 className="text-2xl font-bold text-[#1C1C1E] leading-none">
+                            {step === 1 ? 'Мact-Лист' : step === 2 ? 'Дистрибьютор' : 'Контакты'}
+                        </h2>
+                    </div>
+                    <button onClick={onClose} className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm text-black active:scale-95 transition">
                         <X size={20} />
                     </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto">
-                    {step === 1 ? (
-                        <div className="space-y-6">
-                            <div className="bg-gray-50 p-4 rounded-2xl flex items-center gap-4">
-                                <div className="p-3 bg-white rounded-xl text-gray-400 shadow-sm">
-                                    <User size={24} />
-                                </div>
-                                <div className="flex-1">
-                                    <label className="text-xs text-gray-500 ml-1">Имя получателя (ЛПР)</label>
-                                    <input
-                                        value={name} onChange={e => setName(e.target.value)}
-                                        placeholder="Иван Иванов"
-                                        className="w-full bg-transparent font-bold text-lg outline-none placeholder:text-gray-300"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="bg-gray-50 p-4 rounded-2xl flex items-center gap-4">
-                                <div className="p-3 bg-white rounded-xl text-gray-400 shadow-sm">
-                                    <Phone size={24} />
-                                </div>
-                                <div className="flex-1">
-                                    <label className="text-xs text-gray-500 ml-1">Телефон</label>
-                                    <input
-                                        type="tel"
-                                        value={phone} onChange={e => setPhone(e.target.value)}
-                                        placeholder="+7 (999) ..."
-                                        className="w-full bg-transparent font-bold text-lg outline-none placeholder:text-gray-300"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="text-center text-sm text-gray-400 mt-8">
-                                Заполните контакты того, кто будет принимать заказ на точке.
+                <div className="flex-1 overflow-y-auto -mx-2 px-2 pb-4">
+                    {step === 1 && (
+                        <div className="space-y-3">
+                            {items.length === 0 ? (
+                                <div className="text-center text-gray-400 py-10">Список пуст</div>
+                            ) : (
+                                items.map((item, idx) => (
+                                    <div key={idx} className="bg-white p-4 rounded-2xl border border-gray-100 flex justify-between items-center shadow-sm">
+                                        <div className="flex flex-col">
+                                            <span className="font-bold text-[#1C1C1E]">{item.flavor}</span>
+                                            <span className="text-xs text-gray-400">{item.line}</span>
+                                        </div>
+                                        <div className="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                            1
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                            <div className="text-center text-xs text-gray-400 mt-4">
+                                Всего {items.length} позиций к заказу
                             </div>
                         </div>
-                    ) : (
+                    )}
+
+                    {step === 2 && (
                         <div className="space-y-3">
                             {distributors.map(d => (
                                 <div
                                     key={d.id}
                                     onClick={() => setSelectedDistributor(d.id)}
-                                    className={`p-4 rounded-2xl border flex items-center justify-between transition active:scale-95 cursor-pointer ${selectedDistributor === d.id ? 'border-black bg-gray-50' : 'border-gray-100 bg-white'
+                                    className={`p-5 rounded-2xl border-2 flex items-center justify-between transition active:scale-95 cursor-pointer shadow-sm ${selectedDistributor === d.id ? 'border-black bg-white' : 'border-transparent bg-white'
                                         }`}
                                 >
-                                    <span className="font-bold text-[#1C1C1E]">{d.name}</span>
+                                    <span className="font-bold text-[#1C1C1E] text-lg">{d.name}</span>
                                     {selectedDistributor === d.id && (
                                         <div className="w-6 h-6 bg-black rounded-full flex items-center justify-center text-white">
                                             <Check size={14} />
@@ -142,24 +134,59 @@ export const FastOrderWizard: React.FC<FastOrderWizardProps> = ({ isOpen, onClos
                             ))}
                         </div>
                     )}
+
+                    {step === 3 && (
+                        <div className="space-y-4">
+                            <div className="bg-white p-4 rounded-[24px] flex items-center gap-4 shadow-sm border border-gray-100">
+                                <div className="p-3 bg-gray-50 rounded-2xl text-gray-400">
+                                    <User size={24} />
+                                </div>
+                                <div className="flex-1">
+                                    <label className="text-xs font-bold text-gray-400 ml-1 uppercase">Имя</label>
+                                    <input
+                                        value={name} onChange={e => setName(e.target.value)}
+                                        placeholder="Имя получателя"
+                                        className="w-full bg-transparent font-bold text-lg outline-none placeholder:text-gray-300 py-1"
+                                    />
+                                </div>
+                            </div>
+                            <div className="bg-white p-4 rounded-[24px] flex items-center gap-4 shadow-sm border border-gray-100">
+                                <div className="p-3 bg-gray-50 rounded-2xl text-gray-400">
+                                    <Phone size={24} />
+                                </div>
+                                <div className="flex-1">
+                                    <label className="text-xs font-bold text-gray-400 ml-1 uppercase">Телефон</label>
+                                    <input
+                                        type="tel"
+                                        value={phone} onChange={e => setPhone(e.target.value)}
+                                        placeholder="+7 (___) ___-__-__"
+                                        className="w-full bg-transparent font-bold text-lg outline-none placeholder:text-gray-300 py-1"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
-                <div className="mt-4">
-                    {step === 1 ? (
+                <div className="mt-4 pt-4 border-t border-gray-200/50">
+                    <button
+                        onClick={() => {
+                            if (step === 1) setStep(2);
+                            else if (step === 2) setStep(3);
+                            else handleSubmit();
+                        }}
+                        disabled={(step === 2 && !selectedDistributor) || (step === 3 && (!name || !phone)) || loading}
+                        className="w-full h-16 bg-[#1C1C1E] text-white rounded-[24px] font-bold text-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:scale-100 active:scale-95 transition shadow-xl shadow-black/10"
+                    >
+                        {loading ? 'Отправка...' : step === 3 ? 'Подтвердить заказ' : 'Далее'}
+                        {!loading && step !== 3 && <Check size={20} />}
+                    </button>
+                    {step > 1 && (
                         <button
-                            disabled={!name || !phone}
-                            onClick={() => setStep(2)}
-                            className="w-full py-4 bg-[#1C1C1E] text-white rounded-2xl font-bold text-lg disabled:opacity-50 disabled:scale-100 active:scale-95 transition"
+                            onClick={() => setStep(prev => prev - 1 as any)}
+                            className="w-full py-4 text-gray-500 font-medium text-sm mt-1"
                         >
-                            Далее
-                        </button>
-                    ) : (
-                        <button
-                            disabled={!selectedDistributor || loading}
-                            onClick={handleSubmit}
-                            className="w-full py-4 bg-[#1C1C1E] text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95 transition"
-                        >
-                            {loading ? 'Отправка...' : 'Отправить в чат'} <Send size={20} />
+                            Назад
                         </button>
                     )}
                 </div>

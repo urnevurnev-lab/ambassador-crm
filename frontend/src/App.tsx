@@ -6,6 +6,7 @@ import { TelegramNavigator } from './components/TelegramNavigator';
 import Dashboard from './pages/Dashboard';
 import MapPage from './pages/MapPage';
 import OrderPage from './pages/OrderPage';
+import WorkHubPage from './pages/WorkHubPage';
 import FacilitiesListPage from './pages/FacilitiesListPage';
 import FacilityPage from './pages/FacilityPage';
 import { VisitWizard } from './pages/VisitWizard';
@@ -27,7 +28,18 @@ const PageLoader = () => (
 
 const NotFound = () => <div className="p-10 text-center">404 | Страница не найдена</div>;
 
+import { useState } from 'react';
+import SplashPage from './pages/SplashPage';
+
+// ...imports...
+
 const App: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  if (!isAuthenticated) {
+    return <SplashPage onLoginSuccess={() => setIsAuthenticated(true)} />;
+  }
+
   return (
     <BrowserRouter>
       <TelegramNavigator />

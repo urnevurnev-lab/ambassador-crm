@@ -69,6 +69,7 @@ model Product {
   category  String   @default("UNKNOWN")
   createdAt DateTime @default(now())
   productsAvailableIn Visit[] @relation("VisitProducts")
+  productsTastedIn    Visit[] @relation("VisitTasted")
   orderItems OrderItem[]
   sampleOrderItems SampleOrderItem[]
 }
@@ -100,9 +101,13 @@ model Visit {
   date        DateTime @default(now())
   data        Json?
   productsAvailable Product[] @relation("VisitProducts")
+  productsTasted    Product[] @relation("VisitTasted")
   isValidGeo  Boolean  @default(false)
   isSuspicious Boolean @default(false)
   comment     String?
+  contactName String?
+  endedAt     DateTime?
+  status      String   @default("COMPLETED") // STARTED, COMPLETED
   createdAt   DateTime @default(now())
 }
 

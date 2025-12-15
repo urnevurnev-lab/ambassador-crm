@@ -7,6 +7,7 @@ export interface Facility {
     address: string;
     lat?: number;
     lng?: number;
+    score?: number;
 }
 
 interface FacilitiesContextType {

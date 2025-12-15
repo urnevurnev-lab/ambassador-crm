@@ -2,7 +2,13 @@ import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-interface Visit { id: number; date: string; type: string; comment?: string; summary?: string[]; }
+interface Visit {
+    id: number;
+    date: string;
+    type: string;
+    comment?: string;
+    productsAvailable?: { id: number; flavor: string; line: string }[];
+}
 interface FacilityHistoryProps {
     visits: Visit[];
 }
@@ -46,18 +52,24 @@ export const FacilityHistory: React.FC<FacilityHistoryProps> = ({ visits }) => {
                                     exit={{ height: 0, opacity: 0 }}
                                     className="bg-gray-50 border-t border-gray-100"
                                 >
-                                    <div className="p-4 text-sm text-gray-600 space-y-2">
-                                        {v.comment && (
-                                            <div className="italic">"{v.comment}"</div>
-                                        )}
-                                        <div className="text-xs font-bold uppercase text-gray-400 tracking-wider mt-2">На момент визита:</div>
-                                        {/* Mock summary if not present, user requested "accordion summary" */}
-                                        <ul className="list-disc list-inside text-xs space-y-1">
-                                            <li>Товаров на полке: 14 SKU</li>
-                                            <li>Фотоотчет: загружен</li>
-                                            <li>Статус: <span className="text-green-600">Ок</span></li>
-                                        </ul>
-                                    </div>
+                                    {v.comment && (
+                                        <div className="italic">"{v.comment}"</div>
+                                    )}
+
+                                    {v.productsAvailable && v.productsAvailable.length > 0 ? (
+                                        <div className="mt-3">
+                                            <div className="text-xs font-bold uppercase text-gray-400 tracking-wider mb-2">На полке ({v.productsAvailable.length}):</div>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {v.productsAvailable.map((p: any) => (
+                                                    <div key={p.id} className="text-xs bg-white border border-gray-100 px-2 py-1 rounded-md text-gray-700">
+                                                        {p.flavor}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="text-xs text-gray-400 mt-2">Нет данных о товарах</div>
+                                    )}
                                 </motion.div>
                             )}
                         </AnimatePresence>

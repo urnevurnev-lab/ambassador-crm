@@ -93,9 +93,9 @@ export const OrderPage: React.FC = () => {
                         <div className="space-y-3">
                             {filteredFacilities.map((f, i) => (
                                 <motion.div
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: i * 0.05 }}
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    transition={{ duration: 0.2 }}
                                     key={f.id}
                                     onClick={() => { setSelectedFacility(f.id); setStep(2); }}
                                     whileTap={{ scale: 0.98 }}

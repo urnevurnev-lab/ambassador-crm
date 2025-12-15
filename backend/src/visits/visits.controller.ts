@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Query } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 
 // Функция расчета расстояния (в метрах)
@@ -82,8 +82,35 @@ export class VisitsController {
             include: {
                 user: { select: { fullName: true } },
                 facility: { select: { name: true, address: true } },
-                activity: true
+                activity: true,
+                productsAvailable: true,
+                productsTasted: true
             }
+        });
+    }
+
+    @Patch(':id')
+    async updateVisit(@Param('id') id: string, @Body() data: any) {
+        const updateData: any = { ...data };
+
+        // Handle Relations
+        if (data.productsAvailableIds) {
+            updateData.productsAvailable = {
+                set: data.productsAvailableIds.map((pid: number) => ({ id: pid }))
+            };
+            delete updateData.productsAvailableIds;
+        }
+
+        if (data.productsTastedIds) {
+            updateData.productsTasted = {
+                set: data.productsTastedIds.map((pid: number) => ({ id: pid }))
+            };
+            delete updateData.productsTastedIds;
+        }
+
+        return this.prisma.visit.update({
+            where: { id: Number(id) },
+            data: updateData
         });
     }
 }

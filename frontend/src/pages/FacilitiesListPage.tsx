@@ -47,31 +47,50 @@ const FacilitiesListPage: React.FC = () => {
                     <div className="text-center text-gray-400 mt-10">Загрузка...</div>
                 ) : (
                     <div className="space-y-3 pb-20">
-                        {filtered.map((f, i) => (
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: i * 0.05 }}
-                                key={f.id}
-                            >
-                                <Link to={`/facility/${f.id}`}>
-                                    <div className="bg-white p-5 rounded-[30px] border border-gray-100 active:scale-[0.98] transition-all shadow-sm flex justify-between items-center group">
-                                        <div className="flex items-center gap-4 overflow-hidden">
-                                            <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 shrink-0 group-hover:bg-[#1C1C1E] group-hover:text-white transition-colors">
-                                                <Building2 size={24} />
+                        {filtered.map((f) => {
+                            const score = f.score || 0;
+                            let borderColor = 'border-gray-100';
+                            let glow = '';
+                            if (score > 75) {
+                                borderColor = 'border-green-400';
+                                glow = 'shadow-[0_4px_12px_rgba(34,197,94,0.15)]';
+                            } else if (score < 30) {
+                                borderColor = 'border-red-300';
+                            }
+
+                            return (
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    transition={{ duration: 0.2 }}
+                                    key={f.id}
+                                >
+                                    <Link to={`/facility/${f.id}`}>
+                                        <div className={`bg-white p-5 rounded-[30px] border ${borderColor} ${glow} active:scale-[0.98] transition-all shadow-sm flex justify-between items-center group relative overflow-hidden`}>
+                                            {/* Score Badge */}
+                                            {score > 0 && (
+                                                <div className={`absolute top-0 right-0 px-3 py-1 rounded-bl-2xl text-[10px] font-bold ${score > 75 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                                                    {score}%
+                                                </div>
+                                            )}
+
+                                            <div className="flex items-center gap-4 overflow-hidden">
+                                                <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 shrink-0 group-hover:bg-[#1C1C1E] group-hover:text-white transition-colors">
+                                                    <Building2 size={24} />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <div className="font-bold text-[16px] text-[#1C1C1E] truncate mb-0.5">{f.name}</div>
+                                                    <div className="text-xs text-gray-400 truncate font-medium">{f.address}</div>
+                                                </div>
                                             </div>
-                                            <div className="min-w-0">
-                                                <div className="font-bold text-[16px] text-[#1C1C1E] truncate mb-0.5">{f.name}</div>
-                                                <div className="text-xs text-gray-400 truncate font-medium">{f.address}</div>
+                                            <div className="w-8 h-8 rounded-full border border-gray-100 flex items-center justify-center">
+                                                <ChevronRight size={16} className="text-gray-300" />
                                             </div>
                                         </div>
-                                        <div className="w-8 h-8 rounded-full border border-gray-100 flex items-center justify-center">
-                                            <ChevronRight size={16} className="text-gray-300" />
-                                        </div>
-                                    </div>
-                                </Link>
-                            </motion.div>
-                        ))}
+                                    </Link>
+                                </motion.div>
+                            );
+                        })}
                         {filtered.length === 0 && (
                             <div className="text-center text-gray-400 py-10">Ничего не найдено</div>
                         )}

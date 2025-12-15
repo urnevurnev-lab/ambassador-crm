@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Map, PlusCircle, Settings, BookOpen } from 'lucide-react';
+import { Home, Briefcase, BookOpen, Settings } from 'lucide-react';
 
 interface TabItem {
   path: string;
@@ -10,8 +10,7 @@ interface TabItem {
 
 const tabs: TabItem[] = [
   { path: '/', icon: Home, label: 'Главная' },
-  { path: '/facilities', icon: Map, label: 'Точки' },
-  { path: '/orders', icon: PlusCircle, label: 'Заказ' },
+  { path: '/facilities', icon: Briefcase, label: 'Работа' },
   { path: '/knowledge', icon: BookOpen, label: 'База' },
   { path: '/admin', icon: Settings, label: 'Меню' },
 ];
