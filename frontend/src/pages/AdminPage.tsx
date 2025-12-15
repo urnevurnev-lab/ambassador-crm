@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Layout } from '../components/Layout';
-import { PageHeader } from '../components/PageHeader';
-import { Users, Package, BarChart2, Upload, Database, Settings, ChevronRight, Plus, Trash2, Edit2, X, Check } from 'lucide-react';
+
+import { Users, Package, BarChart2, Upload, Settings, ChevronRight, Plus, Trash2, Edit2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import apiClient from '../api/apiClient';
+import { LockScreen } from '../components/LockScreen';
 
 // --- Types ---
 interface Product {
@@ -316,6 +317,11 @@ type AdminView = 'menu' | 'products' | 'users' | 'reports' | 'orders';
 
 const AdminPage: React.FC = () => {
     const [view, setView] = useState<AdminView>('menu');
+    const [isUnlocked, setIsUnlocked] = useState(false);
+
+    if (!isUnlocked) {
+        return <LockScreen onSuccess={() => setIsUnlocked(true)} />;
+    }
 
     const renderMenu = () => (
         <div className="space-y-4 px-4 pt-[calc(env(safe-area-inset-top)+20px)] pb-32">
@@ -435,5 +441,6 @@ const AdminPage: React.FC = () => {
         </Layout>
     );
 };
+
 
 export default AdminPage;

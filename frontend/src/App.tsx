@@ -34,10 +34,15 @@ const NotFound = () => <div className="p-10 text-center">404 | Страница 
 // ...imports...
 
 const App: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return localStorage.getItem('isAuthenticated') === 'true';
+  });
 
   if (!isAuthenticated) {
-    return <SplashPage onLoginSuccess={() => setIsAuthenticated(true)} />;
+    return <SplashPage onLoginSuccess={() => {
+      localStorage.setItem('isAuthenticated', 'true');
+      setIsAuthenticated(true);
+    }} />;
   }
 
   return (
@@ -57,6 +62,7 @@ const App: React.FC = () => {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/visits-history" element={<VisitsHistoryPage />} />
           <Route path="/admin" element={<AdminPage />} />
+          <Route path="/work" element={<WorkHubPage />} />
 
           {/* Редкие страницы (с лоадером) */}
           <Route path="/facility/new" element={

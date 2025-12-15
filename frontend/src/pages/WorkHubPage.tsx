@@ -2,13 +2,14 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
-import { Store, ShoppingCart, MapPin, ArrowRight } from 'lucide-react';
+import { Store, ShoppingCart, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const WorkHubPage: React.FC = () => {
     return (
         <Layout>
             <PageHeader title="Работа" />
+
 
             <div className="bg-[#F2F2F7] min-h-screen pt-[calc(env(safe-area-inset-top)+80px)] px-4 pb-32 space-y-4">
 

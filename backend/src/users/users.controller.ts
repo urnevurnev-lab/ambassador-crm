@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Param, HttpException, HttpStatus, UseGuards, Req, Patch } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, HttpException, HttpStatus, UseGuards, Req, Patch, Delete } from '@nestjs/common';
 import { TelegramAuthGuard } from '../telegram/telegram.guard';
 import { PrismaService } from '../prisma.service';
 
@@ -60,6 +60,12 @@ export class UsersController {
             },
             include: { allowedDistributors: true }
         });
+    }
+
+    // Метод 5: Удалить сотрудника
+    @Delete(':id')
+    async deleteUser(@Param('id') id: string) {
+        return this.prisma.user.delete({ where: { id: Number(id) } });
     }
 
     // Метод 5: Получить свой профиль
