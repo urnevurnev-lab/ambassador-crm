@@ -4,29 +4,30 @@ import { PageHeader } from '../components/PageHeader';
 import apiClient from '../api/apiClient';
 import { Plus, Minus, Send, Store } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
+import { motion } from 'framer-motion';
 
 interface Product { id: number; flavor: string; line: string; sku: string; }
-interface Facility { id: number; name: string; address: string; }
+
+
+import { useFacilities } from '../context/FacilitiesContext';
 
 export const OrderPage: React.FC = () => {
     const [step, setStep] = useState<1 | 2>(1);
-    const [facilities, setFacilities] = useState<Facility[]>([]);
+    const { facilities, loading: facilitiesLoading } = useFacilities();
     const [products, setProducts] = useState<Product[]>([]);
 
     const [search, setSearch] = useState('');
     const [selectedFacility, setSelectedFacility] = useState<number | null>(null);
     const [cart, setCart] = useState<Record<number, number>>({});
-    const [loading, setLoading] = useState(true);
+    const [productsLoading, setProductsLoading] = useState(true);
 
     useEffect(() => {
-        Promise.all([
-            apiClient.get('/api/facilities'),
-            apiClient.get('/api/products'),
-        ]).then(([facRes, prodRes]) => {
-            setFacilities(facRes.data || []);
-            setProducts(prodRes.data || []);
-        }).finally(() => setLoading(false));
+        apiClient.get('/api/products')
+            .then(res => setProducts(res.data || []))
+            .finally(() => setProductsLoading(false));
     }, []);
+
+    const loading = facilitiesLoading || productsLoading;
 
     const filteredFacilities = facilities.filter(f =>
         f.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -75,38 +76,47 @@ export const OrderPage: React.FC = () => {
 
                 {/* Шаг 1: Выбор точки */}
                 {step === 1 && (
-                    <div className="space-y-4">
+                    <div className="space-y-4 px-4">
                         {/* Sticky Search */}
-                        <div className="sticky top-[56px] z-30 bg-[#F8F9FA] pb-2 pt-2 -mx-4 px-4 shadow-sm">
-                            <input
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                placeholder="Поиск по названию или адресу..."
-                                className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#007AFF]/20"
-                            />
+                        <div className="sticky top-[70px] z-30 pb-2">
+                            <div className="bg-white p-2 rounded-[24px] shadow-sm border border-gray-100 flex items-center gap-2">
+                                <Store className="text-gray-400 ml-2" size={20} />
+                                <input
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    placeholder="Поиск заведения..."
+                                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-gray-400 py-2"
+                                />
+                            </div>
                         </div>
 
-                        <div className="space-y-2">
-                            {filteredFacilities.map(f => (
-                                <div
+                        <div className="space-y-3">
+                            {filteredFacilities.map((f, i) => (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: i * 0.05 }}
                                     key={f.id}
                                     onClick={() => { setSelectedFacility(f.id); setStep(2); }}
-                                    className="bg-white p-4 rounded-2xl border border-gray-100 flex items-center justify-between active:scale-95 transition cursor-pointer"
+                                    whileTap={{ scale: 0.98 }}
+                                    className="bg-white p-5 rounded-[30px] border border-gray-100 shadow-sm flex items-center justify-between cursor-pointer"
                                 >
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center shrink-0">
-                                            <Store size={20} />
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0">
+                                            <Store size={24} />
                                         </div>
                                         <div>
-                                            <div className="font-bold text-[#1C1C1E]">{f.name}</div>
-                                            <div className="text-xs text-gray-400">{f.address}</div>
+                                            <div className="font-bold text-[#1C1C1E] text-lg">{f.name}</div>
+                                            <div className="text-xs text-gray-400 mt-1">{f.address}</div>
                                         </div>
                                     </div>
-                                    <div className="w-6 h-6 rounded-full border-2 border-gray-200 shrink-0"></div>
-                                </div>
+                                    <div className="w-8 h-8 rounded-full border-2 border-gray-100 flex items-center justify-center">
+                                        <div className="w-4 h-4 rounded-full bg-gray-100" />
+                                    </div>
+                                </motion.div>
                             ))}
                             {filteredFacilities.length === 0 && (
-                                <div className="text-center text-gray-400 py-8">Ничего не найдено</div>
+                                <div className="text-center text-gray-400 py-10">Ничего не найдено</div>
                             )}
                         </div>
                     </div>
@@ -114,28 +124,33 @@ export const OrderPage: React.FC = () => {
 
                 {/* Шаг 2: Формирование корзины */}
                 {step === 2 && (
-                    <div className="space-y-6">
+                    <div className="space-y-4 px-4">
                         {Object.entries(groupedProducts).map(([line, items]) => (
-                            <div key={line} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-                                <h3 className="font-bold text-lg mb-4 text-[#1C1C1E]">{line}</h3>
-                                <div className="space-y-4">
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                key={line}
+                                className="bg-white rounded-[30px] p-6 border border-gray-100 shadow-sm"
+                            >
+                                <h3 className="font-bold text-xl mb-6 text-[#1C1C1E]">{line}</h3>
+                                <div className="space-y-6">
                                     {items.map(p => (
                                         <div key={p.id} className="flex justify-between items-center">
-                                            <div className="text-sm font-medium text-gray-700">{p.flavor}</div>
+                                            <div className="text-sm font-bold text-gray-700 w-1/2">{p.flavor}</div>
 
-                                            <div className="flex items-center bg-gray-50 rounded-lg p-1">
+                                            <div className="flex items-center bg-gray-50 rounded-2xl p-1.5 gap-2">
                                                 <button
                                                     onClick={() => updateCart(p.id, -1)}
-                                                    className="w-8 h-8 flex items-center justify-center bg-white rounded-md shadow-sm text-gray-600 active:scale-90 transition"
+                                                    className="w-8 h-8 flex items-center justify-center bg-white rounded-xl shadow-sm text-gray-600 active:scale-90 transition"
                                                 >
                                                     <Minus size={16} />
                                                 </button>
-                                                <div className="w-10 text-center font-bold text-[#1C1C1E]">
+                                                <div className="w-8 text-center font-bold text-[#1C1C1E]">
                                                     {cart[p.id] || 0}
                                                 </div>
                                                 <button
                                                     onClick={() => updateCart(p.id, 1)}
-                                                    className="w-8 h-8 flex items-center justify-center bg-[#1C1C1E] text-white rounded-md shadow-sm active:scale-90 transition"
+                                                    className="w-8 h-8 flex items-center justify-center bg-[#1C1C1E] text-white rounded-xl shadow-sm active:scale-90 transition"
                                                 >
                                                     <Plus size={16} />
                                                 </button>
@@ -143,7 +158,7 @@ export const OrderPage: React.FC = () => {
                                         </div>
                                     ))}
                                 </div>
-                            </div>
+                            </motion.div>
                         ))}
                     </div>
                 )}

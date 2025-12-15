@@ -19,7 +19,7 @@ export const FacilityHistory: React.FC<FacilityHistoryProps> = ({ visits }) => {
             <h3 className="font-bold text-[#1C1C1E] px-1 text-lg">История визитов</h3>
             <div className="space-y-3">
                 {visits.slice(0, 5).map((v) => (
-                    <div key={v.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div key={v.id} className="bg-white rounded-[30px] border border-gray-100 shadow-sm overflow-hidden">
                         <div
                             onClick={() => toggle(v.id)}
                             className="p-4 flex justify-between items-center cursor-pointer active:bg-gray-50 bg-white z-10 relative"

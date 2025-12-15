@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import apiClient from '../api/apiClient';
-import { User, MapPin, Calendar, Shirt, Save, CheckCircle } from 'lucide-react';
+import { User, MapPin, Calendar, Shirt, Save, ShieldAlert } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
 interface ProfileData {
     fullName: string;
@@ -21,28 +23,41 @@ const ProfilePage: React.FC = () => {
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [adminTaps, setAdminTaps] = useState(0);
 
     useEffect(() => {
-        // Fetch current profile
-        // Since we didn't make a dedicated /api/me endpoint yet, we might need one or rely on what we have.
-        // Let's assume we can GET /api/users/me (Need to implement or mock for now)
-        // For now, let's just use WebApp user data and local storage or empty state if API not ready
-
-        // MOCK:
-        if (WebApp.initDataUnsafe?.user) {
-            setData(prev => ({ ...prev, fullName: [WebApp.initDataUnsafe.user?.first_name, WebApp.initDataUnsafe.user?.last_name].join(' ') }));
-        }
-        setLoading(false);
+        setLoading(true);
+        apiClient.get('/api/users/me')
+            .then(res => {
+                const user = res.data;
+                setData({
+                    fullName: user.fullName || '',
+                    birthDate: user.birthDate ? user.birthDate.split('T')[0] : '',
+                    tshirtSize: user.tshirtSize || 'M',
+                    cdekInfo: user.cdekInfo ? (typeof user.cdekInfo === 'string' ? JSON.parse(user.cdekInfo) : user.cdekInfo) : { city: '', address: '' }
+                });
+            })
+            .catch(err => {
+                console.error('Profile load error', err);
+                // Fallback to Telegram data if API fails or user new
+                if (WebApp.initDataUnsafe?.user) {
+                    setData(prev => ({ ...prev, fullName: [WebApp.initDataUnsafe.user?.first_name, WebApp.initDataUnsafe.user?.last_name].join(' ') }));
+                }
+            })
+            .finally(() => setLoading(false));
     }, []);
 
     const handleSave = async () => {
         setSaving(true);
         try {
-            // Need endpoint PUT /api/users/me
-            // For now, mock success
-            await new Promise(r => setTimeout(r, 1000));
+            await apiClient.patch('/api/users/me', {
+                birthDate: data.birthDate,
+                tshirtSize: data.tshirtSize,
+                cdekInfo: data.cdekInfo
+            });
             WebApp.showAlert('Профиль сохранен!');
         } catch (e) {
+            console.error(e);
             WebApp.showAlert('Ошибка сохранения');
         } finally {
             setSaving(false);
@@ -50,7 +65,10 @@ const ProfilePage: React.FC = () => {
     };
 
     const updateCdek = (field: string, val: string) => {
-        setData(prev => ({ ...prev, cdekInfo: { ...prev.cdekInfo, [field]: val } }));
+        setData(prev => ({
+            ...prev,
+            cdekInfo: { ...prev.cdekInfo, [field]: val }
+        }));
     };
 
     if (loading) return <Layout><div className="flex h-screen items-center justify-center text-gray-400">Загрузка...</div></Layout>;
@@ -63,11 +81,33 @@ const ProfilePage: React.FC = () => {
 
                 {/* Avatar & Name */}
                 <div className="flex flex-col items-center py-6">
-                    <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 mb-4">
-                        <User size={48} />
-                    </div>
+                    <motion.div
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => {
+                            setAdminTaps(p => p + 1);
+                            if (adminTaps + 1 === 5) WebApp.HapticFeedback.notificationOccurred('success');
+                        }}
+                        className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 mb-4 cursor-pointer relative overflow-hidden"
+                    >
+                        {data.fullName === 'Виктор Урнев' || adminTaps >= 5 ? (
+                            <div className="absolute inset-0 bg-gradient-to-br from-[#1C1C1E] to-gray-800 flex items-center justify-center text-white">
+                                <User size={48} />
+                            </div>
+                        ) : (
+                            <User size={48} />
+                        )}
+                    </motion.div>
                     <h2 className="text-xl font-bold text-[#1C1C1E]">{data.fullName}</h2>
                     <div className="text-sm text-gray-400">Амбассадор</div>
+
+                    {/* Secret Admin Link */}
+                    {adminTaps >= 5 && (
+                        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mt-4">
+                            <Link to="/admin" className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-xs font-bold flex items-center gap-2">
+                                <ShieldAlert size={14} /> ADMIN PANEL
+                            </Link>
+                        </motion.div>
+                    )}
                 </div>
 
                 {/* Form Fields */}
@@ -99,8 +139,8 @@ const ProfilePage: React.FC = () => {
                                     key={size}
                                     onClick={() => setData(prev => ({ ...prev, tshirtSize: size }))}
                                     className={`py-2 rounded-xl text-sm font-bold transition ${data.tshirtSize === size
-                                            ? 'bg-[#1C1C1E] text-white'
-                                            : 'bg-gray-50 text-gray-500'
+                                        ? 'bg-[#1C1C1E] text-white'
+                                        : 'bg-gray-50 text-gray-500'
                                         }`}
                                 >
                                     {size}

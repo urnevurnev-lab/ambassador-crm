@@ -37,7 +37,7 @@ export const FacilitySaturation: React.FC<FacilitySaturationProps> = ({ currentS
     if (stats.length === 0) return null;
 
     return (
-        <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100">
+        <div className="bg-white p-5 rounded-[30px] shadow-sm border border-gray-100">
             <h3 className="text-sm font-bold text-[#1C1C1E] mb-4">Насыщенность по линейкам</h3>
             <div className="space-y-4">
                 {stats.map((item) => (

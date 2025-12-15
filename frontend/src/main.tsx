@@ -37,10 +37,16 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
   }
 }
 
+import { FacilitiesProvider } from './context/FacilitiesContext';
+
+// ...
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <App />
+      <FacilitiesProvider>
+        <App />
+      </FacilitiesProvider>
     </ErrorBoundary>
   </React.StrictMode>,
 )

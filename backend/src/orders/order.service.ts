@@ -11,6 +11,8 @@ interface CreateOrderDto {
     contactPhone?: string;
 }
 
+
+
 @Injectable()
 export class OrderService {
     private readonly logger = new Logger(OrderService.name);
@@ -109,5 +111,19 @@ export class OrderService {
         }
 
         return newOrder;
+    }
+
+    async getAll() {
+        return this.prisma.order.findMany({
+            orderBy: { createdAt: 'desc' },
+            include: { facility: true, distributor: true, user: true }
+        });
+    }
+
+    async updateStatus(id: number, status: string) {
+        return this.prisma.order.update({
+            where: { id },
+            data: { status }
+        });
     }
 }

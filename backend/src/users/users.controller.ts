@@ -1,4 +1,5 @@
-import { Controller, Post, Body, Get, Param, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, HttpException, HttpStatus, UseGuards, Req, Patch } from '@nestjs/common';
+import { TelegramAuthGuard } from '../telegram/telegram.guard';
 import { PrismaService } from '../prisma.service';
 
 @Controller('users')
@@ -58,6 +59,31 @@ export class UsersController {
                 }
             },
             include: { allowedDistributors: true }
+        });
+    }
+
+    // Метод 5: Получить свой профиль
+    @Get('me')
+    @UseGuards(TelegramAuthGuard)
+    async getMe(@Req() req: any) {
+        const telegramId = req.user.telegramId;
+        const user = await this.prisma.user.findUnique({ where: { telegramId } });
+        if (!user) throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+        return user;
+    }
+
+    // Метод 6: Обновить свой профиль
+    @Patch('me')
+    @UseGuards(TelegramAuthGuard)
+    async updateMe(@Req() req: any, @Body() data: { birthDate?: string; tshirtSize?: string; cdekInfo?: any }) {
+        const telegramId = req.user.telegramId;
+        return this.prisma.user.update({
+            where: { telegramId },
+            data: {
+                birthDate: data.birthDate ? new Date(data.birthDate) : undefined,
+                tshirtSize: data.tshirtSize,
+                cdekInfo: data.cdekInfo
+            }
         });
     }
 }

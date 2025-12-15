@@ -10,7 +10,7 @@ export class TelegramService {
     constructor(private readonly prisma: PrismaService) {
         // Убедись, что TELEGRAM_BOT_TOKEN есть в .env
         this.bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN as string, { polling: true });
-        
+
         // Логика обработки инлайн-кнопок
         this.bot.on('callback_query', async (query) => {
             const data = query?.data || '';
@@ -94,6 +94,14 @@ export class TelegramService {
             this.logger.log(`Notification sent to ${chatId}`);
         } catch (e: any) {
             this.logger.error(`Failed to send telegram message: ${e.message}`);
+        }
+    }
+
+    async sendMessage(chatId: string, text: string) {
+        try {
+            await this.bot.sendMessage(chatId, text, { parse_mode: 'HTML' });
+        } catch (e: any) {
+            this.logger.error(`Failed to send message to ${chatId}: ${e.message}`);
         }
     }
 

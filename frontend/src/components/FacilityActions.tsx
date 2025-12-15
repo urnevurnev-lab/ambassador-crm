@@ -1,5 +1,5 @@
 import React from 'react';
-import { Camera, ClipboardCheck, Store, ChevronRight, Truck, Briefcase } from 'lucide-react';
+import { Camera, ClipboardCheck, Store, Truck, Briefcase } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface Activity { id: number; code: string; name: string; }
@@ -38,7 +38,7 @@ export const FacilityActions: React.FC<FacilityActionsProps> = ({ activities, on
                             key={act.id}
                             whileTap={{ scale: 0.98 }}
                             onClick={() => onStart(act.code)}
-                            className={`p-4 rounded-[20px] flex flex-col items-start justify-between min-h-[100px] relative overflow-hidden group border border-transparent hover:border-black/5 transition-all shadow-sm ${colorClass} bg-opacity-60`}
+                            className={`p-4 rounded-[30px] flex flex-col items-start justify-between min-h-[100px] relative overflow-hidden group border border-transparent hover:border-black/5 transition-all shadow-sm ${colorClass} bg-opacity-60`}
                         >
                             <div className="flex justify-between w-full mb-3">
                                 <div className={`p-2 rounded-xl bg-white/60 backdrop-blur-sm`}>

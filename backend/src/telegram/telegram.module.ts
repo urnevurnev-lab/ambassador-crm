@@ -8,6 +8,6 @@ import { TelegramAuthGuard } from './telegram.guard';
     imports: [],
     controllers: [TelegramController],
     providers: [TelegramService, PrismaService, TelegramAuthGuard],
-    exports: [TelegramService, TelegramAuthGuard],
+    exports: [TelegramService], // Export so other modules can use it
 })
-export class TelegramModule {}
+export class TelegramModule { }

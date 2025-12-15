@@ -10,8 +10,8 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
     const Δλ = (lon2 - lon1) * Math.PI / 180;
 
     const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-              Math.cos(φ1) * Math.cos(φ2) *
-              Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+        Math.cos(φ1) * Math.cos(φ2) *
+        Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
     return R * c;
@@ -19,16 +19,17 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
 
 @Controller('visits')
 export class VisitsController {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
     @Post()
-    async createVisit(@Body() data: { 
-        userId: number; 
-        facilityId: number; 
+    async createVisit(@Body() data: {
+        userId: number;
+        facilityId: number;
         activityId?: number; // Теперь привязываем к активности
-        type: string; 
-        userLat?: number; 
+        type: string;
+        userLat?: number;
         userLng?: number;
+        data?: any;
         comment?: string;
     }) {
         // 1. Получаем координаты заведения
@@ -39,11 +40,11 @@ export class VisitsController {
         // 2. Проверяем геопозицию
         let isValidGeo = false;
         let isSuspicious = false;
-        
+
         if (facility?.lat && facility?.lng && data.userLat && data.userLng) {
             const distance = getDistanceInMeters(data.userLat, data.userLng, facility.lat, facility.lng);
             console.log(`Проверка гео: Дистанция ${distance.toFixed(0)}м`);
-            
+
             if (distance <= 500) { // Допуск 500 метров
                 isValidGeo = true;
             } else {
@@ -61,8 +62,9 @@ export class VisitsController {
                 comment: data.comment,
                 isValidGeo,
                 isSuspicious,
-                // Сохраняем "сырые" данные локации на всякий случай
+                // Объединяем "сырые" данные локации с данными формы
                 data: {
+                    ...data.data, // <-- ВАЖНО: сохраняем то, что пришло из формы (checkboxes, comments etc)
                     userLat: data.userLat,
                     userLng: data.userLng
                 }

@@ -9,7 +9,7 @@ export const FacilityRating: React.FC<FacilityRatingProps> = ({ score }) => {
     const data = [{ name: 'Rating', value: score, fill: score > 80 ? '#22c55e' : '#f97316' }];
 
     return (
-        <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center justify-center h-full relative overflow-hidden">
+        <div className="bg-white p-4 rounded-[30px] shadow-sm border border-gray-100 flex flex-col items-center justify-center h-full relative overflow-hidden">
             <div className="text-xs text-gray-400 uppercase font-bold mb-1 z-10 text-center">Наполненность точки нашим продуктом</div>
 
             <div className="w-full h-[120px] relative z-10 -my-2">

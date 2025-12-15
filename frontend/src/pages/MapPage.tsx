@@ -24,9 +24,9 @@ const MapPage: React.FC = () => {
   const [mapCenter, setMapCenter] = useState<[number, number]>(MOSCOW_CENTER);
   const mapRef = useRef<L.Map | null>(null);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
-  
+
   useEffect(() => {
-    apiClient.get<Facility[]>('/api/facilities').then(res => setFacilities(res.data)).catch(() => {});
+    apiClient.get<Facility[]>('/api/facilities').then(res => setFacilities(res.data)).catch(() => { });
   }, []);
 
   const validFacilities = facilities.filter(f => f.lat && f.lng && f.lat !== 0);
@@ -47,7 +47,7 @@ const MapPage: React.FC = () => {
           mapRef.current.flyTo(coords, 14, { duration: 0.75 });
         }
       },
-      () => {},
+      () => { },
       { enableHighAccuracy: true, timeout: 8000 }
     );
   }, []);
@@ -71,15 +71,17 @@ const MapPage: React.FC = () => {
         <div className="flex-1 pt-[calc(env(safe-area-inset-top)+56px)] pb-[calc(env(safe-area-inset-bottom)+100px)]">
           <div className="relative h-full w-full">
             {/* Поиск и счетчик поверх карты */}
-            <div className="absolute z-[1000] left-0 right-0 px-4" style={{ top: '14px' }}>
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Поиск заведения..."
-                className="w-full bg-white/95 backdrop-blur-md border border-gray-200 rounded-2xl px-4 py-3 text-sm shadow-lg focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
-              />
+            <div className="absolute z-[1000] left-0 right-0 px-4 pointer-events-none" style={{ top: '14px' }}>
+              <div className="pointer-events-auto shadow-lg rounded-[24px]">
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Поиск заведения..."
+                  className="w-full bg-white/95 backdrop-blur-md border border-gray-200 rounded-[24px] px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30"
+                />
+              </div>
               <div className="flex justify-center mt-2 pointer-events-none">
-                <div className="bg-white/90 backdrop-blur-md text-[#1C1C1E] px-4 py-2 rounded-full text-xs font-semibold shadow-sm border border-gray-100">
+                <div className="bg-white/90 backdrop-blur-md text-[#1C1C1E] px-4 py-1.5 rounded-full text-[10px] font-bold shadow-sm border border-gray-100 uppercase tracking-wide">
                   Найдено: {filteredFacilities.length}
                 </div>
               </div>
@@ -93,8 +95,8 @@ const MapPage: React.FC = () => {
               ref={(instance) => { mapRef.current = instance; }}
               className="w-full h-full"
             >
-              <TileLayer 
-                url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" 
+              <TileLayer
+                url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
               />
               {filteredFacilities.map(f => (
                 <Marker key={f.id} position={[f.lat, f.lng]}>
@@ -122,7 +124,7 @@ const MapPage: React.FC = () => {
               style={{ bottom: 'calc(env(safe-area-inset-bottom) + 90px)' }}
             >
               <button className="w-12 h-12 bg-white text-black rounded-full flex items-center justify-center shadow-lg border border-gray-100 active:scale-90 transition">
-                <Navigation size={20}/>
+                <Navigation size={20} />
               </button>
             </div>
           </div>

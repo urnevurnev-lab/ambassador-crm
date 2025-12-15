@@ -89,7 +89,7 @@ const FacilityPage: React.FC = () => {
         <Layout>
             <PageHeader title={facility.name} back />
 
-            <div className="space-y-5 pb-32 pt-5 bg-[#F8F9FA] min-h-screen">
+            <div className="space-y-5 pb-32 pt-[75px] bg-[#F8F9FA] min-h-screen px-4">
 
                 {/* Адрес */}
                 <div className="flex justify-center text-center">

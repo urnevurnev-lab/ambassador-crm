@@ -2,6 +2,7 @@ import { Injectable, StreamableFile } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import * as ExcelJS from 'exceljs';
 import { Response } from 'express';
+import { TelegramService } from '../telegram/telegram.service';
 
 interface CreateSampleOrderDto {
     items: { productId: number; quantity: number }[];
@@ -9,10 +10,13 @@ interface CreateSampleOrderDto {
 
 @Injectable()
 export class SamplesService {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly telegramService: TelegramService
+    ) { }
 
     async createOrder(userId: number, dto: CreateSampleOrderDto) {
-        return this.prisma.sampleOrder.create({
+        const order = await this.prisma.sampleOrder.create({
             data: {
                 userId,
                 items: {
@@ -22,7 +26,34 @@ export class SamplesService {
                     })),
                 },
             },
+            include: {
+                user: true,
+                items: { include: { product: true } }
+            }
         });
+
+        // Notify Manager
+        const managerChatId = process.env.TELEGRAM_MANAGER_CHAT_ID; // Add this to .env later
+        if (managerChatId) {
+            const itemsList = order.items
+                .map((i, idx) => `${idx + 1}. ${i.product.line} ${i.product.flavor} (${i.quantity} шт)`)
+                .join('\n');
+
+            const message = `
+🔥 <b>Новый заказ пробников!</b>
+👤 <b>Амбассадор:</b> ${order.user.fullName}
+📦 <b>Состав заказа:</b>
+${itemsList}
+
+📅 Дата: ${new Date().toLocaleDateString('ru-RU')}
+            `.trim();
+
+            await this.telegramService.sendMessage(managerChatId, message);
+        } else {
+            console.log('TELEGRAM_MANAGER_CHAT_ID not set. Notification skipped.');
+        }
+
+        return order;
     }
 
     // Analytics: Flavor Rating (ABC Analysis approximation)
