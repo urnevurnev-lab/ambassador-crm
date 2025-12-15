@@ -15,9 +15,11 @@ import { PostsController } from './posts/posts.controller';
 import { SamplesModule } from './samples/samples.module';
 import { ReportsModule } from './reports/reports.module';
 
+import { PostsService } from './posts/posts.service';
+
 @Module({
     imports: [OrderModule, FacilitiesModule, TelegramModule, ImportsModule, AdminModule, AuthModule, SamplesModule, ReportsModule],
     controllers: [UsersController, VisitsController, ProductsController, DistributorsController, ActivitiesController, PostsController],
-    providers: [PrismaService],
+    providers: [PrismaService, PostsService],
 })
 export class AppModule { }

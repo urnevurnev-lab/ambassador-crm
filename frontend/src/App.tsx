@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { TelegramNavigator } from './components/TelegramNavigator';
 
@@ -9,11 +9,12 @@ import OrderPage from './pages/OrderPage';
 import WorkHubPage from './pages/WorkHubPage';
 import FacilitiesListPage from './pages/FacilitiesListPage';
 import FacilityPage from './pages/FacilityPage';
-import { VisitWizard } from './pages/VisitWizard';
+import VisitWizard from './pages/VisitWizard';
 import KnowledgeBasePage from './pages/KnowledgeBasePage';
 import ProfilePage from './pages/ProfilePage';
 import { VisitsHistoryPage } from './pages/VisitsHistoryPage';
 import AdminPage from './pages/AdminPage';
+import SplashPage from './pages/SplashPage';
 
 // Ленивая загрузка только для тяжелых/редких страниц
 const NewFacilityPage = lazy(() => import('./pages/NewFacilityPage'));
@@ -28,8 +29,7 @@ const PageLoader = () => (
 
 const NotFound = () => <div className="p-10 text-center">404 | Страница не найдена</div>;
 
-import { useState } from 'react';
-import SplashPage from './pages/SplashPage';
+
 
 // ...imports...
 

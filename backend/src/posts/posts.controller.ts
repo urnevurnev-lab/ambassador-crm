@@ -1,17 +1,17 @@
-import { Controller, Get } from '@nestjs/common';
-import { PrismaService } from '../prisma.service';
+import { Controller, Get, Param, Query } from '@nestjs/common';
+import { PostsService } from './posts.service';
 
 @Controller('posts')
 export class PostsController {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly postsService: PostsService) { }
 
     @Get()
-    async getPosts() {
-        return this.prisma.post.findMany({
-            orderBy: [
-                { importance: 'desc' },
-                { createdAt: 'desc' },
-            ],
-        });
+    findAll(@Query('category') category: string) {
+        return this.postsService.findAll(category);
+    }
+
+    @Get(':id')
+    findOne(@Param('id') id: string) {
+        return this.postsService.findOne(Number(id));
     }
 }

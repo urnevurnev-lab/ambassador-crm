@@ -157,6 +157,8 @@ model Post {
   title      String
   content    String
   imageUrl   String?
+  category   String   @default("NEWS") // NEWS, KNOWLEDGE
+  readTime   String?
   importance Int      @default(0)
   createdAt  DateTime @default(now())
 }

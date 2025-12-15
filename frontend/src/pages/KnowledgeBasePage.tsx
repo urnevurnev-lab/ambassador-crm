@@ -1,40 +1,65 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
-import { Search, ChevronRight, FileText, TrendingUp, ShoppingBag, Leaf, GraduationCap, Clock, Download, ArrowLeft, BookOpen } from 'lucide-react';
+import { Search, ChevronRight, FileText, TrendingUp, ShoppingBag, Leaf, Clock, Download, ArrowLeft, BookOpen, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import apiClient from '../api/apiClient';
 import { SampleOrderWizard } from '../components/SampleOrderWizard';
 import { FlavorRatingView } from '../components/FlavorRatingView';
+import ReactMarkdown from 'react-markdown';
 
-interface Article {
+interface Post {
     id: number;
     title: string;
+    content: string;
+    readTime?: string;
     category: string;
-    readTime: string;
+    imageUrl?: string;
 }
 
-const MOCK_ARTICLES: Article[] = [
-    { id: 1, title: 'Стандарты выкладки продукции', category: 'Мерчандайзинг', readTime: '5 мин' },
-    { id: 2, title: 'Скрипты общения с барменами', category: 'Продажи', readTime: '3 мин' },
-    { id: 3, title: 'Презентация новинок 2025', category: 'Продукт', readTime: '10 мин' },
-];
-
-type ViewState = 'menu' | 'rating' | 'learning';
+type ViewState = 'menu' | 'rating' | 'learning' | 'article';
 
 const KnowledgeBasePage: React.FC = () => {
     const [view, setView] = useState<ViewState>('menu');
     const [isSampleWizardOpen, setSampleWizardOpen] = useState(false);
 
-    // Articles State
+    // Dynamic Posts State
+    const [posts, setPosts] = useState<Post[]>([]);
+    const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+    const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
-    const [articles] = useState<Article[]>(MOCK_ARTICLES);
 
-    const filteredArticles = articles.filter(a =>
-        a.title.toLowerCase().includes(search.toLowerCase()) ||
-        a.category.toLowerCase().includes(search.toLowerCase())
-    );
+    // Fetch posts when entering "learning" view
+    useEffect(() => {
+        if (view === 'learning') {
+            const fetchPosts = async () => {
+                setLoading(true);
+                try {
+                    const res = await apiClient.get('/api/posts?category=KNOWLEDGE');
+                    setPosts(res.data);
+
+                    // Optional: If only one post (e.g. Brand Book), open it immediately
+                    // if (res.data.length === 1) {
+                    //     setSelectedPost(res.data[0]);
+                    //     setView('article');
+                    // }
+                } catch (e) {
+                    console.error("Failed to fetch posts", e);
+                } finally {
+                    setLoading(false);
+                }
+            };
+            fetchPosts();
+        }
+    }, [view]);
+
+    const filteredPosts = posts.filter(p => p.title.toLowerCase().includes(search.toLowerCase()));
+
+    const openArticle = (post: Post) => {
+        setSelectedPost(post);
+        setView('article');
+    };
 
     // --- RENDERERS ---
 
@@ -62,7 +87,7 @@ const KnowledgeBasePage: React.FC = () => {
                 </div>
             </motion.div>
 
-            {/* 2. Learning Base */}
+            {/* 2. Learning Base (Dynamic) */}
             <motion.div
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setView('learning')}
@@ -106,7 +131,7 @@ const KnowledgeBasePage: React.FC = () => {
                 </div>
             </motion.div>
 
-            {/* 4. Coming Soon - Smaller Block */}
+            {/* 4. Coming Soon */}
             <div className="bg-gray-50 rounded-[30px] p-6 border border-gray-100 flex items-center gap-4 opacity-60">
                 <div className="w-10 h-10 bg-gray-200 rounded-xl flex items-center justify-center text-gray-400">
                     <Clock size={20} />
@@ -117,7 +142,7 @@ const KnowledgeBasePage: React.FC = () => {
             </div>
 
             <div className="text-center pt-8 opacity-40">
-                <a href={`${apiClient.defaults.baseURL} /samples/export`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-xs font-medium text-gray-400">
+                <a href={`${apiClient.defaults.baseURL}/samples/export`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-xs font-medium text-gray-400">
                     <Download size={12} /> Скачать отчет (Excel)
                 </a>
             </div>
@@ -149,43 +174,78 @@ const KnowledgeBasePage: React.FC = () => {
             </div>
 
             {/* List */}
-            <div className="space-y-3">
-                {filteredArticles.map((article, index) => (
-                    <motion.div
-                        key={article.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.05 }}
-                    >
-                        <Link to={`#`} className="block">
-                            <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm active:scale-98 transition flex items-center justify-between">
+            {loading ? (
+                <div className="text-center text-gray-400 py-10">Загрузка...</div>
+            ) : filteredPosts.length === 0 ? (
+                <div className="text-center text-gray-400 py-10 flex flex-col items-center gap-2">
+                    <AlertCircle />
+                    Нет статей
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {filteredPosts.map((post, index) => (
+                        <motion.div
+                            key={post.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            onClick={() => openArticle(post)}
+                        >
+                            <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm active:scale-98 transition flex items-center justify-between cursor-pointer">
                                 <div className="flex items-start gap-4">
                                     <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
                                         <FileText size={20} />
                                     </div>
                                     <div>
-                                        <div className="font-bold text-[#1C1C1E] line-clamp-2 leading-snug">{article.title}</div>
+                                        <div className="font-bold text-[#1C1C1E] line-clamp-2 leading-snug">{post.title}</div>
                                         <div className="text-xs text-gray-400 mt-1 flex items-center gap-2">
-                                            <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-500">{article.category}</span>
-                                            <span>• {article.readTime}</span>
+                                            <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-500">{post.category}</span>
+                                            <span>• {post.readTime || '5 мин'}</span>
                                         </div>
                                     </div>
                                 </div>
                                 <ChevronRight size={20} className="text-gray-300" />
                             </div>
-                        </Link>
-                    </motion.div>
-                ))}
-            </div>
+                        </motion.div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 
+    const renderArticle = () => {
+        if (!selectedPost) return null;
+        return (
+            <div className="pt-[20px]">
+                {/* Article Header */}
+                <div className="flex items-center gap-4 mb-6 sticky top-[0px] z-20 bg-[#F2F1F6] py-2">
+                    <button
+                        onClick={() => setView('learning')}
+                        className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm text-[#1C1C1E] active:scale-95 transition shrink-0"
+                    >
+                        <ArrowLeft size={20} />
+                    </button>
+                    <div className="flex-1 overflow-hidden">
+                        <h2 className="font-bold text-[#1C1C1E] truncate">{selectedPost.title}</h2>
+                        <div className="text-xs text-gray-400 flex items-center gap-2">
+                            <span>{selectedPost.readTime || 'Чтение'}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-[32px] shadow-sm mb-10 prose prose-sm max-w-none">
+                    <ReactMarkdown>{selectedPost.content}</ReactMarkdown>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <Layout>
-            {/* Only show main header if in menu view, otherwise we use custom headers inside views */}
+            {/* Headers are handled inside views for better control, or we can have a main one */}
             {view === 'menu' && <PageHeader title="База Знаний" />}
 
-            <div className={`px - 4 pb - 32 ${view === 'menu' ? 'pt-[calc(env(safe-area-inset-top)+60px)]' : 'pt-[calc(env(safe-area-inset-top))]'} `}>
+            <div className={`px-4 pb-32 ${view === 'menu' ? 'pt-[calc(env(safe-area-inset-top)+60px)]' : 'pt-[calc(env(safe-area-inset-top))]'}`}>
                 <AnimatePresence mode="wait">
                     {view === 'menu' && (
                         <motion.div key="menu" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
@@ -200,6 +260,11 @@ const KnowledgeBasePage: React.FC = () => {
                     {view === 'learning' && (
                         <motion.div key="learning" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
                             {renderLearning()}
+                        </motion.div>
+                    )}
+                    {view === 'article' && (
+                        <motion.div key="article" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
+                            {renderArticle()}
                         </motion.div>
                     )}
                 </AnimatePresence>
