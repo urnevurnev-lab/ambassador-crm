@@ -10,6 +10,7 @@ import { FacilitySaturation } from '../components/FacilitySaturation';
 import { FacilityActions } from '../components/FacilityActions';
 import { FacilityMustList } from '../components/FacilityMustList';
 import { FacilityHistory } from '../components/FacilityHistory';
+import { FastOrderWizard } from '../components/FastOrderWizard';
 
 // --- Interfaces ---
 export interface Product { id: number; flavor: string; category: string; line: string; }
@@ -28,6 +29,9 @@ const FacilityPage: React.FC = () => {
     const [data, setData] = useState<FacilityResponse | null>(null);
     const [activities, setActivities] = useState<Activity[]>([]);
     const [loading, setLoading] = useState(true);
+
+    const [isOrderWizardOpen, setOrderWizardOpen] = useState(false);
+    const [orderItems, setOrderItems] = useState<Product[]>([]);
 
     useEffect(() => {
         Promise.all([
@@ -68,6 +72,11 @@ const FacilityPage: React.FC = () => {
         navigate(`/visit?facilityId=${id}&activity=${activityCode}`);
     };
 
+    const handleOpenOrder = (items: Product[]) => {
+        setOrderItems(items);
+        setOrderWizardOpen(true);
+    };
+
     if (loading || !data) return <Layout><div className="h-screen flex items-center justify-center text-gray-400">Загрузка...</div></Layout>;
 
     const { facility, currentStock, missingRecommendations } = data;
@@ -98,12 +107,19 @@ const FacilityPage: React.FC = () => {
                 {/* Сценарии работы */}
                 <FacilityActions activities={activities} onStart={handleStartActivity} />
 
-                {/* Must List */}
-                <FacilityMustList missing={missing} />
+                {/* Must List (passed callback to open wizard) */}
+                <FacilityMustList missing={missing} onOrder={handleOpenOrder} />
 
                 {/* История */}
                 <FacilityHistory visits={facility.visits} />
             </div>
+
+            <FastOrderWizard
+                isOpen={isOrderWizardOpen}
+                onClose={() => setOrderWizardOpen(false)}
+                facilityId={Number(id)}
+                items={orderItems}
+            />
         </Layout>
     );
 };

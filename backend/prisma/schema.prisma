@@ -18,6 +18,7 @@ enum VisitType {
   CHECKUP
 }
 
+// ... (User)
 model User {
   id          Int      @id @default(autoincrement())
   telegramId  String   @unique
@@ -26,12 +27,53 @@ model User {
   xp          Int      @default(0)
   level       Int      @default(1)
   balance     Float    @default(0)
+  
+  // Profile Fields
+  birthDate   DateTime?
+  tshirtSize  String?
+  cdekInfo    Json?    // { city: string, address: string, code?: string }
+
   visits      Visit[]
   orders      Order[]
+  sampleOrders SampleOrder[]
   allowedDistributors Distributor[] @relation("UserDistributors")
   createdAt   DateTime @default(now())
 }
 
+// ...
+
+model SampleOrder {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  status    String   @default("PENDING")
+  items     SampleOrderItem[]
+  createdAt DateTime @default(now())
+}
+
+model SampleOrderItem {
+  id            Int         @id @default(autoincrement())
+  sampleOrderId Int
+  sampleOrder   SampleOrder @relation(fields: [sampleOrderId], references: [id])
+  productId     Int
+  product       Product     @relation(fields: [productId], references: [id])
+  quantity      Int
+}
+
+// Ensure Product has relation to SampleOrderItem
+model Product {
+  id        Int      @id @default(autoincrement())
+  line      String
+  flavor    String
+  sku       String   @unique
+  category  String   @default("UNKNOWN")
+  createdAt DateTime @default(now())
+  productsAvailableIn Visit[] @relation("VisitProducts")
+  orderItems OrderItem[]
+  sampleOrderItems SampleOrderItem[]
+}
+
+// Other models ...
 model Facility {
   id          Int      @id @default(autoincrement())
   name        String
@@ -71,17 +113,6 @@ model Activity {
   description String?
   visits      Visit[]
   createdAt   DateTime @default(now())
-}
-
-model Product {
-  id        Int      @id @default(autoincrement())
-  line      String
-  flavor    String
-  sku       String   @unique
-  category  String   @default("UNKNOWN")
-  createdAt DateTime @default(now())
-  productsAvailableIn Visit[] @relation("VisitProducts")
-  orderItems OrderItem[]
 }
 
 model Order {

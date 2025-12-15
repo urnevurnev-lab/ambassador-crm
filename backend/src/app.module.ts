@@ -12,9 +12,10 @@ import { AdminModule } from './admin/admin.module';
 import { ActivitiesController } from './activities/activities.controller';
 import { AuthModule } from './auth/auth.module';
 import { PostsController } from './posts/posts.controller';
+import { SamplesModule } from './samples/samples.module';
 
 @Module({
-    imports: [OrderModule, FacilitiesModule, TelegramModule, ImportsModule, AdminModule, AuthModule],
+    imports: [OrderModule, FacilitiesModule, TelegramModule, ImportsModule, AdminModule, AuthModule, SamplesModule],
     controllers: [UsersController, VisitsController, ProductsController, DistributorsController, ActivitiesController, PostsController],
     providers: [PrismaService],
 })

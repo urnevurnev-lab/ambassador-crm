@@ -150,10 +150,10 @@ export const OrderPage: React.FC = () => {
 
                 {/* Плашка итого (только на шаге 2) */}
                 {step === 2 && Object.keys(cart).length > 0 && (
-                    <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 z-50 pb-[calc(env(safe-area-inset-bottom)+20px)]">
+                    <div className="fixed bottom-[80px] left-0 right-0 px-4 z-[3000]">
                         <button
                             onClick={handleSendOrder}
-                            className="w-full h-14 bg-[#1C1C1E] text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-2 active:scale-95 transition shadow-lg"
+                            className="w-full h-14 bg-[#1C1C1E] text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-2 active:scale-95 transition shadow-2xl border border-gray-700/10"
                         >
                             <Send size={20} /> Отправить заказ ({Object.values(cart).reduce((a, b) => a + b, 0)} шт.)
                         </button>

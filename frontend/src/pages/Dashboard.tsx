@@ -75,9 +75,11 @@ const Dashboard: React.FC = () => {
               Привет,<br />{displayName}
             </h1>
           </div>
-          <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-500">
-            <User size={24} />
-          </div>
+          <Link to="/profile">
+            <motion.div whileTap={{ scale: 0.9 }} className="w-12 h-12 bg-white border border-gray-100 shadow-sm rounded-full flex items-center justify-center text-[#1C1C1E]">
+              <User size={24} />
+            </motion.div>
+          </Link>
         </div>
 
         {/* Главный блок - План на смену */}

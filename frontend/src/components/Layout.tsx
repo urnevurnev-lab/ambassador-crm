@@ -14,7 +14,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="flex flex-col h-[100dvh] bg-[#F8F9FA] overflow-hidden">
       <main
-        className={`flex-grow w-full flex flex-col overflow-y-auto pt-[var(--sat)] ${showBottomTab ? 'pb-32' : 'pb-[var(--sab)]'} ${isMapPage ? '' : 'px-4'}`}
+        className={`flex-grow w-full flex flex-col overflow-y-auto pt-[var(--sat)] ${showBottomTab ? 'pb-32' : 'pb-[var(--sab)]'} ${isMapPage ? '' : 'px-2'}`}
       >
         {children}
       </main>

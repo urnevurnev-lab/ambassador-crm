@@ -8,12 +8,14 @@ interface CreateOrderDto {
     facilityId: number;
     distributorId: number;
     items: { sku: string; quantity: number }[];
+    contactName?: string;
+    contactPhone?: string;
 }
 
 @Controller('orders')
 @UseGuards(TelegramAuthGuard)
 export class OrderController {
-    constructor(private readonly orderService: OrderService) {}
+    constructor(private readonly orderService: OrderService) { }
 
     @Post()
     create(@Body() createOrderDto: CreateOrderDto, @Req() req: Request) {

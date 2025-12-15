@@ -7,6 +7,8 @@ interface CreateOrderDto {
     facilityId: number;
     distributorId: number;
     items: { sku: string; quantity: number }[];
+    contactName?: string;
+    contactPhone?: string;
 }
 
 @Injectable()
@@ -16,10 +18,10 @@ export class OrderService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly telegramService: TelegramService,
-    ) {}
+    ) { }
 
     async create(createOrderDto: CreateOrderDto, telegramUser?: TelegramAuthUser) {
-        const { facilityId, distributorId, items } = createOrderDto;
+        const { facilityId, distributorId, items, contactName, contactPhone } = createOrderDto;
 
         if (!items || items.length === 0) {
             throw new BadRequestException('Order items are required');
@@ -79,14 +81,21 @@ export class OrderService {
             },
         });
 
-        const details = items.map((i) => `• ${i.quantity} шт. ${i.sku}`).join('\n');
+        // --- Группировка items по линейкам (если бы у нас была инфа о линейках тут, пока просто список) ---
+        // Для MVP просто список
+        const details = items.map((i) => `• ${i.sku} — ${i.quantity} шт.`).join('\n');
+
         const distributorName = (distributor as any).fullName ?? distributor.name ?? 'Неизвестно';
 
+        // --- Формирование красивого сообщения ---
         const orderDetails =
-            `**Заведение:** ${facility.name} (${facility.address})\n` +
-            `**Дистрибьютор:** ${distributorName}\n` +
-            `${ambassadorUser ? `**Амбассадор:** ${ambassadorUser.fullName}\n` : ''}\n` +
-            `**Товары:**\n${details}`;
+            `📦 **НОВЫЙ ЗАКАЗ #${newOrder.id}**\n\n` +
+            `🏢 **Заведение:** ${facility.name}\n` +
+            `📍 **Адрес:** ${facility.address}\n\n` +
+            `👤 **Контактное лицо:** ${contactName || 'Не указано'}\n` +
+            `📞 **Телефон:** ${contactPhone || 'Не указано'}\n\n` +
+            `🛒 **Состав заказа:**\n${details}\n\n` +
+            `👨‍💻 **Амбассадор:** ${ambassadorUser ? ambassadorUser.fullName : 'Система'}`;
 
         if (distributor.telegramChatId) {
             await this.telegramService.sendOrderNotification(

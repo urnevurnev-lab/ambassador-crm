@@ -1,5 +1,5 @@
 import React from 'react';
-import { Camera, PackageCheck, ClipboardList, Play } from 'lucide-react';
+import { Camera, ClipboardCheck, Store, ChevronRight, Truck, Briefcase } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface Activity { id: number; code: string; name: string; }
@@ -8,12 +8,21 @@ interface FacilityActionsProps {
     onStart: (code: string) => void;
 }
 
-const ICONS: Record<string, React.ElementType> = {
-    'photo': Camera,
-    'order': PackageCheck,
-    'inventory': ClipboardList,
-    'default': Play
+const getIcon = (code: string, name: string) => {
+    const lower = (code + name).toLowerCase();
+    if (lower.includes('transit') || lower.includes('проезд')) return Truck;
+    if (lower.includes('open') || lower.includes('смена')) return Store; // Changed logic
+    if (lower.includes('tast') || lower.includes('дегустация')) return ClipboardCheck; // Placeholder
+    if (lower.includes('b2b')) return Briefcase;
+    return Camera;
 };
+
+const getColor = (code: string) => {
+    if (code === 'transit') return 'bg-blue-50 text-blue-600';
+    if (code === 'open_shift') return 'bg-purple-50 text-purple-600';
+    if (code === 'tasting') return 'bg-orange-50 text-orange-600';
+    return 'bg-gray-50 text-gray-700';
+}
 
 export const FacilityActions: React.FC<FacilityActionsProps> = ({ activities, onStart }) => {
     return (
@@ -21,35 +30,30 @@ export const FacilityActions: React.FC<FacilityActionsProps> = ({ activities, on
             <h3 className="font-bold text-[#1C1C1E] px-1 text-lg">Сценарии работы</h3>
             <div className="grid grid-cols-2 gap-3">
                 {activities.map((act) => {
-                    // Пытаемся угадать иконку по коду или имени
-                    let Icon = ICONS['default'];
-                    if (act.code.includes('photo') || act.name.toLowerCase().includes('фото')) Icon = ICONS['photo'];
-                    else if (act.code.includes('order') || act.name.toLowerCase().includes('заказ')) Icon = ICONS['order'];
-                    else if (act.code.includes('check') || act.name.toLowerCase().includes('инвент')) Icon = ICONS['inventory'];
+                    const Icon = getIcon(act.code, act.name);
+                    const colorClass = getColor(act.code);
 
                     return (
                         <motion.button
                             key={act.id}
-                            whileTap={{ scale: 0.95 }}
+                            whileTap={{ scale: 0.98 }}
                             onClick={() => onStart(act.code)}
-                            className="bg-[#1C1C1E] p-4 rounded-[24px] flex flex-col items-start justify-between h-[120px] shadow-lg relative overflow-hidden group"
+                            className={`p-4 rounded-[20px] flex flex-col items-start justify-between min-h-[100px] relative overflow-hidden group border border-transparent hover:border-black/5 transition-all shadow-sm ${colorClass} bg-opacity-60`}
                         >
-                            <div className="absolute right-[-10px] top-[-10px] bg-white/10 w-16 h-16 rounded-full blur-xl group-hover:bg-white/20 transition" />
-
-                            <div className="bg-white/20 p-2 rounded-xl text-white">
-                                <Icon size={24} />
+                            <div className="flex justify-between w-full mb-3">
+                                <div className={`p-2 rounded-xl bg-white/60 backdrop-blur-sm`}>
+                                    <Icon size={20} />
+                                </div>
                             </div>
-                            <span className="text-white font-semibold text-left leading-tight text-sm">
-                                {act.name}
-                            </span>
+
+                            <div className="flex items-center justify-between w-full">
+                                <span className="font-bold text-sm leading-tight text-left">
+                                    {act.name}
+                                </span>
+                            </div>
                         </motion.button>
                     );
                 })}
-                {activities.length === 0 && (
-                    <div className="col-span-2 text-center text-gray-400 py-8 bg-white rounded-3xl border border-gray-100 border-dashed">
-                        Нет доступных сценариев
-                    </div>
-                )}
             </div>
         </div>
     );
