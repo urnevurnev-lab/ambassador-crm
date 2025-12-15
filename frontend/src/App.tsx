@@ -9,6 +9,7 @@ import OrderPage from './pages/OrderPage';
 import FacilitiesListPage from './pages/FacilitiesListPage';
 import FacilityPage from './pages/FacilityPage';
 import { VisitWizard } from './pages/VisitWizard';
+import KnowledgeBasePage from './pages/KnowledgeBasePage';
 
 // Ленивая загрузка только для тяжелых/редких страниц
 const NewFacilityPage = lazy(() => import('./pages/NewFacilityPage'));
@@ -21,7 +22,7 @@ const PageLoader = () => (
   </div>
 );
 
-const NotFound = () => <div className="p-10 text-center">404 | Страница не найдена</div>; 
+const NotFound = () => <div className="p-10 text-center">404 | Страница не найдена</div>;
 
 const App: React.FC = () => {
   return (
@@ -37,14 +38,15 @@ const App: React.FC = () => {
           <Route path="/facility/:id" element={<FacilityPage />} />
           <Route path="/facilities" element={<FacilitiesListPage />} />
           <Route path="/visit" element={<VisitWizard />} />
-          
+          <Route path="/knowledge" element={<KnowledgeBasePage />} />
+
           {/* Редкие страницы (с лоадером) */}
           <Route path="/facility/new" element={
             <Suspense fallback={<PageLoader />}>
               <NewFacilityPage />
             </Suspense>
           } />
-          
+
           {/* Админ-панель */}
           <Route path="/admin" element={
             <Suspense fallback={<PageLoader />}>
@@ -56,7 +58,7 @@ const App: React.FC = () => {
               <AdminLogin />
             </Suspense>
           } />
-          
+
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>

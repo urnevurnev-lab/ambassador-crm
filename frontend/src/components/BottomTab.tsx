@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Map, PlusCircle, Settings } from 'lucide-react';
+import { Home, Map, PlusCircle, Settings, BookOpen } from 'lucide-react';
 
 interface TabItem {
   path: string;
@@ -12,13 +12,14 @@ const tabs: TabItem[] = [
   { path: '/', icon: Home, label: 'Главная' },
   { path: '/facilities', icon: Map, label: 'Точки' },
   { path: '/orders', icon: PlusCircle, label: 'Заказ' },
-  { path: '/admin', icon: Settings, label: 'Меню' }, // Изменил на Settings/Меню для логики
+  { path: '/knowledge', icon: BookOpen, label: 'База' },
+  { path: '/admin', icon: Settings, label: 'Меню' },
 ];
 
 const TabButton: React.FC<{ tab: TabItem; isActive: boolean }> = ({ tab, isActive }) => {
   const Icon = tab.icon;
   // Используем только цвет иконки, без фона
-  const color = isActive ? '#1C1C1E' : '#C7C7CC'; 
+  const color = isActive ? '#1C1C1E' : '#C7C7CC';
 
   return (
     <div className="flex-1 flex justify-center group pointer-events-auto">
@@ -26,13 +27,13 @@ const TabButton: React.FC<{ tab: TabItem; isActive: boolean }> = ({ tab, isActiv
         to={tab.path}
         className="w-full h-full flex flex-col items-center justify-center pt-1"
       >
-        <Icon 
-          size={26} 
-          strokeWidth={isActive ? 2.5 : 2} 
+        <Icon
+          size={26}
+          strokeWidth={isActive ? 2.5 : 2}
           color={color}
           className="transition-transform duration-200 group-active:scale-95"
         />
-        <span 
+        <span
           className="text-[10px] mt-1 font-medium transition-colors duration-200"
           style={{ color }}
         >
@@ -47,10 +48,10 @@ export const BottomTab: React.FC = () => {
   const location = useLocation();
 
   return (
-    <div 
+    <div
       className="fixed bottom-0 left-0 right-0 z-[2000] bg-white border-t border-gray-100"
-      style={{ 
-        paddingBottom: 'env(safe-area-inset-bottom)', 
+      style={{
+        paddingBottom: 'env(safe-area-inset-bottom)',
         height: 'calc(60px + env(safe-area-inset-bottom))'
       }}
     >
