@@ -18,9 +18,19 @@ export class SamplesController {
         const user = parseTelegramUserFromAuthHeader(req.headers.authorization as string);
         if (!user) throw new Error('Unauthorized');
 
-        // Find DB user ID
-        const dbUser = await this.prisma.user.findUnique({ where: { telegramId: user.telegramId } });
-        if (!dbUser) throw new Error('User not found in DB');
+        // Find DB user ID or create if not exists
+        let dbUser = await this.prisma.user.findUnique({ where: { telegramId: user.telegramId } });
+
+        if (!dbUser) {
+            console.log(`User ${user.telegramId} not found in DB. Creating...`);
+            dbUser = await this.prisma.user.create({
+                data: {
+                    telegramId: user.telegramId,
+                    fullName: user.fullName || `User ${user.telegramId}`,
+                    role: 'AMBASSADOR',
+                }
+            });
+        }
 
         return this.samplesService.createOrder(dbUser.id, dto);
     }
