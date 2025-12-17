@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X, User, Phone, Send, Check } from 'lucide-react';
+import { X, User, Phone, Check } from 'lucide-react';
 import apiClient from '../api/apiClient';
 import WebApp from '@twa-dev/sdk';
 
@@ -19,7 +19,10 @@ interface Distributor {
 export const FastOrderWizard: React.FC<FastOrderWizardProps> = ({ isOpen, onClose, facilityId, items }) => {
     const [step, setStep] = useState<1 | 2 | 3>(1);
     const [name, setName] = useState('');
-    const [phone, setPhone] = useState('');
+    const [phone, setPhone] = useState('+7');
+
+    // Selected items for order (user can toggle)
+    const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
 
     // Realistic Distributors
     const [distributors] = useState<Distributor[]>([
@@ -35,11 +38,29 @@ export const FastOrderWizard: React.FC<FastOrderWizardProps> = ({ isOpen, onClos
     useEffect(() => {
         if (isOpen) {
             setStep(1);
-            if (WebApp.initDataUnsafe?.user) {
-                // Pre-fill if needed, or leave empty
-            }
+            setPhone('+7');
+            // Pre-select all items by default
+            setSelectedItems(new Set(items.map(i => i.id)));
         }
-    }, [isOpen]);
+    }, [isOpen, items]);
+
+    // Toggle item selection
+    const toggleItem = (id: number) => {
+        const next = new Set(selectedItems);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        setSelectedItems(next);
+    };
+
+    // Phone number auto-format with +7 prefix
+    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let val = e.target.value.replace(/\D/g, '');
+        // Remove leading 7 or 8 if present
+        if (val.startsWith('7') || val.startsWith('8')) val = val.slice(1);
+        // Limit to 10 digits after +7
+        val = val.slice(0, 10);
+        setPhone('+7' + val);
+    };
 
     const handleSubmit = async () => {
         if (!selectedDistributor) return;
@@ -50,7 +71,7 @@ export const FastOrderWizard: React.FC<FastOrderWizardProps> = ({ isOpen, onClos
                 distributorId: selectedDistributor,
                 contactName: name,
                 contactPhone: phone,
-                items: items.map(i => ({ sku: i.flavor, quantity: 1 }))
+                items: items.filter(i => selectedItems.has(i.id)).map(i => ({ sku: i.flavor, quantity: 1 }))
             });
             WebApp.showAlert('Заказ успешно отправлен!');
             onClose();
@@ -83,7 +104,7 @@ export const FastOrderWizard: React.FC<FastOrderWizardProps> = ({ isOpen, onClos
                             Шаг {step} из 3
                         </div>
                         <h2 className="text-2xl font-bold text-[#1C1C1E] leading-none">
-                            {step === 1 ? 'Мact-Лист' : step === 2 ? 'Дистрибьютор' : 'Контакты'}
+                            {step === 1 ? 'Must-лист' : step === 2 ? 'Дистрибьютор' : 'Контакты'}
                         </h2>
                     </div>
                     <button onClick={onClose} className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm text-black active:scale-95 transition">
@@ -94,23 +115,38 @@ export const FastOrderWizard: React.FC<FastOrderWizardProps> = ({ isOpen, onClos
                 <div className="flex-1 overflow-y-auto -mx-2 px-2 pb-4">
                     {step === 1 && (
                         <div className="space-y-3">
+                            <p className="text-xs text-gray-500 mb-2">
+                                Выберите позиции для заказа или пропустите этот шаг
+                            </p>
                             {items.length === 0 ? (
                                 <div className="text-center text-gray-400 py-10">Список пуст</div>
                             ) : (
-                                items.map((item, idx) => (
-                                    <div key={idx} className="bg-white p-4 rounded-2xl border border-gray-100 flex justify-between items-center shadow-sm">
-                                        <div className="flex flex-col">
-                                            <span className="font-bold text-[#1C1C1E]">{item.flavor}</span>
-                                            <span className="text-xs text-gray-400">{item.line}</span>
+                                items.map((item) => {
+                                    const isSelected = selectedItems.has(item.id);
+                                    return (
+                                        <div
+                                            key={item.id}
+                                            onClick={() => toggleItem(item.id)}
+                                            className={`p-4 rounded-2xl border-2 flex justify-between items-center shadow-sm cursor-pointer active:scale-[0.98] transition ${isSelected
+                                                ? 'bg-white border-[#1C1C1E]'
+                                                : 'bg-gray-50 border-transparent opacity-60'
+                                                }`}
+                                        >
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-[#1C1C1E]">{item.flavor}</span>
+                                                <span className="text-xs text-gray-400">{item.line}</span>
+                                            </div>
+                                            {isSelected && (
+                                                <div className="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center">
+                                                    <Check size={16} />
+                                                </div>
+                                            )}
                                         </div>
-                                        <div className="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">
-                                            1
-                                        </div>
-                                    </div>
-                                ))
+                                    );
+                                })
                             )}
                             <div className="text-center text-xs text-gray-400 mt-4">
-                                Всего {items.length} позиций к заказу
+                                Выбрано {selectedItems.size} из {items.length} позиций
                             </div>
                         </div>
                     )}
@@ -158,7 +194,8 @@ export const FastOrderWizard: React.FC<FastOrderWizardProps> = ({ isOpen, onClos
                                     <label className="text-xs font-bold text-gray-400 ml-1 uppercase">Телефон</label>
                                     <input
                                         type="tel"
-                                        value={phone} onChange={e => setPhone(e.target.value)}
+                                        value={phone}
+                                        onChange={handlePhoneChange}
                                         placeholder="+7 (___) ___-__-__"
                                         className="w-full bg-transparent font-bold text-lg outline-none placeholder:text-gray-300 py-1"
                                     />

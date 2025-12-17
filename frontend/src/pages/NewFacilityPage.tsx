@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import apiClient from '../api/apiClient';
 import WebApp from '@twa-dev/sdk';
 import { useNavigate } from 'react-router-dom';
+import { MapPin, Loader2 } from 'lucide-react';
 
 const formats = [
   { value: 'Лаунж', label: 'Лаунж' },
@@ -15,7 +16,51 @@ const NewFacilityPage: React.FC = () => {
   const [address, setAddress] = useState('');
   const [format, setFormat] = useState(formats[0].value);
   const [loading, setLoading] = useState(false);
+  const [geoLoading, setGeoLoading] = useState(false);
   const navigate = useNavigate();
+
+  // Auto-detect location on page load
+  useEffect(() => {
+    detectLocation();
+  }, []);
+
+  const detectLocation = async () => {
+    if (!navigator.geolocation) return;
+
+    setGeoLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          const resp = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=ru`
+          );
+          const data = await resp.json();
+          const city = data.address?.city || data.address?.town || data.address?.village || '';
+          const region = data.address?.state || '';
+          const road = data.address?.road || '';
+          const houseNumber = data.address?.house_number || '';
+
+          // Build address string
+          let addrParts = [];
+          if (city) addrParts.push(city);
+          if (region && region !== city) addrParts.push(region);
+          if (road) addrParts.push(road);
+          if (houseNumber) addrParts.push(houseNumber);
+
+          if (addrParts.length > 0) {
+            setAddress(addrParts.join(', '));
+          }
+        } catch (e) {
+          console.error('Geocoding error:', e);
+        } finally {
+          setGeoLoading(false);
+        }
+      },
+      () => setGeoLoading(false),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
   const handleSubmit = async () => {
     if (name.trim().length < 2 || address.trim().length < 5) {
@@ -56,7 +101,27 @@ const NewFacilityPage: React.FC = () => {
         </div>
 
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-3">
-          <label className="text-sm font-semibold text-[#1C1C1E]">Адрес</label>
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-semibold text-[#1C1C1E]">Адрес</label>
+            <button
+              type="button"
+              onClick={detectLocation}
+              disabled={geoLoading}
+              className="flex items-center gap-1.5 text-xs text-[#007AFF] font-medium active:opacity-70 transition disabled:opacity-50"
+            >
+              {geoLoading ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  <span>Определяем...</span>
+                </>
+              ) : (
+                <>
+                  <MapPin size={14} />
+                  <span>Определить</span>
+                </>
+              )}
+            </button>
+          </div>
           <input
             value={address}
             onChange={(e) => setAddress(e.target.value)}

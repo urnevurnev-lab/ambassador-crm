@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import apiClient from '../api/apiClient';
-import { ChevronRight, Check, X, User, MessageSquare, Clipboard } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Check, X, User, MessageSquare, Clipboard, RefreshCw } from 'lucide-react';
+import { motion } from 'framer-motion';
 import WebApp from '@twa-dev/sdk';
 
 interface Product { id: number; flavor: string; line: string; category: string; }
@@ -13,7 +13,11 @@ const VisitWizard: React.FC = () => {
   const facilityId = searchParams.get('facilityId');
   const activityCode = searchParams.get('activity');
 
+  // Storage key for this specific visit
+  const STORAGE_KEY = `visit_wizard_${facilityId}_${activityCode}`;
+
   const [loading, setLoading] = useState(true);
+  const [initError, setInitError] = useState(false);
   const [visitId, setVisitId] = useState<number | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
 
@@ -28,34 +32,71 @@ const VisitWizard: React.FC = () => {
   const [contactName, setContactName] = useState('');
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
+  // Save state to sessionStorage whenever it changes
+  useEffect(() => {
+    if (visitId) {
+      const stateToSave = {
+        visitId,
+        step,
+        auditSelection: Array.from(auditSelection),
+        tastedSelection: Array.from(tastedSelection),
+        comment,
+        contactName
+      };
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+    }
+  }, [visitId, step, auditSelection, tastedSelection, comment, contactName, STORAGE_KEY]);
+
+  // Initialize or restore state
+  const initVisit = useCallback(async () => {
+    setLoading(true);
+    setInitError(false);
+
+    try {
+      // 1. Fetch Products
+      const pRes = await apiClient.get('/api/products');
+      setProducts(pRes.data);
+
+      // 2. Try to restore saved state first
+      const savedState = sessionStorage.getItem(STORAGE_KEY);
+      if (savedState) {
+        const parsed = JSON.parse(savedState);
+        if (parsed.visitId) {
+          // Restore all state
+          setVisitId(parsed.visitId);
+          setStep(parsed.step || 1);
+          setAuditSelection(new Set(parsed.auditSelection || []));
+          setTastedSelection(new Set(parsed.tastedSelection || []));
+          setComment(parsed.comment || '');
+          setContactName(parsed.contactName || '');
+          setLoading(false);
+          return; // Don't create new visit
+        }
+      }
+
+      // 3. Create Visit if no saved state
+      const userId = WebApp.initDataUnsafe?.user?.id || 1;
+      const vRes = await apiClient.post('/api/visits', {
+        userId,
+        facilityId: Number(facilityId),
+        type: activityCode || 'UNKNOWN',
+        userLat: parseFloat(sessionStorage.getItem('last_geo_lat') || '0'),
+        userLng: parseFloat(sessionStorage.getItem('last_geo_lng') || '0'),
+        data: {}
+      });
+      setVisitId(vRes.data.id);
+    } catch (e) {
+      console.error(e);
+      setInitError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [facilityId, activityCode, STORAGE_KEY]);
+
   // Initial Load & Create Visit
   useEffect(() => {
-    const init = async () => {
-      try {
-        // 1. Fetch Products
-        const pRes = await apiClient.get('/api/products');
-        setProducts(pRes.data);
-
-        // 2. Create Visit Immediately
-        const userId = WebApp.initDataUnsafe?.user?.id || 1; // Fallback for dev
-        const vRes = await apiClient.post('/api/visits', {
-          userId,
-          facilityId: Number(facilityId),
-          type: activityCode || 'UNKNOWN',
-          userLat: parseFloat(sessionStorage.getItem('last_geo_lat') || '0'),
-          userLng: parseFloat(sessionStorage.getItem('last_geo_lng') || '0'),
-          data: {} // Empty initial data
-        });
-        setVisitId(vRes.data.id);
-      } catch (e) {
-        console.error(e);
-        alert('Ошибка инициализации визита');
-      } finally {
-        setLoading(false);
-      }
-    };
-    init();
-  }, []);
+    initVisit();
+  }, [initVisit]);
 
   // Helper to group by line
   const productsByLine = products.reduce((acc, p) => {
@@ -98,6 +139,8 @@ const VisitWizard: React.FC = () => {
         status: 'COMPLETED',
         endedAt: new Date()
       });
+      // Clear saved state on successful finish
+      sessionStorage.removeItem(STORAGE_KEY);
       navigate(-1); // Back to facility
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
@@ -115,10 +158,36 @@ const VisitWizard: React.FC = () => {
     setTastedSelection(newSet);
   };
 
-  if (loading && !visitId) return <div className="h-screen flex items-center justify-center text-white">Создание...</div>;
+  // Error state with retry
+  if (initError) {
+    return (
+      <div className="min-h-screen bg-[#1C1C1E] text-white flex flex-col items-center justify-center gap-6 p-6">
+        <div className="text-center">
+          <div className="text-6xl mb-4">😕</div>
+          <h2 className="text-xl font-bold mb-2">Ошибка инициализации</h2>
+          <p className="text-gray-400 text-sm">Не удалось создать визит. Проверьте подключение к сети.</p>
+        </div>
+        <button
+          onClick={initVisit}
+          className="flex items-center gap-2 bg-[#007AFF] px-6 py-3 rounded-xl font-bold active:scale-95 transition"
+        >
+          <RefreshCw size={18} />
+          Повторить
+        </button>
+        <button
+          onClick={() => navigate(-1)}
+          className="text-gray-500 text-sm"
+        >
+          Назад
+        </button>
+      </div>
+    );
+  }
+
+  if (loading && !visitId) return <div className="min-h-screen bg-[#1C1C1E] flex items-center justify-center text-white">Создание...</div>;
 
   return (
-    <div className="min-h-screen bg-[#1C1C1E] text-white pb-safe">
+    <div className="min-h-screen bg-[#1C1C1E] text-white pb-safe pt-safe">
       {/* Header */}
       <div className="pt-safe px-4 py-4 flex items-center gap-4 border-b border-white/10 bg-[#1C1C1E]/80 backdrop-blur-md sticky top-0 z-50">
         <button onClick={() => navigate(-1)}><X /></button>

@@ -34,13 +34,11 @@ const NotFound = () => <div className="p-10 text-center">404 | Страница 
 // ...imports...
 
 const App: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem('isAuthenticated') === 'true';
-  });
+  // Показываем экран "Только для своих" при каждом запуске.
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   if (!isAuthenticated) {
     return <SplashPage onLoginSuccess={() => {
-      localStorage.setItem('isAuthenticated', 'true');
       setIsAuthenticated(true);
     }} />;
   }
