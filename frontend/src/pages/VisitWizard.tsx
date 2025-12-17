@@ -32,6 +32,11 @@ const VisitWizard: React.FC = () => {
   const [contactName, setContactName] = useState('');
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
+  const goBack = useCallback(() => {
+    if (facilityId) navigate(`/facility/${facilityId}`);
+    else navigate(-1);
+  }, [facilityId, navigate]);
+
   // Save state to sessionStorage whenever it changes
   useEffect(() => {
     if (visitId) {
@@ -141,7 +146,7 @@ const VisitWizard: React.FC = () => {
       });
       // Clear saved state on successful finish
       sessionStorage.removeItem(STORAGE_KEY);
-      navigate(-1); // Back to facility
+      goBack();
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -175,7 +180,7 @@ const VisitWizard: React.FC = () => {
           Повторить
         </button>
         <button
-          onClick={() => navigate(-1)}
+          onClick={goBack}
           className="text-gray-500 text-sm"
         >
           Назад
@@ -190,7 +195,7 @@ const VisitWizard: React.FC = () => {
     <div className="min-h-screen bg-[#1C1C1E] text-white pb-safe pt-safe">
       {/* Header */}
       <div className="pt-safe px-4 py-4 flex items-center gap-4 border-b border-white/10 bg-[#1C1C1E]/80 backdrop-blur-md sticky top-0 z-50">
-        <button onClick={() => navigate(-1)}><X /></button>
+        <button onClick={goBack}><X /></button>
         <div>
           <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">Шаг {step} из 3</div>
           <div className="font-bold text-lg">
@@ -216,9 +221,9 @@ const VisitWizard: React.FC = () => {
                         <div
                           key={p.id}
                           onClick={() => toggleAudit(p.id)}
-                          className={`p-3 rounded-xl border transition active:scale-95 cursor-pointer flex items-center justify-between ${isSelected ? 'bg-green-500/20 border-green-500 text-green-400' : 'bg-white/5 border-white/10 text-gray-300'}`}
+                          className={`min-w-0 p-3 rounded-xl border transition active:scale-95 cursor-pointer flex items-center justify-between ${isSelected ? 'bg-green-500/20 border-green-500 text-green-400' : 'bg-white/5 border-white/10 text-gray-300'}`}
                         >
-                          <span className="text-sm font-bold truncate pr-2">{p.flavor}</span>
+                          <span className="min-w-0 text-sm font-bold truncate pr-2">{p.flavor}</span>
                           {isSelected && <Check size={14} />}
                         </div>
                       );
@@ -263,9 +268,9 @@ const VisitWizard: React.FC = () => {
                           <div
                             key={p.id}
                             onClick={() => toggleTasted(p.id)}
-                            className={`p-3 rounded-xl border transition active:scale-95 cursor-pointer flex items-center justify-between ${isSelected ? 'bg-orange-500/20 border-orange-500 text-orange-400' : 'bg-white/5 border-white/10 text-gray-300'}`}
+                            className={`min-w-0 p-3 rounded-xl border transition active:scale-95 cursor-pointer flex items-center justify-between ${isSelected ? 'bg-orange-500/20 border-orange-500 text-orange-400' : 'bg-white/5 border-white/10 text-gray-300'}`}
                           >
-                            <span className="text-sm font-bold truncate pr-2">{p.flavor}</span>
+                            <span className="min-w-0 text-sm font-bold truncate pr-2">{p.flavor}</span>
                             {isSelected && <Check size={14} />}
                           </div>
                         );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Plus, Minus, ShoppingBag } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { X, Plus, Minus, ShoppingBag } from 'lucide-react';
 import apiClient from '../api/apiClient';
 import WebApp from '@twa-dev/sdk';
 

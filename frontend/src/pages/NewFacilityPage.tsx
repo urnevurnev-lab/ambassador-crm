@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import apiClient from '../api/apiClient';
@@ -17,12 +17,30 @@ const NewFacilityPage: React.FC = () => {
   const [format, setFormat] = useState(formats[0].value);
   const [loading, setLoading] = useState(false);
   const [geoLoading, setGeoLoading] = useState(false);
+  const [nameFocused, setNameFocused] = useState(false);
+  const [facilities, setFacilities] = useState<{ id: number; name: string; address: string }[]>([]);
   const navigate = useNavigate();
 
   // Auto-detect location on page load
   useEffect(() => {
     detectLocation();
   }, []);
+
+  // Load existing facilities for smart suggestions (avoid duplicates)
+  useEffect(() => {
+    apiClient
+      .get('/api/facilities')
+      .then((res) => setFacilities(res.data || []))
+      .catch((e) => console.error('Failed to load facilities for suggestions', e));
+  }, []);
+
+  const nameSuggestions = useMemo(() => {
+    const term = name.trim().toLowerCase();
+    if (term.length < 2) return [];
+    return facilities
+      .filter((f) => f.name?.toLowerCase().includes(term))
+      .slice(0, 6);
+  }, [facilities, name]);
 
   const detectLocation = async () => {
     if (!navigator.geolocation) return;
@@ -92,12 +110,41 @@ const NewFacilityPage: React.FC = () => {
       <div className="bg-[#F8F9FA] min-h-screen pt-[calc(env(safe-area-inset-top)+60px)] px-4 pb-24 space-y-5">
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-3">
           <label className="text-sm font-semibold text-[#1C1C1E]">Название</label>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full bg-gray-100 rounded-xl p-3 text-sm"
-            placeholder="Например: Мята Lounge"
-          />
+          <div className="relative">
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onFocus={() => setNameFocused(true)}
+              onBlur={() => setTimeout(() => setNameFocused(false), 150)}
+              className="w-full bg-gray-100 rounded-xl p-3 text-sm"
+              placeholder="Например: Мята Lounge"
+            />
+
+            {nameFocused && nameSuggestions.length > 0 && (
+              <div className="absolute left-0 right-0 top-[calc(100%+8px)] bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden z-20">
+                <div className="px-4 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                  Похожие заведения в базе
+                </div>
+                <div className="max-h-[240px] overflow-y-auto">
+                  {nameSuggestions.map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        WebApp.HapticFeedback?.impactOccurred('light');
+                        navigate(`/facility/${f.id}`);
+                      }}
+                      className="w-full text-left px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition"
+                    >
+                      <div className="font-semibold text-sm text-[#1C1C1E]">{f.name}</div>
+                      <div className="text-xs text-gray-400 mt-0.5 truncate">{f.address}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-3">

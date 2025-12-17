@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, Lock } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
+import WebApp from '@twa-dev/sdk';
 import apiClient from '../api/apiClient';
 
 interface SplashPageProps {
@@ -8,39 +9,38 @@ interface SplashPageProps {
 }
 
 const SplashPage: React.FC<SplashPageProps> = ({ onLoginSuccess }) => {
-    const [step, setStep] = useState<'splash' | 'login'>('splash');
-    const [code, setCode] = useState('');
-    const [error, setError] = useState(false);
-    const [loading, setLoading] = useState(false);
+    const [status, setStatus] = useState<'checking' | 'denied'>('checking');
+    const [message, setMessage] = useState<string | null>(null);
 
-    const handleEnter = () => {
-        setStep('login');
-    };
+    const telegramId = (WebApp as any)?.initDataUnsafe?.user?.id ? String((WebApp as any).initDataUnsafe.user.id) : null;
 
-    const handleLogin = async () => {
-        if (!code) return;
-        setLoading(true);
+    useEffect(() => {
+        (WebApp as any)?.ready?.();
+        (WebApp as any)?.expand?.();
+    }, []);
+
+    const checkAccess = useCallback(async () => {
+        setStatus('checking');
+        setMessage(null);
         try {
-            // Mock auth for now: check if code is valid, then link to telegram user
-            // Ideally: POST /api/auth/login { code }
-            // For now, let's assume any code > 3 chars is "valid" or matches specific ID
-            // Since backend "userId" logic is simple, let's just proceed.
-            // User asked: "By ID?". Yes.
-
-            // Simulation
-            await new Promise(r => setTimeout(r, 1000));
-
-            if (code.length >= 0) {
-                onLoginSuccess();
+            await apiClient.get('/api/users/me');
+            onLoginSuccess();
+        } catch (e: any) {
+            const httpStatus = e?.response?.status;
+            if (httpStatus === 404) {
+                setMessage('Вас нет в списке сотрудников. Обратитесь к администратору.');
+            } else if (httpStatus === 401) {
+                setMessage('Не удалось подтвердить Telegram-авторизацию. Откройте приложение внутри Telegram.');
             } else {
-                setError(true);
+                setMessage('Не удалось проверить доступ. Попробуйте еще раз.');
             }
-        } catch (e) {
-            setError(true);
-        } finally {
-            setLoading(false);
+            setStatus('denied');
         }
-    };
+    }, [onLoginSuccess]);
+
+    useEffect(() => {
+        checkAccess();
+    }, [checkAccess]);
 
     return (
         <div className="fixed inset-0 z-[9999] bg-black text-white overflow-hidden flex flex-col items-center justify-center">
@@ -50,23 +50,30 @@ const SplashPage: React.FC<SplashPageProps> = ({ onLoginSuccess }) => {
 
             {/* Animated Glow in background */}
             <motion.div
+                initial={{ scale: 1, opacity: 0.28 }}
                 animate={{
                     scale: [1, 1.2, 1],
-                    opacity: [0.3, 0.5, 0.3],
+                    opacity: [0.28, 0.45, 0.28],
                 }}
                 transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-900/20 rounded-full blur-[100px]"
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[560px] h-[560px] rounded-full"
+                style={{
+                    background:
+                        'radial-gradient(circle at center, rgba(99,102,241,0.45) 0%, rgba(99,102,241,0.0) 65%)',
+                }}
             />
 
             <div className="relative z-10 w-full max-w-sm px-8 flex flex-col items-center">
 
                 <AnimatePresence mode="wait">
-                    {step === 'splash' && (
+                    <motion.div
+                        key="splash-view"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        className="flex flex-col items-center w-full"
+                    >
                         <motion.div
-                            key="logo-view"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
                             className="flex flex-col items-center"
                         >
                             {/* Logo Wrapper with Shimmer */}
@@ -90,45 +97,36 @@ const SplashPage: React.FC<SplashPageProps> = ({ onLoginSuccess }) => {
                                 </h1>
                             </div>
 
-                            <motion.button
-                                whileTap={{ scale: 0.95 }}
-                                onClick={handleEnter}
-                                className="w-full h-14 bg-white text-black rounded-2xl font-bold flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.5)] transition-shadow"
-                            >
-                                Войти <ArrowRight size={20} />
-                            </motion.button>
                         </motion.div>
-                    )}
 
-                    {step === 'login' && (
-                        <motion.div
-                            key="login-view"
-                            initial={{ opacity: 0, x: 50 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            className="w-full"
-                        >
-                            <h2 className="text-2xl font-bold mb-6 text-center">Введите ID сотрудника</h2>
-
-                            <div className="relative mb-6">
-                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
-                                <input
-                                    type="text"
-                                    value={code}
-                                    onChange={(e) => { setCode(e.target.value); setError(false); }}
-                                    placeholder="Ваш ID"
-                                    className={`w-full h-14 bg-white/10 border ${error ? 'border-red-500' : 'border-white/20'} rounded-2xl pl-12 pr-4 text-white placeholder:text-gray-500 outline-none focus:border-white transition-colors text-center text-lg tracking-widest`}
-                                />
+                        {status === 'checking' ? (
+                            <div className="w-full flex items-center justify-center gap-3 text-white/70 mt-2">
+                                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white/80" />
+                                <div className="text-sm font-semibold">Проверяем доступ…</div>
                             </div>
+                        ) : (
+                            <div className="w-full mt-2">
+                                <div className="text-sm text-white/70 text-center">
+                                    {message}
+                                </div>
 
-                            <button
-                                onClick={handleLogin}
-                                disabled={loading}
-                                className="w-full h-14 bg-[#007AFF] text-white rounded-2xl font-bold flex items-center justify-center gap-2 active:scale-95 transition disabled:opacity-50"
-                            >
-                                {loading ? 'Проверка...' : 'Подтвердить'}
-                            </button>
-                        </motion.div>
-                    )}
+                                {telegramId && (
+                                    <div className="mt-4 bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
+                                        <div className="text-[10px] uppercase tracking-widest text-white/50 font-bold">Ваш Telegram ID</div>
+                                        <div className="mt-1 font-mono text-white text-lg tracking-wider">{telegramId}</div>
+                                    </div>
+                                )}
+
+                                <motion.button
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={checkAccess}
+                                    className="w-full h-14 bg-white text-black rounded-2xl font-bold flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.5)] transition-shadow mt-6"
+                                >
+                                    <RefreshCw size={20} /> Повторить
+                                </motion.button>
+                            </div>
+                        )}
+                    </motion.div>
                 </AnimatePresence>
 
             </div>

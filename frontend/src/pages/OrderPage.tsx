@@ -91,7 +91,7 @@ export const OrderPage: React.FC = () => {
                         </div>
 
                         <div className="space-y-3">
-                            {filteredFacilities.map((f, i) => (
+                            {filteredFacilities.map((f) => (
                                 <motion.div
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}

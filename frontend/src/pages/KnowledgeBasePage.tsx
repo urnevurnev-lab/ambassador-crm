@@ -3,7 +3,6 @@ import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import { Search, ChevronRight, FileText, TrendingUp, ShoppingBag, Leaf, Clock, Download, ArrowLeft, BookOpen, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
 import apiClient from '../api/apiClient';
 import { SampleOrderWizard } from '../components/SampleOrderWizard';
 import { FlavorRatingView } from '../components/FlavorRatingView';

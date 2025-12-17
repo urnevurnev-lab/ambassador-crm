@@ -17,7 +17,6 @@ export const FacilityRating: React.FC<FacilityRatingProps> = ({ score }) => {
     // SVG Path for arc.
 
     // Simple approach: Full circle, stroke-dasharray.
-    const strokeDasharray = circumference;
     const strokeDashoffset = circumference - (score / 100) * circumference;
 
     const color = score > 80 ? 'text-green-500' : 'text-orange-500';

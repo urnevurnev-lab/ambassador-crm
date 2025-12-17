@@ -12,9 +12,8 @@ const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
-    if (WebApp.initData) {
-        config.headers.Authorization = `tma ${WebApp.initData}`;
-    }
+    const initData = (WebApp as any)?.initData;
+    if (initData) config.headers.Authorization = `tma ${initData}`;
     const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
     const url = config.url || '';
     if (adminToken && url.includes('/api/admin')) {

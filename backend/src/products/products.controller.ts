@@ -6,13 +6,14 @@ export class ProductsController {
     constructor(private readonly prisma: PrismaService) { }
 
     @Post()
-    async createProduct(@Body() data: { line: string; flavor: string; sku: string; category?: string }) {
+    async createProduct(@Body() data: { line: string; flavor: string; sku: string; category?: string; isTopFlavor?: boolean }) {
         return this.prisma.product.create({
             data: {
                 line: data.line,
                 flavor: data.flavor,
                 sku: data.sku,
                 category: data.category || 'UNKNOWN',
+                isTopFlavor: data.isTopFlavor || false,
             },
         });
     }
@@ -24,14 +25,14 @@ export class ProductsController {
                 ...(line ? { line } : {}),
                 ...(category ? { category } : {}),
             },
-            orderBy: { createdAt: 'desc' },
+            orderBy: [{ isTopFlavor: 'desc' }, { line: 'asc' }, { flavor: 'asc' }],
         });
     }
 
     @Patch(':id')
     async updateProduct(
         @Param('id') id: string,
-        @Body() data: Partial<{ line: string; flavor: string; sku: string; category: string }>
+        @Body() data: Partial<{ line: string; flavor: string; sku: string; category: string; isTopFlavor: boolean }>
     ) {
         return this.prisma.product.update({
             where: { id: Number(id) },

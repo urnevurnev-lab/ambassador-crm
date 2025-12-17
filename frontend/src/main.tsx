@@ -6,7 +6,11 @@ import './index.css'
 import 'leaflet/dist/leaflet.css';
 import { fixLeafletIcons } from './utils/fix-map-icon';
 
-fixLeafletIcons();
+try {
+  fixLeafletIcons();
+} catch (e) {
+  console.warn('Leaflet icons init failed:', e);
+}
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: Error | null }> {
   constructor(props: { children: React.ReactNode }) {

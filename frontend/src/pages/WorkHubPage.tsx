@@ -14,7 +14,7 @@ const WorkHubPage: React.FC = () => {
             <div className="bg-[#F2F2F7] min-h-screen pt-[calc(env(safe-area-inset-top)+80px)] px-4 pb-32 space-y-4">
 
                 {/* 1. База Заведений (Base of Facilities) */}
-                <Link to="/facilities/list" className="block">
+                <Link to="/facilities" className="block">
                     <motion.div
                         whileTap={{ scale: 0.98 }}
                         className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-200 relative overflow-hidden group h-[200px] flex flex-col justify-between"
