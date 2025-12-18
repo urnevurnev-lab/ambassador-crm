@@ -1,73 +1,70 @@
-import { useEffect, useState } from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
-import Layout from './components/Layout';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import WebApp from '@twa-dev/sdk';
+
+// Импорт страниц
 import Dashboard from './pages/Dashboard';
-import SplashPage from './pages/SplashPage';
-// Импортируй остальные страницы...
-import MyOrdersPage from './pages/MyOrdersPage';
+import FacilitiesListPage from './pages/FacilitiesListPage';
 import MapPage from './pages/MapPage';
 import ProfilePage from './pages/ProfilePage';
-
-// 1. Строгая типизация окна (чтобы TS не ругался)
-declare global {
-  interface Window {
-    Telegram: any;
-  }
-}
+import FacilityPage from './pages/FacilityPage';
+import VisitWizard from './pages/VisitWizard';
+import WorkHubPage from './pages/WorkHubPage';
+import AdminPage from './pages/AdminPage';
+import KnowledgeBasePage from './pages/KnowledgeBasePage';
+import VisitsHistoryPage from './pages/VisitsHistoryPage';
+import MyOrdersPage from './pages/MyOrdersPage';
+import SplashPage from './pages/SplashPage';
+import NewFacilityPage from './pages/NewFacilityPage';
+// Если у тебя SampleOrderWizard это компонент, а не страница, проверь путь.
+// Если это страница - раскомментируй и используй.
+// import SampleOrderWizard from './components/SampleOrderWizard';
 
 function App() {
-  const [isReady, setIsReady] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // 2. Инициализация Telegram окружения
-    const initTg = async () => {
-      try {
-        if (window.Telegram?.WebApp) {
-          const tg = window.Telegram.WebApp;
-          
-          tg.ready();       // Сообщаем, что приложение загрузилось
-          tg.expand();      // Раскрываем на 100% высоты
-          
-          // Настраиваем цвета хедера под цвет приложения
-          tg.setHeaderColor('#ffffff'); 
-          tg.setBackgroundColor('#f9fafb'); // bg-gray-50
-          
-          // Блокируем вертикальный свайп, чтобы приложение не закрывалось случайно (актуально для последних версий)
-          if (tg.disableVerticalSwipes) {
-             tg.disableVerticalSwipes();
-          }
-        }
-      } catch (error) {
-        console.error('TG Init Error:', error);
-      } finally {
-        // Имитация загрузки ресурсов (уберем сплэш через 1.5 сек)
-        setTimeout(() => setIsReady(true), 1500);
-      }
-    };
+    // 1. Инициализация Telegram
+    if (WebApp.initDataUnsafe) {
+        WebApp.expand(); // Раскрыть на весь экран
+        WebApp.ready();  // Сообщить телеграму, что приложение готово
+    }
 
-    initTg();
+    // 2. Имитация загрузки данных (чтобы юзер увидел Splash)
+    const timer = setTimeout(() => {
+      setIsLoading(false); // <--- ВОТ ЭТО УБИРАЕТ БЕЛЫЙ ЭКРАН
+    }, 2000); // 2 секунды заставки
+
+    return () => clearTimeout(timer);
   }, []);
 
-  if (!isReady) {
+  // Если загрузка идет — показываем ТОЛЬКО Сплеш (на весь экран)
+  if (isLoading) {
     return <SplashPage />;
   }
 
-  // 3. Используем HashRouter вместо BrowserRouter
+  // Когда загрузка прошла — показываем Роутер и Приложение
   return (
-    <HashRouter>
+    <Router>
       <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="orders" element={<MyOrdersPage />} />
-          <Route path="map" element={<MapPage />} />
-          <Route path="profile" element={<ProfilePage />} />
-          {/* Добавь остальные роуты сюда */}
-          
-          {/* Любой неизвестный путь кидает на главную */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/facilities" element={<FacilitiesListPage />} />
+        <Route path="/facilities/new" element={<NewFacilityPage />} />
+        <Route path="/facilities/:id" element={<FacilityPage />} />
+        <Route path="/map" element={<MapPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/visit" element={<VisitWizard />} />
+        <Route path="/work" element={<WorkHubPage />} />
+        <Route path="/admin" element={<AdminPage />} />
+        <Route path="/knowledge-base" element={<KnowledgeBasePage />} />
+        <Route path="/visits-history" element={<VisitsHistoryPage />} />
+        <Route path="/my-orders" element={<MyOrdersPage />} />
+        {/* Заглушка для сэмплов, если нет файла страницы */}
+        <Route path="/samples" element={<WorkHubPage />} /> 
+        
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </HashRouter>
+    </Router>
   );
 }
 

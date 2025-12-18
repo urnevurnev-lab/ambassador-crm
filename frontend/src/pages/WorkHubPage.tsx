@@ -1,84 +1,74 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { Layout } from '../components/Layout';
-import { PageHeader } from '../components/PageHeader';
-import { Store, ShoppingCart, ArrowRight } from 'lucide-react';
+import { Book, Droplet, BarChart2, Package, Search } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
 const WorkHubPage: React.FC = () => {
+    const menuItems = [
+        { 
+            title: "База Знаний", 
+            subtitle: "Скрипты и гайды", 
+            icon: Book, 
+            color: "bg-blue-50 text-blue-600",
+            link: "/knowledge-base" 
+        },
+        { 
+            title: "Заказ Сэмплов", 
+            subtitle: "Пробники для точек", 
+            icon: Droplet, 
+            color: "bg-purple-50 text-purple-600",
+            link: "/samples" 
+        },
+        { 
+            title: "ABC Анализ", 
+            subtitle: "Аналитика продаж", 
+            icon: BarChart2, 
+            color: "bg-orange-50 text-orange-600",
+            link: "/analytics" 
+        },
+        // Если нужна Админка здесь (как запасной вход)
+        // { title: "Админ Панель", subtitle: "Управление", icon: Package, color: "bg-gray-100 text-gray-700", link: "/admin" }
+    ];
+
     return (
         <Layout>
-            <PageHeader title="Работа" />
+            <div className="pt-6 px-4 pb-32 space-y-6">
+                <h1 className="text-3xl font-bold text-[#1C1C1E]">Рабочий<br/>Хаб</h1>
 
-
-            <div className="bg-[#F2F2F7] min-h-screen pt-[calc(env(safe-area-inset-top)+80px)] px-4 pb-32 space-y-4">
-
-                {/* 1. База Заведений (Base of Facilities) */}
-                <Link to="/facilities" className="block">
-                    <motion.div
-                        whileTap={{ scale: 0.98 }}
-                        className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-200 relative overflow-hidden group h-[200px] flex flex-col justify-between"
-                    >
-                        {/* Background Decor */}
-                        <div className="absolute top-0 right-0 p-6 opacity-5 text-[#1C1C1E] transition-opacity group-hover:opacity-10">
-                            <Store size={120} />
-                        </div>
-
-                        <div className="relative z-10">
-                            <div className="w-12 h-12 bg-[#1C1C1E] rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg group-hover:scale-110 transition-transform">
-                                <Store size={24} />
-                            </div>
-                            <h2 className="text-2xl font-bold text-[#1C1C1E] leading-tight">
-                                База<br />Заведений
-                            </h2>
-                            <p className="text-gray-400 text-sm mt-1 font-medium">
-                                Визиты, проверки, история
-                            </p>
-                        </div>
-
-                        <div className="flex justify-end">
-                            <div className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-[#1C1C1E]">
-                                <ArrowRight size={20} />
-                            </div>
-                        </div>
-                    </motion.div>
-                </Link>
-
-                {/* 2. Оформление Заказа (Quick Order) */}
-                <Link to="/orders" className="block">
-                    <motion.div
-                        whileTap={{ scale: 0.98 }}
-                        className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-200 relative overflow-hidden group h-[200px] flex flex-col justify-between"
-                    >
-                        {/* Background Decor */}
-                        <div className="absolute top-0 right-0 p-6 opacity-5 text-blue-600 transition-opacity group-hover:opacity-10">
-                            <ShoppingCart size={120} />
-                        </div>
-
-                        <div className="relative z-10">
-                            <div className="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform">
-                                <ShoppingCart size={24} />
-                            </div>
-                            <h2 className="text-2xl font-bold text-[#1C1C1E] leading-tight">
-                                Оформить<br />Заказ
-                            </h2>
-                            <p className="text-gray-400 text-sm mt-1 font-medium">
-                                Быстрый заказ без визита
-                            </p>
-                        </div>
-
-                        <div className="flex justify-end">
-                            <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center text-blue-500">
-                                <ArrowRight size={20} />
-                            </div>
-                        </div>
-                    </motion.div>
-                </Link>
-
-                <div className="text-center pt-8">
-                    <p className="text-xs text-gray-300">Выберите режим работы</p>
+                {/* Поиск (визуальный) */}
+                <div className="relative">
+                    <Search className="absolute left-4 top-3.5 text-gray-400" size={20} />
+                    <input 
+                        type="text" 
+                        placeholder="Найти документ или инструмент..." 
+                        className="w-full bg-white rounded-2xl pl-12 pr-4 py-3 shadow-sm border border-gray-100 text-sm focus:ring-2 focus:ring-blue-100 outline-none"
+                    />
                 </div>
 
+                {/* Сетка меню */}
+                <div className="grid grid-cols-2 gap-4">
+                    {menuItems.map((item, idx) => (
+                        <Link to={item.link} key={idx} className="contents">
+                            <motion.div 
+                                whileTap={{ scale: 0.98 }}
+                                className="bg-white p-5 rounded-[24px] shadow-sm border border-gray-100 flex flex-col justify-between h-[160px] relative overflow-hidden"
+                            >
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${item.color}`}>
+                                    <item.icon size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-lg text-[#1C1C1E] leading-tight mb-1">{item.title}</h3>
+                                    <p className="text-xs text-gray-400 font-medium">{item.subtitle}</p>
+                                </div>
+                                {/* Декор на фоне */}
+                                <div className={`absolute -right-4 -bottom-4 opacity-5 ${item.color.replace('bg-', 'text-')}`}>
+                                    <item.icon size={80} />
+                                </div>
+                            </motion.div>
+                        </Link>
+                    ))}
+                </div>
             </div>
         </Layout>
     );
