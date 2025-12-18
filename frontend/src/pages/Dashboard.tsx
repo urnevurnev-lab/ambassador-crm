@@ -99,18 +99,39 @@ const Dashboard: React.FC = () => {
               Привет,<br />{displayName}
             </h1>
           </div>
-          <Link to="/profile">
-            <motion.div
-              whileTap={{ scale: 0.95 }}
-              className="w-12 h-12 bg-white border border-gray-200 shadow-sm rounded-full flex items-center justify-center text-[#1C1C1E] overflow-hidden"
-            >
-              {telegramUser?.photo_url ? (
-                <img src={telegramUser.photo_url} alt="User" className="w-full h-full object-cover" />
-              ) : (
-                <User size={20} />
-              )}
-            </motion.div>
-          </Link>
+          
+          <div className="flex items-center gap-3">
+            {/* КОЛОКОЛЬЧИК (УВЕДОМЛЕНИЯ) */}
+            <Link to="/my-orders"> {/* Ведет в историю заказов */}
+                <motion.div 
+                    whileTap={{ scale: 0.9 }}
+                    className="w-12 h-12 bg-white border border-gray-200 shadow-sm rounded-full flex items-center justify-center text-[#1C1C1E] relative"
+                >
+                    <AlertCircle size={20} />
+                    
+                    {/* Красная точка, если есть отклоненные заказы */}
+                    {orderStats && orderStats.rejectedSum > 0 && (
+                        <div className="absolute top-0 right-0 w-4 h-4 bg-red-500 rounded-full border-2 border-white flex items-center justify-center">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        </div>
+                    )}
+                </motion.div>
+            </Link>
+
+            {/* АВАТАРКА */}
+            <Link to="/profile">
+                <motion.div
+                  whileTap={{ scale: 0.95 }}
+                  className="w-12 h-12 bg-white border border-gray-200 shadow-sm rounded-full flex items-center justify-center text-[#1C1C1E] overflow-hidden"
+                >
+                  {telegramUser?.photo_url ? (
+                    <img src={telegramUser.photo_url} alt="User" className="w-full h-full object-cover" />
+                  ) : (
+                    <User size={20} />
+                  )}
+                </motion.div>
+            </Link>
+          </div>
         </div>
 
         {/* 2. GRID LAYOUT */}

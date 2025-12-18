@@ -1,9 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import * as TelegramBot from 'node-telegram-bot-api';
 import { PrismaService } from '../prisma.service';
 
 @Injectable()
-export class TelegramService {
+export class TelegramService implements OnModuleInit {
     private readonly logger = new Logger(TelegramService.name);
     private bot: TelegramBot;
 
@@ -76,6 +76,35 @@ export class TelegramService {
                 this.bot.answerCallbackQuery(query.id, { text: 'Ошибка обработки заказа' });
             }
         });
+    }
+
+    async onModuleInit(): Promise<void> {
+        // КОМАНДА 1: Узнать ID чата (для групп)
+        this.bot.onText(/^\/id(?:@[\w_]+)?$/i, (msg) => {
+            const chatId = msg.chat.id;
+            const title = msg.chat.type === 'private' ? 'Личный чат' : msg.chat.title || 'Чат';
+            this.bot.sendMessage(
+                chatId,
+                `📍 <b>${title}</b>\nID: <code>${chatId}</code>`,
+                { parse_mode: 'HTML' }
+            );
+        });
+
+        // КОМАНДА 2: Узнать свой ID (для сотрудников)
+        this.bot.onText(/^\/myid(?:@[\w_]+)?$/i, (msg) => {
+            const userId = msg.from?.id;
+            if (!userId) {
+                return;
+            }
+            const name = [msg.from.first_name, msg.from.last_name].filter(Boolean).join(' ') || 'Пользователь';
+            this.bot.sendMessage(
+                msg.chat.id,
+                `👤 <b>${name}</b>\nТвой ID: <code>${userId}</code>`,
+                { parse_mode: 'HTML' }
+            );
+        });
+
+        this.logger.log('Telegram Bot started with commands /id and /myid');
     }
 
     async sendOrderNotification(chatId: string, orderId: number, message: string) {
