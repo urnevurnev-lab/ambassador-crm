@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
-import { BottomTab } from './BottomTab';
+import { BottomTab } from './BottomTab'; // Импортируем правильно (с фигурными скобками)
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -8,19 +8,18 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
-  
-  // Скрываем меню ТОЛЬКО внутри визарда визита
-  const hideBottomTab = location.pathname === '/visit';
+
+  // Скрываем нижнее меню на странице входа/сплэше/визите (если нужно)
+  // Пока оставляем везде, кроме, может быть, самого сплэша (который перекрывает всё)
+  const showBottomTab = true; 
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#F2F3F7] text-[#1C1C1E]">
-      <main
-        className={`flex-grow w-full pt-4 ${!hideBottomTab ? 'pb-24' : 'pb-[env(safe-area-inset-bottom)]'}`}
-      >
+    <div className="min-h-screen bg-[#F3F4F6] text-gray-900 font-sans">
+      <main className="w-full max-w-md mx-auto min-h-screen bg-[#F3F4F6] relative shadow-2xl">
         {children}
       </main>
-
-      {!hideBottomTab && <BottomTab />}
+      
+      {showBottomTab && <BottomTab />}
     </div>
   );
 };

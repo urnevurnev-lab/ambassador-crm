@@ -1,183 +1,188 @@
-import React, { useState, useEffect } from 'react';
-import { Layout } from '../components/Layout';
-import { PageHeader } from '../components/PageHeader';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Plus, Minus, Search, ShoppingCart } from 'lucide-react';
+import { PageHeader } from '../components/PageHeader'; // Обрати внимание: именованный импорт
+import { StandardCard } from '../components/ui/StandardCard';
 import apiClient from '../api/apiClient';
-import { Plus, Minus, Send, Store } from 'lucide-react';
-import WebApp from '@twa-dev/sdk';
-import { motion } from 'framer-motion';
 
-interface Product { id: number; flavor: string; line: string; sku: string; }
+// Тип товара из базы
+interface Product {
+  id: number;
+  name: string;      // Иногда поле называется name
+  flavor: string;    // Иногда flavor
+  line: string;
+  category: string;
+  price: number;
+}
 
+const OrderPage: React.FC = () => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeCategory, setActiveCategory] = useState("Все");
+  const [cart, setCart] = useState<{ [key: number]: number }>({});
+  const [searchQuery, setSearchQuery] = useState("");
 
-import { useFacilities } from '../context/FacilitiesContext';
+  // 1. Загружаем реальные товары при старте
+  useEffect(() => {
+    apiClient.get('/api/products')
+      .then(res => {
+        // Приводим данные к единому виду (если в базе flavor, а мы хотим name)
+        const mapped = (res.data || []).map((p: any) => ({
+          ...p,
+          name: p.flavor || p.name, // Используем flavor как имя, если name нет
+          price: p.price || 0
+        }));
+        setProducts(mapped);
+      })
+      .catch(err => console.error("Ошибка загрузки товаров:", err))
+      .finally(() => setLoading(false));
+  }, []);
 
-export const OrderPage: React.FC = () => {
-    const [step, setStep] = useState<1 | 2>(1);
-    const { facilities, loading: facilitiesLoading } = useFacilities();
-    const [products, setProducts] = useState<Product[]>([]);
+  // Получаем список категорий из товаров
+  const categories = useMemo(() => {
+    const cats = new Set(products.map(p => p.line || "Другое"));
+    return ["Все", ...Array.from(cats).sort()];
+  }, [products]);
 
-    const [search, setSearch] = useState('');
-    const [selectedFacility, setSelectedFacility] = useState<number | null>(null);
-    const [cart, setCart] = useState<Record<number, number>>({});
-    const [productsLoading, setProductsLoading] = useState(true);
+  // Фильтрация
+  const filteredProducts = useMemo(() => {
+    return products.filter(p => {
+      const matchCategory = activeCategory === "Все" || p.line === activeCategory;
+      const matchSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchCategory && matchSearch;
+    });
+  }, [products, activeCategory, searchQuery]);
 
-    useEffect(() => {
-        apiClient.get('/api/products')
-            .then(res => setProducts(res.data || []))
-            .finally(() => setProductsLoading(false));
-    }, []);
+  // Управление корзиной
+  const handleIncrement = (id: number) => {
+    setCart(prev => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
+  };
 
-    const loading = facilitiesLoading || productsLoading;
+  const handleDecrement = (id: number) => {
+    setCart(prev => {
+      const newCount = (prev[id] || 0) - 1;
+      if (newCount <= 0) {
+        const { [id]: _, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [id]: newCount };
+    });
+  };
 
-    const filteredFacilities = facilities.filter(f =>
-        f.name.toLowerCase().includes(search.toLowerCase()) ||
-        f.address.toLowerCase().includes(search.toLowerCase())
-    );
+  const totalItems = Object.values(cart).reduce((a, b) => a + b, 0);
+  const totalPrice = Object.entries(cart).reduce((sum, [id, count]) => {
+    const product = products.find(p => p.id === Number(id));
+    return sum + (product ? product.price * count : 0);
+  }, 0);
 
-    const updateCart = (pid: number, delta: number) => {
-        setCart(prev => {
-            const next = { ...prev };
-            const newCount = (next[pid] || 0) + delta;
-            if (newCount <= 0) delete next[pid];
-            else next[pid] = newCount;
-            return next;
-        });
-    };
+  return (
+    <div className="min-h-screen bg-[#F3F4F6] pb-32">
+      {/* Шапка: Портфель (или Каталог) */}
+      <PageHeader title="Каталог" />
 
-    const handleSendOrder = async () => {
-        if (!selectedFacility) return;
-        try {
-            await apiClient.post('/api/orders', {
-                facilityId: selectedFacility,
-                items: Object.entries(cart).map(([pid, qty]) => ({ productId: Number(pid), quantity: qty }))
-            });
-            WebApp.showAlert('Заказ отправлен дистрибьютору!');
-            setCart({});
-            setStep(1);
-        } catch (e) {
-            WebApp.showAlert('Ошибка отправки заказа');
-        }
-    };
+      {/* Поиск */}
+      <div className="px-4 mb-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <input 
+            type="text" 
+            placeholder="Поиск аромата..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/5"
+          />
+        </div>
+      </div>
 
-    if (loading) return <Layout><div className="h-screen flex items-center justify-center text-gray-400">Загрузка...</div></Layout>;
+      {/* Линейки (Категории) */}
+      <div className="px-4 mb-6 overflow-x-auto no-scrollbar">
+        <div className="flex gap-2">
+          {categories.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(cat)}
+              className={`
+                px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors
+                ${activeCategory === cat 
+                  ? 'bg-black text-white shadow-md' 
+                  : 'bg-white text-gray-600 border border-gray-200'}
+              `}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      </div>
 
-    // Группировка товаров по линейкам
-    const groupedProducts = products.reduce((acc, p) => {
-        if (!acc[p.line]) acc[p.line] = [];
-        acc[p.line].push(p);
-        return acc;
-    }, {} as Record<string, Product[]>);
+      {/* Список */}
+      <div className="px-4 flex flex-col gap-3">
+        {loading ? (
+             <div className="text-center py-10 text-gray-400">Загрузка товаров...</div>
+        ) : filteredProducts.map(product => {
+          const count = cart[product.id] || 0;
+          
+          return (
+            <StandardCard
+              key={product.id}
+              title={product.name}
+              subtitle={`${product.line} • ${product.price} ₽`}
+              // Плюсик или счетчик справа
+              action={
+                count > 0 ? (
+                  <div className="flex items-center bg-gray-50 rounded-lg p-1 border border-gray-200">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleDecrement(product.id); }}
+                      className="w-8 h-8 flex items-center justify-center bg-white rounded-md shadow-sm active:scale-90 transition-transform"
+                    >
+                      <Minus size={16} className="text-gray-600" />
+                    </button>
+                    <span className="w-8 text-center font-bold text-gray-900 text-sm">{count}</span>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleIncrement(product.id); }}
+                      className="w-8 h-8 flex items-center justify-center bg-black text-white rounded-md shadow-sm active:scale-90 transition-transform"
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); handleIncrement(product.id); }}
+                    className="p-2 bg-gray-100 rounded-full text-gray-600 active:bg-black active:text-white transition-colors"
+                  >
+                    <Plus size={20} />
+                  </button>
+                )
+              }
+            />
+          );
+        })}
+        
+        {!loading && filteredProducts.length === 0 && (
+          <div className="text-center text-gray-400 py-10">
+            Ничего не найдено
+          </div>
+        )}
+      </div>
 
-    return (
-        <Layout>
-            <PageHeader title="Новый заказ" back={step === 2} onBack={() => { setStep(1); setSearch(''); }} />
-
-            <div className="pt-[60px] pb-32">
-
-                {/* Шаг 1: Выбор точки */}
-                {step === 1 && (
-                    <div className="space-y-4 px-4">
-                        {/* Sticky Search */}
-                        <div className="sticky top-[70px] z-30 pb-2">
-                            <div className="bg-white p-2 rounded-[24px] shadow-sm border border-gray-100 flex items-center gap-2">
-                                <Store className="text-gray-400 ml-2" size={20} />
-                                <input
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    placeholder="Поиск заведения..."
-                                    className="flex-1 bg-transparent text-sm outline-none placeholder:text-gray-400 py-2"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="space-y-3">
-                            {filteredFacilities.map((f) => (
-                                <motion.div
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    transition={{ duration: 0.2 }}
-                                    key={f.id}
-                                    onClick={() => { setSelectedFacility(f.id); setStep(2); }}
-                                    whileTap={{ scale: 0.98 }}
-                                    className="bg-white p-5 rounded-[30px] border border-gray-100 shadow-sm flex items-center justify-between cursor-pointer"
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0">
-                                            <Store size={24} />
-                                        </div>
-                                        <div>
-                                            <div className="font-bold text-[#1C1C1E] text-lg">{f.name}</div>
-                                            <div className="text-xs text-gray-400 mt-1">{f.address}</div>
-                                        </div>
-                                    </div>
-                                    <div className="w-8 h-8 rounded-full border-2 border-gray-100 flex items-center justify-center">
-                                        <div className="w-4 h-4 rounded-full bg-gray-100" />
-                                    </div>
-                                </motion.div>
-                            ))}
-                            {filteredFacilities.length === 0 && (
-                                <div className="text-center text-gray-400 py-10">Ничего не найдено</div>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {/* Шаг 2: Формирование корзины */}
-                {step === 2 && (
-                    <div className="space-y-4 px-4">
-                        {Object.entries(groupedProducts).map(([line, items]) => (
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                key={line}
-                                className="bg-white rounded-[30px] p-6 border border-gray-100 shadow-sm"
-                            >
-                                <h3 className="font-bold text-xl mb-6 text-[#1C1C1E]">{line}</h3>
-                                <div className="space-y-6">
-                                    {items.map(p => (
-                                        <div key={p.id} className="flex justify-between items-center">
-                                            <div className="text-sm font-bold text-gray-700 w-1/2">{p.flavor}</div>
-
-                                            <div className="flex items-center bg-gray-50 rounded-2xl p-1.5 gap-2">
-                                                <button
-                                                    onClick={() => updateCart(p.id, -1)}
-                                                    className="w-8 h-8 flex items-center justify-center bg-white rounded-xl shadow-sm text-gray-600 active:scale-90 transition"
-                                                >
-                                                    <Minus size={16} />
-                                                </button>
-                                                <div className="w-8 text-center font-bold text-[#1C1C1E]">
-                                                    {cart[p.id] || 0}
-                                                </div>
-                                                <button
-                                                    onClick={() => updateCart(p.id, 1)}
-                                                    className="w-8 h-8 flex items-center justify-center bg-[#1C1C1E] text-white rounded-xl shadow-sm active:scale-90 transition"
-                                                >
-                                                    <Plus size={16} />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </motion.div>
-                        ))}
-                    </div>
-                )}
-
-                {/* Плашка итого (только на шаге 2) */}
-                {step === 2 && Object.keys(cart).length > 0 && (
-                    <div className="fixed bottom-[80px] left-0 right-0 px-4 z-[3000]">
-                        <button
-                            onClick={handleSendOrder}
-                            className="w-full h-14 bg-[#1C1C1E] text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-2 active:scale-95 transition shadow-2xl border border-gray-700/10"
-                        >
-                            <Send size={20} /> Отправить заказ ({Object.values(cart).reduce((a, b) => a + b, 0)} шт.)
-                        </button>
-                    </div>
-                )}
-
+      {/* Нижняя кнопка "Оформить" */}
+      {totalItems > 0 && (
+        <div className="fixed bottom-safe left-4 right-4 z-40 mb-20 animate-fade-in">
+          <button 
+            className="w-full bg-black text-white p-4 rounded-2xl shadow-xl flex items-center justify-between active:scale-[0.98] transition-transform"
+          >
+            <div className="flex items-center gap-3">
+              <div className="bg-white/20 px-3 py-1 rounded-lg font-bold text-sm">
+                {totalItems} шт
+              </div>
+              <span className="font-bold">В корзину</span>
             </div>
-        </Layout>
-    );
+            <div className="font-bold text-lg">
+              {totalPrice.toLocaleString()} ₽
+            </div>
+          </button>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default OrderPage;

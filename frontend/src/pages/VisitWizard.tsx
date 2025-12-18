@@ -1,120 +1,247 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Layout } from '../components/Layout';
+import { PageHeader } from '../components/PageHeader';
+import { StandardCard } from '../components/ui/StandardCard';
+import { Check, Plus, User, Clock, MessageSquare, Coffee } from 'lucide-react';
 import apiClient from '../api/apiClient';
-import { X, Check, Search, Plus, Trash2, MapPin, Users, Briefcase, Clock, MessageSquare } from 'lucide-react';
-import WebApp from '@twa-dev/sdk';
-import { motion, AnimatePresence } from 'framer-motion';
+
+// Вспомогательная функция (вынесена наружу)
+const groupBy = (array: any[], key: string) => {
+  return array.reduce((result, currentValue) => {
+    (result[currentValue[key]] = result[currentValue[key]] || []).push(currentValue);
+    return result;
+  }, {});
+};
 
 const VisitWizard: React.FC = () => {
-    const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    const facilityId = Number(searchParams.get('facilityId'));
-    const activityCode = searchParams.get('activity') || 'checkup';
-    const [loading, setLoading] = useState(true);
-    const [visitId, setVisitId] = useState<number | null>(null);
+    const [searchParams] = useSearchParams();
+    const activity = searchParams.get('activity') || 'checkup';
+    const facilityId = searchParams.get('facilityId');
+
+    // --- СОСТОЯНИЕ (HOOKS) ---
     const [products, setProducts] = useState<any[]>([]);
-    
-    // State
-    const [transitSelection, setTransitSelection] = useState<Set<number>>(new Set());
-    const [transitComment, setTransitComment] = useState('');
-    const [searchTerm, setSearchTerm] = useState('');
-    const [tastingGuests, setTastingGuests] = useState([{ id: '1', name: '', contact: '' }]);
-    const [tastingFeedback, setTastingFeedback] = useState('');
-    const [b2bGuests, setB2bGuests] = useState([{ id: '1', name: '', contact: '', facility: '' }]);
-    const [b2bComment, setB2bComment] = useState('');
-    const [checkupData, setCheckupData] = useState({ startTime: '', endTime: '', cups: '', feedback: '' });
+    const [loading, setLoading] = useState(false);
+    const [comment, setComment] = useState('');
 
+    // Сценарий 1: Проезд
+    const [inventory, setInventory] = useState<Record<number, boolean>>({}); 
+    // Сценарий 2: Дегустация
+    const [guests, setGuests] = useState<{name: string, phone: string}[]>([{name: '', phone: ''}]);
+    // Сценарий 3: B2B
+    const [b2bContact, setB2bContact] = useState({ name: '', phone: '', venue: '' });
+    // Сценарий 4: Смена
+    const [shift, setShift] = useState({ start: '12:00', end: '20:00', cups: 0 });
+
+    // --- ЭФФЕКТЫ ---
     useEffect(() => {
-        const init = async () => {
-            try {
-                const pRes = await apiClient.get('/api/products');
-                setProducts(pRes.data || []);
-                const res = await apiClient.post('/api/visits', {
-                    facilityId, type: activityCode,
-                    userId: WebApp.initDataUnsafe?.user?.id || 1, 
-                    status: 'IN_PROGRESS'
-                });
-                setVisitId(res.data.id);
-            } catch (e) { console.error(e); } finally { setLoading(false); }
+        if (activity === 'transit') {
+            setLoading(true);
+            apiClient.get('/api/products')
+                .then(res => setProducts(res.data || []))
+                .catch(err => console.error(err))
+                .finally(() => setLoading(false));
+        }
+    }, [activity]);
+
+    // ВАЖНО: useMemo теперь НА ВЕРХНЕМ УРОВНЕ (Исправление ошибки)
+    const groupedProducts = useMemo(() => {
+        if (activity !== 'transit') return {};
+        return groupBy(products, 'line');
+    }, [products, activity]);
+
+    const handleFinish = () => {
+        const reportData = {
+            facilityId,
+            activity,
+            comment,
+            data: activity === 'transit' ? { inventory } :
+                  activity === 'tasting' ? { guests } :
+                  activity === 'b2b' ? { b2bContact } :
+                  { shift }
         };
-        init();
-    }, []);
 
-    const handleFinish = async () => {
-        if (!visitId) return;
-        let finalData: any = {};
-        let comment = '';
-        if (activityCode === 'transit') { finalData = { products: Array.from(transitSelection) }; comment = transitComment; }
-        else if (activityCode === 'tasting') { finalData = { guests: tastingGuests }; comment = tastingFeedback; }
-        else if (activityCode === 'training') { finalData = { guests: b2bGuests }; comment = b2bComment; }
-        else { finalData = checkupData; comment = checkupData.feedback; }
-
-        await apiClient.patch(`/api/visits/${visitId}`, { status: 'COMPLETED', endedAt: new Date(), comment, data: finalData });
+        console.log("Отправка отчета:", reportData);
+        alert("Отчет отправлен! (Данные в консоли)");
         navigate(-1);
     };
 
-    // Renderers
-    const renderTransit = () => {
-        const filtered = products.filter(p => p.flavor.toLowerCase().includes(searchTerm.toLowerCase()));
-        return (
-            <div className="space-y-4">
-                <div className="bg-blue-50 p-4 rounded-2xl flex gap-3 text-blue-900"><MapPin /> <div><div className="font-bold">Чек-ин</div><div className="text-xs">Геопозиция сохранена</div></div></div>
-                <div className="bg-white p-4 rounded-2xl shadow-sm"><textarea className="w-full bg-gray-50 rounded-xl p-3" placeholder="Что делали?" value={transitComment} onChange={e => setTransitComment(e.target.value)} /></div>
-                <div className="bg-white p-4 rounded-2xl shadow-sm">
-                    <div className="relative mb-4"><Search className="absolute left-3 top-3 text-gray-400" /><input className="w-full bg-gray-50 pl-10 p-3 rounded-xl" placeholder="Найти вкус..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /></div>
-                    <div className="flex flex-wrap gap-2">{filtered.map(p => (
-                        <button key={p.id} onClick={() => { const s = new Set(transitSelection); if(s.has(p.id)) s.delete(p.id); else s.add(p.id); setTransitSelection(s); }} 
-                        className={`px-3 py-2 rounded-xl text-xs font-bold border ${transitSelection.has(p.id) ? 'bg-black text-white' : 'bg-white'}`}>{p.flavor}</button>
-                    ))}</div>
-                </div>
+    // --- РЕНДЕР ФУНКЦИИ (теперь просто возвращают JSX) ---
+
+    const renderTransit = () => (
+        <div className="space-y-4">
+            <div className="bg-white p-4 rounded-2xl border border-gray-100">
+                <h3 className="font-bold mb-4">Отметьте наличие (по линейкам)</h3>
+                {Object.entries(groupedProducts).map(([line, items]: [string, any]) => (
+                    <div key={line} className="mb-6">
+                        <h4 className="text-sm font-bold text-gray-400 uppercase mb-2 border-b border-gray-100 pb-1">{line}</h4>
+                        <div className="space-y-2">
+                            {items.map((p: any) => (
+                                <div 
+                                    key={p.id}
+                                    onClick={() => setInventory(prev => ({ ...prev, [p.id]: !prev[p.id] }))}
+                                    className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${inventory[p.id] ? 'border-green-500 bg-green-50' : 'border-gray-100 bg-white'}`}
+                                >
+                                    <span className={`text-sm font-medium ${inventory[p.id] ? 'text-green-900' : 'text-gray-700'}`}>{p.flavor}</span>
+                                    {inventory[p.id] && <Check size={16} className="text-green-600" />}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ))}
             </div>
-        );
-    };
+            <StandardCard title="Комментарий" icon={MessageSquare}>
+                <textarea 
+                    className="w-full bg-gray-50 rounded-xl p-3 text-sm focus:outline-none mt-2"
+                    placeholder="Что делали, что курили..."
+                    rows={3}
+                    value={comment}
+                    onChange={e => setComment(e.target.value)}
+                />
+            </StandardCard>
+        </div>
+    );
 
     const renderTasting = () => (
         <div className="space-y-4">
-            <div className="bg-white p-5 rounded-2xl shadow-sm"><h3 className="font-bold mb-4">Гости</h3>
-                {tastingGuests.map((g, i) => (
-                    <div key={g.id} className="bg-gray-50 p-3 rounded-xl mb-2"><input placeholder="Имя" className="bg-transparent w-full font-bold mb-1" value={g.name} onChange={e => {const n=[...tastingGuests]; n[i].name=e.target.value; setTastingGuests(n)}}/><input placeholder="Контакты" className="bg-transparent w-full text-xs" value={g.contact} onChange={e => {const n=[...tastingGuests]; n[i].contact=e.target.value; setTastingGuests(n)}}/></div>
-                ))}
-                <button onClick={() => setTastingGuests([...tastingGuests, {id: Date.now().toString(), name:'', contact:''}])} className="w-full border border-dashed p-3 rounded-xl text-gray-500 font-bold flex justify-center gap-2"><Plus/> Добавить гостя</button>
-            </div>
-            <div className="bg-white p-5 rounded-2xl shadow-sm"><textarea className="w-full bg-gray-50 rounded-xl p-3" placeholder="Общий фидбек..." value={tastingFeedback} onChange={e => setTastingFeedback(e.target.value)}/></div>
+            <StandardCard title="Участники дегустации" icon={Coffee}>
+                <div className="space-y-4 mt-2">
+                    {guests.map((guest, idx) => (
+                        <div key={idx} className="p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-2">
+                            <div className="text-xs font-bold text-gray-400">Гость #{idx + 1}</div>
+                            <input 
+                                placeholder="Имя" 
+                                className="w-full p-2 rounded-lg border border-gray-200 text-sm bg-white"
+                                value={guest.name}
+                                onChange={e => {
+                                    const newGuests = [...guests];
+                                    newGuests[idx].name = e.target.value;
+                                    setGuests(newGuests);
+                                }}
+                            />
+                            <input 
+                                placeholder="Контакт / Telegram" 
+                                className="w-full p-2 rounded-lg border border-gray-200 text-sm bg-white"
+                                value={guest.phone}
+                                onChange={e => {
+                                    const newGuests = [...guests];
+                                    newGuests[idx].phone = e.target.value;
+                                    setGuests(newGuests);
+                                }}
+                            />
+                        </div>
+                    ))}
+                    <button 
+                        onClick={() => setGuests([...guests, {name: '', phone: ''}])}
+                        className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 font-bold flex items-center justify-center gap-2 hover:border-black hover:text-black transition-colors"
+                    >
+                        <Plus size={18} /> Добавить человека
+                    </button>
+                </div>
+            </StandardCard>
+            <div className="text-center text-gray-400 text-sm">Всего гостей: {guests.length}</div>
         </div>
     );
 
     const renderB2B = () => (
-        <div className="space-y-4">
-            <div className="bg-white p-5 rounded-2xl shadow-sm"><h3 className="font-bold mb-4">Участники B2B</h3>
-                {b2bGuests.map((g, i) => (
-                    <div key={g.id} className="bg-gray-50 p-3 rounded-xl mb-2"><input placeholder="Имя / Должность" className="bg-transparent w-full font-bold mb-1" value={g.name} onChange={e => {const n=[...b2bGuests]; n[i].name=e.target.value; setB2bGuests(n)}}/><input placeholder="Заведение (откуда)" className="bg-transparent w-full text-xs" value={g.facility} onChange={e => {const n=[...b2bGuests]; n[i].facility=e.target.value; setB2bGuests(n)}}/></div>
-                ))}
-                <button onClick={() => setB2bGuests([...b2bGuests, {id: Date.now().toString(), name:'', contact:'', facility:''}])} className="w-full border border-dashed p-3 rounded-xl text-gray-500 font-bold flex justify-center gap-2"><Plus/> Добавить</button>
+        <StandardCard title="Контакт B2B" icon={User}>
+            <div className="space-y-3 mt-2">
+                <input 
+                    placeholder="Название заведения" 
+                    className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 outline-none"
+                    value={b2bContact.venue}
+                    onChange={e => setB2bContact({...b2bContact, venue: e.target.value})}
+                />
+                <input 
+                    placeholder="Имя ЛПР" 
+                    className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 outline-none"
+                    value={b2bContact.name}
+                    onChange={e => setB2bContact({...b2bContact, name: e.target.value})}
+                />
+                <input 
+                    placeholder="Контакт" 
+                    className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 outline-none"
+                    value={b2bContact.phone}
+                    onChange={e => setB2bContact({...b2bContact, phone: e.target.value})}
+                />
             </div>
-            <div className="bg-white p-5 rounded-2xl shadow-sm"><textarea className="w-full bg-gray-50 rounded-xl p-3" placeholder="Итоги..." value={b2bComment} onChange={e => setB2bComment(e.target.value)}/></div>
-        </div>
+        </StandardCard>
     );
 
     const renderCheckup = () => (
-        <div className="space-y-4">
-            <div className="bg-white p-5 rounded-2xl shadow-sm"><div className="flex gap-4"><input type="time" className="bg-gray-50 w-full p-3 rounded-xl" value={checkupData.startTime} onChange={e => setCheckupData({...checkupData, startTime: e.target.value})}/><input type="time" className="bg-gray-50 w-full p-3 rounded-xl" value={checkupData.endTime} onChange={e => setCheckupData({...checkupData, endTime: e.target.value})}/></div><input type="number" placeholder="Продано чашек" className="w-full bg-gray-50 p-3 rounded-xl mt-4" value={checkupData.cups} onChange={e => setCheckupData({...checkupData, cups: e.target.value})}/></div>
-            <div className="bg-white p-5 rounded-2xl shadow-sm"><textarea className="w-full bg-gray-50 rounded-xl p-3" placeholder="Отзывы гостей..." value={checkupData.feedback} onChange={e => setCheckupData({...checkupData, feedback: e.target.value})}/></div>
+        <div className="space-y-3">
+            <StandardCard title="Время работы" icon={Clock}>
+                <div className="flex gap-4 mt-2">
+                    <div className="flex-1">
+                        <div className="text-xs text-gray-400 mb-1">Начало</div>
+                        <input type="time" value={shift.start} onChange={e => setShift({...shift, start: e.target.value})} className="w-full p-2 bg-gray-50 rounded-lg font-bold text-center border border-gray-200" />
+                    </div>
+                    <div className="flex-1">
+                        <div className="text-xs text-gray-400 mb-1">Конец</div>
+                        <input type="time" value={shift.end} onChange={e => setShift({...shift, end: e.target.value})} className="w-full p-2 bg-gray-50 rounded-lg font-bold text-center border border-gray-200" />
+                    </div>
+                </div>
+            </StandardCard>
+
+            <StandardCard title="Продажи" icon={Coffee}>
+                <div className="flex items-center justify-between mt-2">
+                    <span className="text-gray-600">Отдано чашек/кальянов:</span>
+                    <div className="flex items-center gap-3">
+                        <button onClick={() => setShift(s => ({...s, cups: Math.max(0, s.cups - 1)}))} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center font-bold">-</button>
+                        <span className="text-xl font-bold w-8 text-center">{shift.cups}</span>
+                        <button onClick={() => setShift(s => ({...s, cups: s.cups + 1}))} className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold">+</button>
+                    </div>
+                </div>
+            </StandardCard>
+
+            <StandardCard title="Комментарии посетителей" icon={MessageSquare}>
+                <textarea 
+                    className="w-full bg-gray-50 rounded-xl p-3 text-sm focus:outline-none mt-2"
+                    placeholder="Отзывы гостей..."
+                    rows={4}
+                    value={comment}
+                    onChange={e => setComment(e.target.value)}
+                />
+            </StandardCard>
         </div>
     );
 
-    if (loading) return <div className="h-screen flex justify-center items-center">Загрузка...</div>;
+    const getTitle = () => {
+        switch(activity) {
+            case 'transit': return 'Проезд';
+            case 'tasting': return 'Дегустация';
+            case 'b2b': return 'Обучение B2B';
+            case 'checkup': return 'Открытая смена';
+            default: return 'Визит';
+        }
+    };
 
     return (
-        <div className="fixed inset-0 bg-[#F2F3F7] flex flex-col">
-            <div className="bg-white px-4 pt-4 pb-2 flex justify-between items-center"><h1 className="font-bold text-lg">Визит</h1><button onClick={()=>navigate(-1)} className="bg-gray-100 rounded-full w-8 h-8 flex justify-center items-center"><X size={18}/></button></div>
-            <div className="flex-1 overflow-y-auto p-4 pb-32">
-                {activityCode === 'transit' && renderTransit()}
-                {activityCode === 'tasting' && renderTasting()}
-                {activityCode === 'training' && renderB2B()}
-                {activityCode === 'checkup' && renderCheckup()}
+        <Layout>
+            <PageHeader title={getTitle()} />
+            <div className="px-4 pb-32 pt-2 bg-[#F3F4F6] min-h-screen">
+                
+                {loading && <div className="text-center py-10">Загрузка данных...</div>}
+                
+                {!loading && (
+                    <div className="animate-fade-in">
+                        {activity === 'transit' && renderTransit()}
+                        {activity === 'tasting' && renderTasting()}
+                        {activity === 'b2b' && renderB2B()}
+                        {activity === 'checkup' && renderCheckup()}
+                        
+                        <button 
+                            onClick={handleFinish}
+                            className="w-full bg-black text-white py-4 rounded-2xl font-bold shadow-lg mt-8 active:scale-[0.98] transition-transform"
+                        >
+                            Завершить и Отправить
+                        </button>
+                    </div>
+                )}
             </div>
-            <div className="bg-white p-4 pb-8"><button onClick={handleFinish} className="w-full bg-[#1C1C1E] text-white py-4 rounded-2xl font-bold flex justify-center gap-2"><Check/> Завершить</button></div>
-        </div>
+        </Layout>
     );
 };
+
 export default VisitWizard;

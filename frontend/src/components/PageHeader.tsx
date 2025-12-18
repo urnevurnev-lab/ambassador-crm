@@ -1,52 +1,41 @@
 import React from 'react';
-import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { ChevronLeft } from 'lucide-react';
 
 interface PageHeaderProps {
   title: string;
-  back?: boolean;
-  onBack?: () => void;
-  rightContent?: React.ReactNode;
-  className?: string;
+  backTo?: string;
+  rightAction?: React.ReactNode;
 }
 
-export const PageHeader: React.FC<PageHeaderProps> = ({ title, back, onBack, rightContent, className = '' }) => {
+// ВАЖНО: export const
+export const PageHeader: React.FC<PageHeaderProps> = ({ title, backTo, rightAction }) => {
   const navigate = useNavigate();
-  const headerPaddingTop = 'calc(env(safe-area-inset-top, 0px) + 16px)';
 
   const handleBack = () => {
-    if (onBack) {
-      onBack();
+    if (backTo) {
+      navigate(backTo);
     } else {
       navigate(-1);
     }
   };
 
   return (
-    <div className={`fixed top-0 left-0 right-0 z-50 bg-[#F8F9FA]/90 backdrop-blur-md border-b border-gray-200/50 ${className}`}>
-      <div
-        className="relative flex items-center px-4 pb-3 gap-2"
-        style={{ paddingTop: headerPaddingTop }}
-      >
-        {back && (
-          <button
-            onClick={handleBack}
-            className="mr-3 p-2 -ml-2 rounded-full hover:bg-gray-200/50 transition active:scale-95 text-[#007AFF]"
-          >
-            <ArrowLeft size={22} />
-          </button>
-        )}
-
-        <h1 className="text-[17px] font-semibold text-[#1C1C1E] flex-grow truncate text-center pr-8 leading-snug">
+    <div className="sticky top-0 z-40 bg-[#F3F4F6]/95 backdrop-blur-sm px-1 py-3 mb-2 flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <button 
+          onClick={handleBack}
+          className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-gray-700 shadow-sm border border-gray-200 active:scale-95 transition-transform"
+        >
+          <ChevronLeft size={22} className="relative right-[1px]" />
+        </button>
+        
+        <h1 className="text-xl font-bold text-gray-900 leading-none pt-0.5">
           {title}
         </h1>
-
-        {rightContent && (
-          <div className="absolute right-4 top-0 bottom-0 flex items-center">
-            {rightContent}
-          </div>
-        )}
       </div>
+      
+      <div>{rightAction}</div>
     </div>
   );
 };

@@ -1,249 +1,383 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Layout } from '../components/Layout';
-import { Users, Package, BarChart2, Upload, Settings, ChevronRight, Plus, Trash2, Edit2, X, MessageCircle, Check, DollarSign, Save } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { PageHeader } from '../components/PageHeader';
+import { StandardCard } from '../components/ui/StandardCard';
+import { LockScreen } from '../components/LockScreen'; // <--- ИСПРАВЛЕНО: Добавил { }
 import apiClient from '../api/apiClient';
-import { LockScreen } from '../components/LockScreen';
+import { 
+    Users, Package, DollarSign, 
+    Check, X, Trash2, Plus, ChevronDown, ChevronUp 
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
-// --- Types ---
+// --- ТИПЫ ДАННЫХ ---
 interface Product {
     id: number;
     line: string;
     flavor: string;
-    sku: string;
-    category: string;
-    price?: number;
-    isTopFlavor?: boolean;
+    price: number;
 }
 
 interface User {
     id: number;
-    telegramId: string;
-    fullName: string;
-    role: 'ADMIN' | 'AMBASSADOR';
-    allowedDistributors?: { id: number; name: string }[];
-    createdAt: string;
-}
-
-interface Distributor {
-    id: number;
     name: string;
-    fullName?: string;
-    telegramChatId?: string;
+    telegramId: string;
     chatId?: string;
+    role?: string;
 }
 
-type AdminView = 'menu' | 'products' | 'users' | 'reports' | 'orders' | 'chats' | 'prices';
+// --- КОМПОНЕНТЫ УПРАВЛЕНИЯ ---
 
-// --- COMPONENTS ---
-
-const PricesManager = ({ onBack }: { onBack: () => void }) => {
-    const [lines, setLines] = useState<{ name: string; price: number }[]>([]);
+// 1. МЕНЕДЖЕР ТОВАРОВ (Логика: Линейка -> Вкусы)
+const ProductManager = ({ onBack }: { onBack: () => void }) => {
+    const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState<string | null>(null);
+    
+    // Состояние формы добавления
+    const [isCreating, setIsCreating] = useState(false);
+    const [newLine, setNewLine] = useState('');
+    const [selectedLine, setSelectedLine] = useState('');
+    const [newFlavor, setNewFlavor] = useState('');
+    const [newPrice, setNewPrice] = useState(2500);
 
-    React.useEffect(() => { loadData(); }, []);
+    // Раскрытые линейки
+    const [expandedLines, setExpandedLines] = useState<Record<string, boolean>>({});
 
-    const loadData = async () => {
+    useEffect(() => { loadProducts(); }, []);
+
+    const loadProducts = () => {
         setLoading(true);
-        try {
-            const res = await apiClient.get<Product[]>('/api/products');
-            const products = res.data || [];
-            const linesMap = new Map<string, number>();
-            products.forEach(p => {
-                if (!linesMap.has(p.line)) linesMap.set(p.line, p.price || 0);
-            });
-            const linesArray = Array.from(linesMap.entries()).map(([name, price]) => ({ name, price }));
-            setLines(linesArray.sort((a, b) => a.name.localeCompare(b.name)));
-        } catch (e) { console.error(e); } finally { setLoading(false); }
+        apiClient.get('/api/products')
+            .then(res => setProducts(res.data || []))
+            .catch(err => console.error(err))
+            .finally(() => setLoading(false));
     };
 
-    const savePrice = async (lineName: string, price: number) => {
-        setSaving(lineName);
+    // Группировка
+    const lines = useMemo(() => {
+        const groups: Record<string, Product[]> = {};
+        products.forEach(p => {
+            if (!groups[p.line]) groups[p.line] = [];
+            groups[p.line].push(p);
+        });
+        return groups;
+    }, [products]);
+
+    const handleAddProduct = async () => {
+        const lineToUse = selectedLine === 'NEW' ? newLine : selectedLine;
+        if (!lineToUse || !newFlavor) return alert("Заполните линейку и вкус");
+
         try {
-            await apiClient.post('/api/products/lines/update-price', { line: lineName, price });
-            setTimeout(() => setSaving(null), 500);
-        } catch (e) { alert('Ошибка'); setSaving(null); }
+            await apiClient.post('/api/products', {
+                line: lineToUse,
+                flavor: newFlavor,
+                price: Number(newPrice),
+                category: 'Tobacco'
+            });
+            setIsCreating(false);
+            setNewLine('');
+            setNewFlavor('');
+            loadProducts();
+        } catch (e) {
+            alert("Ошибка при создании");
+        }
+    };
+
+    const handleDelete = async (id: number) => {
+        if (window.confirm("Удалить этот вкус?")) {
+            await apiClient.delete(`/api/products/${id}`);
+            loadProducts();
+        }
+    };
+
+    const toggleLine = (line: string) => {
+        setExpandedLines(prev => ({ ...prev, [line]: !prev[line] }));
     };
 
     return (
-        <div className="pt-4">
-            <div className="flex items-center gap-4 mb-8">
-                <button onClick={onBack} className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm text-[#1C1C1E]"><ChevronRight size={20} className="rotate-180" /></button>
-                <h1 className="text-2xl font-bold text-[#1C1C1E]">Цены</h1>
-            </div>
-            {loading ? <div>Загрузка...</div> : (
-                <div className="space-y-4">
-                    {lines.map((line) => (
-                        <div key={line.name} className="bg-white p-4 rounded-[20px] shadow-sm border border-gray-100 flex items-center justify-between">
-                            <div className="flex-1">
-                                <div className="font-bold text-[#1C1C1E] text-lg">{line.name}</div>
-                                <div className="text-xs text-gray-400">Линейка</div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <div className="relative w-24">
-                                    <input type="number" value={line.price || ''} onChange={(e) => setLines(lines.map(l => l.name === line.name ? { ...l, price: Number(e.target.value) } : l))}
-                                        className="w-full bg-gray-50 font-bold text-center border border-gray-200 rounded-xl py-2 px-1 outline-none" placeholder="0" />
-                                    <span className="absolute right-2 top-2 text-gray-400 text-xs font-bold">₽</span>
+        <div className="pb-32 px-4 space-y-3 pt-2">
+            <PageHeader title="Товары" rightAction={<button onClick={onBack}>Закрыть</button>} />
+
+            <button 
+                onClick={() => setIsCreating(true)}
+                className="w-full py-3 bg-black text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform"
+            >
+                <Plus size={20} /> Добавить вкус
+            </button>
+
+            {loading ? <div className="text-center py-10">Загрузка...</div> : Object.entries(lines).map(([line, items]) => (
+                <div key={line} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                    <div 
+                        onClick={() => toggleLine(line)}
+                        className="p-4 flex items-center justify-between bg-gray-50 cursor-pointer active:bg-gray-100"
+                    >
+                        <div className="font-bold text-lg">{line} <span className="text-gray-400 text-sm font-normal">({items.length})</span></div>
+                        {expandedLines[line] ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                    </div>
+                    
+                    {expandedLines[line] && (
+                        <div className="p-2 space-y-1">
+                            {items.map(p => (
+                                <div key={p.id} className="flex justify-between items-center p-3 bg-white border-b border-gray-100 last:border-0">
+                                    <div>
+                                        <div className="font-medium">{p.flavor}</div>
+                                        <div className="text-xs text-gray-400">{p.price} ₽</div>
+                                    </div>
+                                    <button onClick={() => handleDelete(p.id)} className="p-2 text-red-400 hover:text-red-600">
+                                        <Trash2 size={16} />
+                                    </button>
                                 </div>
-                                <button onClick={() => savePrice(line.name, line.price)} disabled={saving === line.name} className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm transition ${saving === line.name ? 'bg-green-500' : 'bg-[#1C1C1E]'}`}>
-                                    {saving === line.name ? <Check size={20} /> : <Save size={20} />}
-                                </button>
-                            </div>
+                            ))}
                         </div>
-                    ))}
+                    )}
+                </div>
+            ))}
+
+            {/* Модалка создания */}
+            {isCreating && (
+                <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-md rounded-3xl p-6 space-y-4 animate-fade-in">
+                        <div className="flex justify-between items-center">
+                            <h3 className="text-xl font-bold">Новый продукт</h3>
+                            <button onClick={() => setIsCreating(false)}><X size={24} /></button>
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-bold text-gray-400 ml-1">Линейка</label>
+                            <select 
+                                value={selectedLine}
+                                onChange={e => setSelectedLine(e.target.value)}
+                                className="w-full bg-gray-50 p-3 rounded-xl mt-1 border border-gray-200"
+                            >
+                                <option value="" disabled>Выберите линейку</option>
+                                {Object.keys(lines).map(l => <option key={l} value={l}>{l}</option>)}
+                                <option value="NEW">+ Создать новую...</option>
+                            </select>
+                        </div>
+
+                        {selectedLine === 'NEW' && (
+                            <input 
+                                placeholder="Название новой линейки"
+                                value={newLine}
+                                onChange={e => setNewLine(e.target.value)}
+                                className="w-full bg-white border-2 border-black p-3 rounded-xl font-bold"
+                            />
+                        )}
+
+                        <div>
+                            <label className="text-xs font-bold text-gray-400 ml-1">Вкус</label>
+                            <input 
+                                placeholder="Например: Cherry Cola"
+                                value={newFlavor}
+                                onChange={e => setNewFlavor(e.target.value)}
+                                className="w-full bg-gray-50 p-3 rounded-xl mt-1 border border-gray-200"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-bold text-gray-400 ml-1">Цена (₽)</label>
+                            <input 
+                                type="number"
+                                value={newPrice}
+                                onChange={e => setNewPrice(Number(e.target.value))}
+                                className="w-full bg-gray-50 p-3 rounded-xl mt-1 border border-gray-200"
+                            />
+                        </div>
+
+                        <button onClick={handleAddProduct} className="w-full bg-black text-white py-4 rounded-xl font-bold text-lg">
+                            Сохранить
+                        </button>
+                    </div>
                 </div>
             )}
         </div>
     );
 };
 
-const ProductManager = ({ onBack }: { onBack: () => void }) => {
-    const [products, setProducts] = useState<Product[]>([]);
-    const [availableLines, setAvailableLines] = useState<string[]>([]);
+// 2. МЕНЕДЖЕР ЦЕН
+const PriceManager = ({ onBack }: { onBack: () => void }) => {
+    const [prices, setPrices] = useState<Record<string, number>>({});
     const [loading, setLoading] = useState(true);
-    const [isEditing, setIsEditing] = useState<Product | null>(null);
-    const [isCreating, setIsCreating] = useState(false);
-    const [formData, setFormData] = useState({ line: '', flavor: '', category: 'Tobacco', isTopFlavor: false, price: 0 });
 
-    React.useEffect(() => { loadProducts(); }, []);
-
-    const loadProducts = () => {
-        setLoading(true);
+    useEffect(() => {
         apiClient.get('/api/products').then(res => {
-            setProducts(res.data || []);
-            setAvailableLines(Array.from(new Set((res.data || []).map((p: any) => p.line))).sort() as string[]);
-        }).finally(() => setLoading(false));
-    };
+            const temp: Record<string, number> = {};
+            (res.data || []).forEach((p: Product) => {
+                if (!temp[p.line]) temp[p.line] = p.price;
+            });
+            setPrices(temp);
+            setLoading(false);
+        });
+    }, []);
 
-    const handleSave = async () => {
-        const sku = `${formData.line}_${formData.flavor}`.replace(/\s+/g, '_').toLowerCase();
-        const payload = { ...formData, sku, price: Number(formData.price) };
+    const savePrice = async (line: string, price: number) => {
         try {
-            if (isEditing) await apiClient.patch(`/api/products/${isEditing.id}`, payload);
-            else await apiClient.post('/api/products', payload);
-            setIsEditing(null); setIsCreating(false); loadProducts();
-        } catch (e) { alert('Ошибка'); }
+            await apiClient.post('/api/products/lines/update-price', { line, price });
+            alert(`Цена для ${line} обновлена!`);
+        } catch (e) {
+            alert("Ошибка сохранения");
+        }
     };
 
-    const handleDelete = async (id: number) => {
-        if (confirm('Удалить?')) { await apiClient.delete(`/api/products/${id}`); loadProducts(); }
+    return (
+        <div className="pb-32 px-4 space-y-3 pt-2">
+            <PageHeader title="Цены (по линейкам)" rightAction={<button onClick={onBack}>Закрыть</button>} />
+            
+            {loading ? <div className="text-center">Загрузка...</div> : Object.entries(prices).map(([line, price]) => (
+                <StandardCard key={line} title={line} icon={DollarSign}>
+                    <div className="flex gap-2 mt-2">
+                        <input 
+                            type="number" 
+                            defaultValue={price}
+                            onBlur={(e) => savePrice(line, Number(e.target.value))}
+                            className="flex-1 bg-gray-50 border border-gray-200 rounded-xl p-2 font-bold text-center"
+                        />
+                        <div className="flex items-center justify-center bg-gray-100 rounded-xl w-10 text-gray-500">
+                            ₽
+                        </div>
+                    </div>
+                </StandardCard>
+            ))}
+        </div>
+    );
+};
+
+// 3. МЕНЕДЖЕР СОТРУДНИКОВ
+const UserManager = ({ onBack }: { onBack: () => void }) => {
+    const [users, setUsers] = useState<User[]>([]);
+    const [isCreating, setIsCreating] = useState(false);
+    const [newUser, setNewUser] = useState<Partial<User>>({});
+
+    const handleSave = () => {
+        console.log("Сохраняем:", newUser);
+        setUsers([...users, { id: Date.now(), ...newUser } as User]);
+        setIsCreating(false);
+        setNewUser({});
     };
 
-    const renderForm = () => (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-[24px] p-6 w-full max-w-sm shadow-xl">
-                <h3 className="font-bold text-lg mb-4">{isEditing ? 'Редактировать' : 'Добавить'}</h3>
-                <div className="space-y-3">
-                    <input placeholder="Линейка" list="lines" className="w-full bg-gray-50 rounded-xl p-3 border border-gray-200" value={formData.line} onChange={e => setFormData({ ...formData, line: e.target.value })} />
-                    <datalist id="lines">{availableLines.map(l => <option key={l} value={l} />)}</datalist>
-                    <input placeholder="Вкус" className="w-full bg-gray-50 rounded-xl p-3 border border-gray-200" value={formData.flavor} onChange={e => setFormData({ ...formData, flavor: e.target.value })} />
-                    <input type="number" placeholder="Цена" className="w-full bg-gray-50 rounded-xl p-3 border border-gray-200" value={formData.price} onChange={e => setFormData({ ...formData, price: Number(e.target.value) })} />
-                    <label className="flex items-center gap-2"><input type="checkbox" checked={formData.isTopFlavor} onChange={e => setFormData({ ...formData, isTopFlavor: e.target.checked })} /> Топ вкус</label>
-                    <button onClick={handleSave} className="w-full bg-[#1C1C1E] text-white py-3 rounded-xl font-bold">Сохранить</button>
-                    <button onClick={() => { setIsCreating(false); setIsEditing(null); }} className="w-full text-gray-400 mt-2">Отмена</button>
+    return (
+        <div className="pb-32 px-4 space-y-3 pt-2">
+            <PageHeader title="Команда и Чаты" rightAction={<button onClick={onBack}>Закрыть</button>} />
+
+            <button 
+                onClick={() => setIsCreating(true)}
+                className="w-full py-3 bg-black text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg mb-4"
+            >
+                <Plus size={20} /> Добавить сотрудника
+            </button>
+
+            {users.length === 0 && <div className="text-center text-gray-400">Нет сотрудников</div>}
+
+            {users.map(u => (
+                <StandardCard key={u.id} title={u.name} subtitle={u.role || 'Сотрудник'} icon={Users}>
+                    <div className="text-xs text-gray-500 mt-2 space-y-1 bg-gray-50 p-2 rounded-lg">
+                        <div className="flex justify-between"><span>TG ID:</span> <span className="font-mono">{u.telegramId}</span></div>
+                        <div className="flex justify-between"><span>Chat ID:</span> <span className="font-mono">{u.chatId || '-'}</span></div>
+                    </div>
+                </StandardCard>
+            ))}
+
+            {isCreating && (
+                <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-md rounded-3xl p-6 space-y-3">
+                        <h3 className="font-bold text-lg mb-2">Новый сотрудник</h3>
+                        
+                        <input placeholder="Имя" className="w-full bg-gray-50 p-3 rounded-xl border" 
+                            onChange={e => setNewUser({...newUser, name: e.target.value})} />
+                        
+                        <input placeholder="Telegram ID (цифры)" className="w-full bg-gray-50 p-3 rounded-xl border" 
+                            onChange={e => setNewUser({...newUser, telegramId: e.target.value})} />
+                        
+                        <input placeholder="ID Чата (для отчетов)" className="w-full bg-gray-50 p-3 rounded-xl border" 
+                            onChange={e => setNewUser({...newUser, chatId: e.target.value})} />
+                        
+                        <input placeholder="Роль (Склад, Логист...)" className="w-full bg-gray-50 p-3 rounded-xl border" 
+                            onChange={e => setNewUser({...newUser, role: e.target.value})} />
+
+                        <button onClick={handleSave} className="w-full bg-black text-white py-3 rounded-xl font-bold mt-2">
+                            Добавить
+                        </button>
+                        <button onClick={() => setIsCreating(false)} className="w-full text-gray-500 py-2">Отмена</button>
+                    </div>
                 </div>
-            </motion.div>
-        </div>
-    );
-
-    return (
-        <div className="pt-4">
-            <div className="flex justify-between mb-6">
-                <div className="flex gap-4 items-center"><button onClick={onBack} className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm"><ChevronRight size={20} className="rotate-180" /></button><h1 className="text-2xl font-bold">Продукты</h1></div>
-                <button onClick={() => { setFormData({ line: '', flavor: '', category: 'Tobacco', isTopFlavor: false, price: 0 }); setIsCreating(true); }} className="w-10 h-10 bg-[#1C1C1E] text-white rounded-full flex items-center justify-center"><Plus /></button>
-            </div>
-            {(isCreating || isEditing) && renderForm()}
-            <div className="space-y-3">
-                {products.map(p => (
-                    <div key={p.id} className="bg-white p-4 rounded-2xl border border-gray-100 flex justify-between items-center">
-                        <div>
-                            <div className="text-xs text-gray-400 font-bold">{p.line}</div>
-                            <div className="font-bold">{p.flavor} {p.isTopFlavor && '🔥'}</div>
-                            <div className="text-xs text-gray-400">{p.price} ₽</div>
-                        </div>
-                        <div className="flex gap-2">
-                            <button onClick={() => { setIsEditing(p); setFormData({ ...p, price: p.price || 0, isTopFlavor: !!p.isTopFlavor }); setIsCreating(true); }}><Edit2 size={16} className="text-gray-500" /></button>
-                            <button onClick={() => handleDelete(p.id)}><Trash2 size={16} className="text-red-500" /></button>
-                        </div>
-                    </div>
-                ))}
-            </div>
+            )}
         </div>
     );
 };
 
-const OrderManager = ({ onBack }: { onBack: () => void }) => {
-    const [orders, setOrders] = useState<any[]>([]);
-    React.useEffect(() => { apiClient.get('/api/orders').then(res => setOrders(res.data)); }, []);
-    const updateStatus = async (id: number, status: string) => {
-        await apiClient.patch(`/api/orders/${id}/status`, { status });
-        setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
-    };
-    return (
-        <div className="pt-4">
-            <div className="flex gap-4 mb-6"><button onClick={onBack} className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm"><ChevronRight size={20} className="rotate-180" /></button><h1 className="text-2xl font-bold">Заказы</h1></div>
-            <div className="space-y-4">
-                {orders.map(order => (
-                    <div key={order.id} className="bg-white p-5 rounded-[30px] shadow-sm border border-gray-100">
-                        <div className="flex justify-between mb-2">
-                            <div className="font-bold">#{order.id} {order.facility?.name}</div>
-                            <div className="text-xs font-bold px-2 py-1 bg-gray-100 rounded-lg">{order.status}</div>
-                        </div>
-                        <div className="flex gap-2 mt-4">
-                            <button onClick={() => updateStatus(order.id, 'SHIPPED')} className="flex-1 bg-green-50 text-green-600 py-2 rounded-xl font-bold text-xs">Принять</button>
-                            <button onClick={() => updateStatus(order.id, 'REJECTED')} className="flex-1 bg-red-50 text-red-500 py-2 rounded-xl font-bold text-xs">Отклонить</button>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-};
-
-// Простой менеджер для остальных вкладок (для краткости, главное цены и продукты мы вернули)
-const SimpleListManager = ({ title, onBack }: { title: string, onBack: () => void }) => (
-    <div className="pt-4">
-        <div className="flex gap-4 mb-6"><button onClick={onBack} className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm"><ChevronRight size={20} className="rotate-180"/></button><h1 className="text-2xl font-bold">{title}</h1></div>
-        <div className="text-gray-400 text-center py-10">Раздел в разработке</div>
-    </div>
-);
+// --- ГЛАВНЫЙ ЭКРАН АДМИНКИ ---
 
 const AdminPage: React.FC = () => {
-    const [view, setView] = useState<AdminView>('menu');
+    const [view, setView] = useState<'menu' | 'products' | 'prices' | 'users' | 'orders'>('menu');
     const [isUnlocked, setIsUnlocked] = useState(false);
 
-    if (!isUnlocked) return <LockScreen onSuccess={() => setIsUnlocked(true)} />;
+    if (!isUnlocked) {
+        return <LockScreen onSuccess={() => setIsUnlocked(true)} />;
+    }
 
     return (
         <Layout>
-            <div className="min-h-screen bg-[#F2F2F7]">
+            <div className="min-h-screen bg-[#F3F4F6]">
                 <AnimatePresence mode="wait">
                     {view === 'menu' && (
-                        <motion.div key="menu" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4 px-4 pt-6 pb-32">
-                            <h1 className="text-3xl font-bold mb-8">Админ Панель</h1>
-                            <div className="grid grid-cols-2 gap-4">
-                                <button onClick={() => setView('prices')} className="bg-[#1C1C1E] text-white p-6 rounded-[30px] h-[160px] flex flex-col justify-between relative overflow-hidden shadow-lg">
-                                    <div className="bg-white/20 w-10 h-10 rounded-xl flex items-center justify-center"><DollarSign /></div>
-                                    <div className="text-left"><div className="font-bold text-xl">Цены</div><div className="text-xs opacity-60">Прайс-лист</div></div>
-                                </button>
-                                <button onClick={() => setView('products')} className="bg-white p-6 rounded-[30px] h-[160px] flex flex-col justify-between shadow-sm border border-gray-200">
-                                    <div className="bg-orange-50 text-orange-500 w-10 h-10 rounded-xl flex items-center justify-center"><Package /></div>
-                                    <div className="text-left"><div className="font-bold text-xl">Продукты</div><div className="text-xs text-gray-400">Вкусы</div></div>
-                                </button>
-                                <button onClick={() => setView('orders')} className="col-span-2 bg-white p-6 rounded-[30px] h-[120px] flex items-center justify-between shadow-sm border border-gray-200">
-                                    <div><div className="font-bold text-xl">Заказы</div><div className="text-xs text-gray-400">Управление заявками</div></div>
-                                    <div className="bg-green-50 text-green-500 w-12 h-12 rounded-xl flex items-center justify-center"><Check /></div>
-                                </button>
-                                <button onClick={() => setView('users')} className="bg-white p-6 rounded-[30px] h-[140px] flex flex-col justify-between shadow-sm"><div className="bg-gray-100 w-10 h-10 rounded-xl flex justify-center items-center"><Users/></div><div className="font-bold">Сотрудники</div></button>
-                                <button onClick={() => setView('chats')} className="bg-white p-6 rounded-[30px] h-[140px] flex flex-col justify-between shadow-sm"><div className="bg-blue-50 text-blue-500 w-10 h-10 rounded-xl flex justify-center items-center"><MessageCircle/></div><div className="font-bold">Чаты</div></button>
+                        <motion.div 
+                            key="menu" 
+                            initial={{ opacity: 0, y: 10 }} 
+                            animate={{ opacity: 1, y: 0 }} 
+                            className="px-4 pb-32 pt-2"
+                        >
+                            <PageHeader title="Админ Панель" />
+                            
+                            <div className="space-y-3 mt-4">
+                                <h3 className="text-xs font-bold text-gray-400 uppercase ml-1 mb-2">База данных</h3>
+                                
+                                <StandardCard 
+                                    title="Товары и Вкусы" 
+                                    subtitle="Добавить новые позиции"
+                                    icon={Package}
+                                    onClick={() => setView('products')}
+                                    showArrow={true}
+                                />
+
+                                <StandardCard 
+                                    title="Управление Ценами" 
+                                    subtitle="Изменить цены линеек"
+                                    icon={DollarSign}
+                                    onClick={() => setView('prices')}
+                                    showArrow={true}
+                                />
+
+                                <h3 className="text-xs font-bold text-gray-400 uppercase ml-1 mb-2 mt-6">Персонал</h3>
+                                
+                                <StandardCard 
+                                    title="Команда и Чаты" 
+                                    subtitle="Доступ и куда слать отчеты"
+                                    icon={Users}
+                                    onClick={() => setView('users')}
+                                    showArrow={true}
+                                />
+                                
+                                <StandardCard 
+                                    title="Заказы (История)" 
+                                    subtitle="Все входящие заявки"
+                                    icon={Check}
+                                    onClick={() => setView('orders')}
+                                    showArrow={true}
+                                />
                             </div>
                         </motion.div>
                     )}
-                    {view === 'prices' && <div className="px-4 pb-32"><PricesManager onBack={() => setView('menu')} /></div>}
-                    {view === 'products' && <div className="px-4 pb-32"><ProductManager onBack={() => setView('menu')} /></div>}
-                    {view === 'orders' && <div className="px-4 pb-32"><OrderManager onBack={() => setView('menu')} /></div>}
-                    {(view === 'users' || view === 'chats' || view === 'reports') && <div className="px-4 pb-32"><SimpleListManager title={view} onBack={() => setView('menu')} /></div>}
+
+                    {view === 'products' && <ProductManager onBack={() => setView('menu')} />}
+                    {view === 'prices' && <PriceManager onBack={() => setView('menu')} />}
+                    {view === 'users' && <UserManager onBack={() => setView('menu')} />}
+                    {view === 'orders' && (
+                        <div className="pt-2 px-4">
+                            <PageHeader title="Заказы" rightAction={<button onClick={() => setView('menu')}>Закрыть</button>} />
+                            <div className="text-center text-gray-400 mt-10">Список заказов пуст</div>
+                        </div>
+                    )}
+
                 </AnimatePresence>
             </div>
         </Layout>
