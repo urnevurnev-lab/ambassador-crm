@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Layout } from '../components/Layout';
 import apiClient from '../api/apiClient';
 import { CheckCircle, User, Footprints, Store, Trophy, ShoppingBag, Wallet, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import WebApp from '@twa-dev/sdk';
-import { LeaderboardWidget } from '../components/LeaderboardWidget';
+import { Layout } from '../components/Layout';
+import LeaderboardWidget from '../components/LeaderboardWidget';
 
 // --- Types ---
 interface DashboardStats {
