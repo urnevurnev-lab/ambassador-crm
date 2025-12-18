@@ -12,6 +12,7 @@ interface PageHeaderProps {
 
 export const PageHeader: React.FC<PageHeaderProps> = ({ title, back, onBack, rightContent, className = '' }) => {
   const navigate = useNavigate();
+  const headerPaddingTop = 'calc(env(safe-area-inset-top, 0px) + 16px)';
 
   const handleBack = () => {
     if (onBack) {
@@ -23,10 +24,10 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, back, onBack, rig
 
   return (
     <div className={`fixed top-0 left-0 right-0 z-50 bg-[#F8F9FA]/90 backdrop-blur-md border-b border-gray-200/50 ${className}`}>
-      {/* Safe area top inset */}
-      <div className="h-[env(safe-area-inset-top)] w-full" />
-
-      <div className="flex items-center px-4 h-14 relative">
+      <div
+        className="relative flex items-center px-4 pb-3 gap-2"
+        style={{ paddingTop: headerPaddingTop }}
+      >
         {back && (
           <button
             onClick={handleBack}

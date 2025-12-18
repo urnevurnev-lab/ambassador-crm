@@ -63,14 +63,14 @@ const FacilitiesListPage: React.FC = () => {
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     transition={{ duration: 0.2 }}
-                                    key={f.id}
-                                >
-                                    <Link to={`/facility/${f.id}`}>
-                                        <div className={`bg-white p-5 rounded-[30px] border ${borderColor} ${glow} active:scale-[0.98] transition-all shadow-sm flex justify-between items-center group relative overflow-hidden`}>
-                                            {/* Score Badge */}
-                                            {score > 0 && (
-                                                <div className={`absolute top-0 right-0 px-3 py-1 rounded-bl-2xl text-[10px] font-bold ${score > 75 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                                                    {score}%
+                            key={f.id}
+                        >
+                            <Link to={`/facilities/${f.id}`}>
+                                <div className={`bg-white p-5 rounded-[30px] border ${borderColor} ${glow} active:scale-[0.98] transition-all shadow-sm flex justify-between items-center group relative overflow-hidden`}>
+                                    {/* Score Badge */}
+                                    {score > 0 && (
+                                        <div className={`absolute top-0 right-0 px-3 py-1 rounded-bl-2xl text-[10px] font-bold ${score > 75 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                                            {score}%
                                                 </div>
                                             )}
 
@@ -98,7 +98,7 @@ const FacilitiesListPage: React.FC = () => {
                 )}
 
                 {/* Плавающая кнопка добавления (FAB) */}
-                <Link to="/facility/new" className="fixed bottom-[100px] right-4 z-50">
+                <Link to="/facilities/new" className="fixed bottom-[100px] right-4 z-50">
                     <motion.div
                         whileTap={{ scale: 0.9 }}
                         className="w-14 h-14 bg-[#1C1C1E] rounded-full flex items-center justify-center text-white shadow-xl border border-white/20"

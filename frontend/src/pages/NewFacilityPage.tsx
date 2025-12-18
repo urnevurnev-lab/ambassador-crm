@@ -90,7 +90,7 @@ const NewFacilityPage: React.FC = () => {
       const res = await apiClient.post('/api/facilities', { name, address, format });
       const facilityId = res.data?.facility?.id || res.data?.id;
       WebApp.HapticFeedback?.notificationOccurred('success');
-      if (facilityId) navigate(`/facility/${facilityId}`);
+      if (facilityId) navigate(`/facilities/${facilityId}`);
       else navigate('/facilities');
     } catch (e: any) {
       WebApp.HapticFeedback?.notificationOccurred('error');
@@ -128,17 +128,17 @@ const NewFacilityPage: React.FC = () => {
                 <div className="max-h-[240px] overflow-y-auto">
                   {nameSuggestions.map((f) => (
                     <button
-                      key={f.id}
-                      type="button"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => {
-                        WebApp.HapticFeedback?.impactOccurred('light');
-                        navigate(`/facility/${f.id}`);
-                      }}
-                      className="w-full text-left px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition"
-                    >
-                      <div className="font-semibold text-sm text-[#1C1C1E]">{f.name}</div>
-                      <div className="text-xs text-gray-400 mt-0.5 truncate">{f.address}</div>
+                    key={f.id}
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      WebApp.HapticFeedback?.impactOccurred('light');
+                      navigate(`/facilities/${f.id}`);
+                    }}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition"
+                  >
+                    <div className="font-semibold text-sm text-[#1C1C1E]">{f.name}</div>
+                    <div className="text-xs text-gray-400 mt-0.5 truncate">{f.address}</div>
                     </button>
                   ))}
                 </div>

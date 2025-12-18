@@ -14,7 +14,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F2F3F7] text-[#1C1C1E]">
-      <main className={`flex-grow w-full ${!hideBottomTab ? 'pb-24' : 'pb-[env(safe-area-inset-bottom)]'}`}>
+      <main
+        className={`flex-grow w-full pt-4 ${!hideBottomTab ? 'pb-24' : 'pb-[env(safe-area-inset-bottom)]'}`}
+      >
         {children}
       </main>
 

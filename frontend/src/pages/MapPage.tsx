@@ -103,7 +103,7 @@ const MapPage: React.FC = () => {
                   <Popup>
                     <div className="font-bold text-sm">{f.name}</div>
                     <div className="text-[10px] text-gray-500 mb-2">{f.address}</div>
-                    <Link to={`/facility/${f.id}`} className="block text-center bg-[#007AFF] text-white py-1.5 rounded-lg text-xs font-medium">Открыть</Link>
+                    <Link to={`/facilities/${f.id}`} className="block text-center bg-[#007AFF] text-white py-1.5 rounded-lg text-xs font-medium">Открыть</Link>
                   </Popup>
                 </Marker>
               ))}
@@ -111,7 +111,7 @@ const MapPage: React.FC = () => {
 
             {/* Новая кнопка добавления точки */}
             <Link
-              to="/facility/new"
+              to="/facilities/new"
               className="absolute right-4 z-[1000] flex h-12 w-12 items-center justify-center rounded-full bg-[#007AFF] text-white shadow-lg transition active:scale-90"
               style={{ bottom: 'calc(env(safe-area-inset-bottom) + 150px)' }}
             >
