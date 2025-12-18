@@ -50,25 +50,38 @@ function toLineTitle(rawLine: string | null | undefined) {
     return rawLine.charAt(0).toUpperCase() + rawLine.slice(1);
 }
 
+function formatCurrency(value: number) {
+    return new Intl.NumberFormat('ru-RU').format(value);
+}
+
 function formatOrderMessage(params: {
     orderId: number;
     facilityName: string;
     address: string;
     contactName?: string | null;
     contactPhone?: string | null;
-    items: { quantity: number; product?: { line?: string | null; flavor?: string | null; sku?: string | null } | null }[];
+    items: {
+        quantity: number;
+        product?: { line?: string | null; flavor?: string | null; sku?: string | null; price?: number | null } | null;
+    }[];
     ambassadorName?: string | null;
 }) {
     const cleanedAddress = cleanAddress(params.address);
-    const grouped: Record<string, { name: string; qty: number }[]> = {};
+    const grouped: Record<string, { name: string; qty: number; price: number }[]> = {};
+    let total = 0;
 
     for (const item of params.items) {
         const line = toLineTitle(item.product?.line ?? 'Другое');
         const flavor = item.product?.flavor || item.product?.sku || 'Товар';
+        const qty = item.quantity ?? 1;
+        const price = Number(item.product?.price ?? 0);
+        total += price * qty;
+
         if (!grouped[line]) grouped[line] = [];
         grouped[line].push({
             name: flavor,
-            qty: item.quantity ?? 1,
+            qty,
+            price,
         });
     }
 
@@ -95,10 +108,12 @@ function formatOrderMessage(params: {
     for (const line of lineKeys) {
         parts.push(`<b>${escapeHtml(line)}:</b>`);
         for (const entry of grouped[line]) {
-            parts.push(`▫️ ${escapeHtml(entry.name)} (${entry.qty} шт)`);
+            const pricePart = entry.price ? ` • ${formatCurrency(entry.price * entry.qty)} ₽` : '';
+            parts.push(`▫️ ${escapeHtml(entry.name)} (${entry.qty} шт)${pricePart}`);
         }
     }
 
+    parts.push('', `💰 <b>Итого: ${formatCurrency(total)} ₽</b>`);
     parts.push('', `Амбассадор: ${escapeHtml(params.ambassadorName || 'Система')}`);
     return parts.join('\n');
 }

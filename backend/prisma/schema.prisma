@@ -67,6 +67,7 @@ model Product {
   flavor    String
   sku       String   @unique
   category  String   @default("UNKNOWN")
+  price     Int      @default(0)
   isTopFlavor Boolean @default(false)
   createdAt DateTime @default(now())
   productsAvailableIn Visit[] @relation("VisitProducts")
