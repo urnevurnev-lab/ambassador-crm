@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
-import SplashPage from './pages/SplashPage';
 import Dashboard from './pages/Dashboard';
+import SplashPage from './pages/SplashPage';
+// Импортируй остальные страницы...
+import MyOrdersPage from './pages/MyOrdersPage';
+import MapPage from './pages/MapPage';
+import ProfilePage from './pages/ProfilePage';
 
-// Типизация, чтобы TypeScript не ругался
+// 1. Строгая типизация окна (чтобы TS не ругался)
 declare global {
   interface Window {
     Telegram: any;
@@ -12,52 +16,58 @@ declare global {
 }
 
 function App() {
-  const [isLoading, setIsLoading] = useState(true);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Безопасная инициализация
-    const initApp = async () => {
+    // 2. Инициализация Telegram окружения
+    const initTg = async () => {
       try {
-        // 1. Пробуем инициализировать Telegram (безопасно)
-        if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+        if (window.Telegram?.WebApp) {
           const tg = window.Telegram.WebApp;
-          tg.ready();  // Сообщаем, что приложение готово
-          tg.expand(); // Раскрываем на весь экран
           
-          // Отключаем вертикальные свайпы (чтобы не закрывалось случайно)
+          tg.ready();       // Сообщаем, что приложение загрузилось
+          tg.expand();      // Раскрываем на 100% высоты
+          
+          // Настраиваем цвета хедера под цвет приложения
+          tg.setHeaderColor('#ffffff'); 
+          tg.setBackgroundColor('#f9fafb'); // bg-gray-50
+          
+          // Блокируем вертикальный свайп, чтобы приложение не закрывалось случайно (актуально для последних версий)
           if (tg.disableVerticalSwipes) {
-            tg.disableVerticalSwipes(); 
+             tg.disableVerticalSwipes();
           }
         }
-        
-        // 2. Имитация загрузки данных / Auth
-        await new Promise(resolve => setTimeout(resolve, 2500));
-        
-      } catch (e) {
-        console.error("Ошибка инициализации:", e);
+      } catch (error) {
+        console.error('TG Init Error:', error);
       } finally {
-        // 3. ЭТО ГЛАВНОЕ: Убираем лоадер в любом случае
-        setIsLoading(false);
+        // Имитация загрузки ресурсов (уберем сплэш через 1.5 сек)
+        setTimeout(() => setIsReady(true), 1500);
       }
     };
 
-    initApp();
+    initTg();
   }, []);
 
-  if (isLoading) {
+  if (!isReady) {
     return <SplashPage />;
   }
 
+  // 3. Используем HashRouter вместо BrowserRouter
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Dashboard />} />
-          {/* Если есть другие страницы, добавь их здесь */}
+          <Route path="orders" element={<MyOrdersPage />} />
+          <Route path="map" element={<MapPage />} />
+          <Route path="profile" element={<ProfilePage />} />
+          {/* Добавь остальные роуты сюда */}
+          
+          {/* Любой неизвестный путь кидает на главную */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 
