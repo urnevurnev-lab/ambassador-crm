@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { TelegramNavigator } from './components/TelegramNavigator';
 
@@ -38,10 +38,12 @@ const App: React.FC = () => {
   // Показываем экран "Только для своих" при каждом запуске.
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  useEffect(() => {
+    setIsAuthenticated(true);
+  }, []);
+
   if (!isAuthenticated) {
-    return <SplashPage onLoginSuccess={() => {
-      setIsAuthenticated(true);
-    }} />;
+    return <SplashPage />;
   }
 
   return (

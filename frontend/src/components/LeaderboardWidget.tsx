@@ -1,65 +1,68 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-import { Trophy } from 'lucide-react';
+import { Trophy, TrendingUp } from 'lucide-react';
 
-interface LeaderboardItem {
-    id: number;
-    name: string;
-    skuCount: number;
-    ordersVolume: number;
-    score: number;
-    avatar: string;
-}
+const LeaderboardWidget: React.FC = () => {
+    // Mock Data: Сортировка по среднему чеку
+    const leaders = [
+        { id: 1, name: 'Виктор Урнев', avgCheck: 15400, orders: 12 },
+        { id: 2, name: 'Анна С.', avgCheck: 12800, orders: 15 },
+        { id: 3, name: 'Дмитрий К.', avgCheck: 9500, orders: 8 },
+    ];
 
-const mockData: LeaderboardItem[] = [
-    { id: 1, name: 'Алексей', skuCount: 145, ordersVolume: 120000, score: 98, avatar: '🥇' },
-    { id: 2, name: 'Мария', skuCount: 132, ordersVolume: 98000, score: 92, avatar: '🥈' },
-    { id: 3, name: 'Иван', skuCount: 120, ordersVolume: 85000, score: 88, avatar: '🥉' },
-];
+    const formatMoney = (val: number) => new Intl.NumberFormat('ru-RU').format(val);
 
-export const LeaderboardWidget: React.FC = () => {
     return (
-        <div className="bg-white rounded-[30px] p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-bold text-[#1C1C1E]">Топ Амбассадоров</h3>
-                <Trophy className="text-yellow-500" size={24} />
+        <div className="bg-white rounded-[24px] p-5 shadow-sm border border-gray-100">
+            {/* Заголовок */}
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                    <div className="bg-yellow-100 p-1.5 rounded-lg text-yellow-600">
+                        <Trophy size={16} />
+                    </div>
+                    <h3 className="font-bold text-[#1C1C1E]">Лидеры месяца</h3>
+                </div>
+                <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded-md uppercase">
+                    По ср. чеку
+                </span>
             </div>
 
+            {/* Список */}
             <div className="space-y-4">
-                {mockData.map((item, index) => (
-                    <motion.div
-                        key={item.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                        className="flex items-center gap-4"
-                    >
-                        <div className={`w-8 h-8 flex items-center justify-center font-bold rounded-full ${index === 0 ? 'bg-yellow-100 text-yellow-600' :
-                            index === 1 ? 'bg-gray-100 text-gray-500' :
-                                index === 2 ? 'bg-orange-100 text-orange-600' : 'text-gray-400'
-                            }`}>
-                            {index + 1}
-                        </div>
-
-                        <div className="flex-1 flex items-center justify-between p-3 bg-gray-50 rounded-2xl">
-                            <div className="flex items-center gap-3">
-                                {/* Avatar placeholder if needed */}
-                                {/* <div className="w-8 h-8 bg-gray-200 rounded-full"/> */}
-                                <div>
-                                    <div className="font-bold text-sm text-[#1C1C1E]">{item.name}</div>
-                                    <div className="text-[10px] text-gray-400 font-medium uppercase">
-                                        {item.skuCount} SKU / {Math.round(item.ordersVolume / 1000)}k ₽
-                                    </div>
-                                </div>
+                {leaders.map((leader, index) => (
+                    <div key={leader.id} className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            {/* Медалька за 1, 2, 3 место */}
+                            <div className={`
+                                w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
+                                ${index === 0 ? 'bg-yellow-100 text-yellow-700' : 
+                                  index === 1 ? 'bg-gray-100 text-gray-600' : 
+                                  index === 2 ? 'bg-orange-100 text-orange-700' : 'bg-white text-gray-400'}
+                            `}>
+                                {index + 1}
                             </div>
-
-                            <div className="text-sm font-bold bg-white px-2 py-1 rounded-lg border border-gray-100 text-[#1C1C1E] shadow-sm">
-                                {item.score}
+                            
+                            <div>
+                                <div className="text-sm font-bold text-[#1C1C1E]">{leader.name}</div>
+                                <div className="text-[10px] text-gray-400">{leader.orders} заказов</div>
                             </div>
                         </div>
-                    </motion.div>
+
+                        <div className="text-right">
+                            <div className="text-sm font-bold text-[#1C1C1E]">{formatMoney(leader.avgCheck)} ₽</div>
+                            <div className="text-[10px] text-gray-400 flex items-center justify-end gap-1">
+                                <TrendingUp size={10} className="text-green-500" />
+                                ср. чек
+                            </div>
+                        </div>
+                    </div>
                 ))}
             </div>
         </div>
     );
 };
+
+export const LeaderboardWidgetContainer = () => {
+    return <LeaderboardWidget />;
+};
+
+export default LeaderboardWidget;
