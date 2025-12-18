@@ -373,11 +373,10 @@ const OrderManager = ({ onBack }: { onBack: () => void }) => {
 interface Distributor { id: number; name: string; fullName?: string; telegramChatId?: string; chatId?: string; }
 const DistributorsManager = ({ onBack }: { onBack: () => void }) => {
     const [distributors, setDistributors] = useState<Distributor[]>([]);
-    const [loading, setLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
     const [formData, setFormData] = useState({ name: '', telegramChatId: '' });
     React.useEffect(() => { loadDistributors(); }, []);
-    const loadDistributors = () => { setLoading(true); apiClient.get('/api/distributors').then(res => setDistributors(res.data || [])).finally(() => setLoading(false)); };
+    const loadDistributors = () => { apiClient.get('/api/distributors').then(res => setDistributors(res.data || [])).catch(console.error); };
     const handleDelete = async (id: number) => { if (!window.confirm('Удалить?')) return; await apiClient.delete(`/api/distributors/${id}`); setDistributors(prev => prev.filter(d => d.id !== id)); };
     const handleSave = async () => { if(!formData.name || !formData.telegramChatId) return alert('Заполните поля'); await apiClient.post('/api/distributors', formData); setIsCreating(false); setFormData({name:'', telegramChatId:''}); loadDistributors(); };
     
@@ -414,7 +413,6 @@ const DistributorsManager = ({ onBack }: { onBack: () => void }) => {
 interface User { id: number; telegramId: string; fullName: string; role: 'ADMIN' | 'AMBASSADOR'; allowedDistributors?: { id: number; name: string }[]; createdAt: string; }
 const UsersManager = ({ onBack }: { onBack: () => void }) => {
     const [users, setUsers] = useState<User[]>([]);
-    const [loading, setLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
     const [formData, setFormData] = useState({ fullName: '', telegramId: '', role: 'AMBASSADOR' as const });
     const [editingChatsUser, setEditingChatsUser] = useState<User | null>(null);
@@ -422,13 +420,11 @@ const UsersManager = ({ onBack }: { onBack: () => void }) => {
     const [selectedChatIds, setSelectedChatIds] = useState<Set<number>>(new Set());
 
     React.useEffect(() => { 
-        setLoading(true); 
         Promise.all([apiClient.get('/api/users'), apiClient.get('/api/distributors')])
             .then(([resUsers, resDists]) => {
                 setUsers((resUsers.data || []).filter((u:User) => /^\d+$/.test(String(u.telegramId))));
                 setDistributors(resDists.data || []);
             })
-            .finally(() => setLoading(false));
     }, []);
 
     const handleCreate = async () => {

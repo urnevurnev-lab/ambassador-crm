@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import apiClient from '../api/apiClient';
 import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
-import { MapPin, Package, ShoppingCart, Briefcase, AlertCircle } from 'lucide-react';
+import { MapPin, Package, ShoppingCart, Briefcase } from 'lucide-react';
 import { FacilityRating } from '../components/FacilityRating';
 import { FacilityHistory } from '../components/FacilityHistory';
 import { FastOrderWizard } from '../components/FastOrderWizard';

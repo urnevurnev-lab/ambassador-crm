@@ -108,8 +108,8 @@ function formatOrderMessage(params: {
     for (const line of lineKeys) {
         parts.push(`<b>${escapeHtml(line)}:</b>`);
         for (const entry of grouped[line]) {
-            const pricePart = entry.price ? ` • ${formatCurrency(entry.price * entry.qty)} ₽` : '';
-            parts.push(`▫️ ${escapeHtml(entry.name)} (${entry.qty} шт)${pricePart}`);
+            const displayName = entry.name.toUpperCase();
+            parts.push(`▫️ ${escapeHtml(displayName)} (${entry.qty} шт)`);
         }
     }
 
