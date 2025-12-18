@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import apiClient from '../api/apiClient';
 import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
-import { MapPin, Package, ShoppingCart, Briefcase } from 'lucide-react';
+import { MapPin, Package, ShoppingCart } from 'lucide-react';
 import { FacilityRating } from '../components/FacilityRating';
 import { FacilityHistory } from '../components/FacilityHistory';
 import { FastOrderWizard } from '../components/FastOrderWizard';
@@ -94,22 +94,13 @@ const FacilityPage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* 2. Start Work - Unified Card */}
-                <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 relative overflow-hidden">
-                    <div className="flex items-start justify-between gap-3 mb-4">
-                        <div>
-                            <h3 className="font-bold text-lg text-[#1C1C1E]">Начать работу</h3>
-                            <p className="text-sm text-gray-500">Выберите действие</p>
-                        </div>
-                        <div className="w-10 h-10 rounded-xl bg-gray-50 text-[#1C1C1E] flex items-center justify-center">
-                            <Briefcase size={20} />
-                        </div>
-                    </div>
+                {/* 2. Start Work - Actions List */}
+                <div className="px-1">
                     <FacilityActions
                         activities={activities}
                         onStart={handleStartActivity}
-                        showHeader={false}
-                        className="space-y-2"
+                        showHeader={true}
+                        className="mb-6"
                     />
                 </div>
 

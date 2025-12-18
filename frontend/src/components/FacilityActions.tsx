@@ -13,62 +13,62 @@ interface Activity { id: number; code: string; name: string; }
 interface FacilityActionsProps {
     activities: Activity[];
     onStart: (code: string) => void;
-    title?: string;
-    description?: string;
     className?: string;
     showHeader?: boolean;
 }
 
-const stripEmoji = (text: string) =>
-    text.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
-
 const getPalette = (code: string) => {
     const normalized = (code || '').toLowerCase();
-    if (normalized === 'checkup') return { tone: 'bg-emerald-50 text-emerald-600 border border-emerald-100', Icon: ClipboardList };
-    if (normalized === 'transit') return { tone: 'bg-blue-50 text-blue-600 border border-blue-100', Icon: Car };
-    if (normalized === 'training') return { tone: 'bg-purple-50 text-purple-600 border border-purple-100', Icon: GraduationCap };
-    if (normalized === 'tasting') return { tone: 'bg-rose-50 text-rose-600 border border-rose-100', Icon: Wine };
-    return { tone: 'bg-gray-50 text-gray-600 border border-gray-100', Icon: Briefcase };
+    // Настраиваем цвета и иконки под каждый тип
+    if (normalized === 'checkup') return { bg: 'bg-emerald-100', text: 'text-emerald-700', Icon: ClipboardList };
+    if (normalized === 'transit') return { bg: 'bg-blue-100', text: 'text-blue-700', Icon: Car };
+    if (normalized === 'training') return { bg: 'bg-purple-100', text: 'text-purple-700', Icon: GraduationCap };
+    if (normalized === 'tasting') return { bg: 'bg-rose-100', text: 'text-rose-700', Icon: Wine };
+    return { bg: 'bg-gray-100', text: 'text-gray-700', Icon: Briefcase };
 };
 
 export const FacilityActions: React.FC<FacilityActionsProps> = ({
     activities,
     onStart,
-    title = 'Сценарии работы',
-    description = 'Выберите сценарий',
     className = '',
     showHeader = true
 }) => {
     return (
-        <div className={`space-y-4 ${className}`}>
+        <div className={`space-y-3 ${className}`}>
             {showHeader && (
-                <div className="flex items-center justify-between">
-                    <h3 className="font-bold text-[#1C1C1E] text-lg">{title}</h3>
-                    <span className="text-[11px] text-gray-500">{description}</span>
+                <div className="px-1">
+                    <h3 className="font-bold text-[#1C1C1E] text-lg">Сценарии</h3>
                 </div>
             )}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            
+            <div className="flex flex-col gap-3">
                 {activities.map((act) => {
-                    const { tone, Icon } = getPalette(act.code);
-                    const cleanName = stripEmoji(act.name) || act.name;
-
+                    const { bg, text, Icon } = getPalette(act.code);
+                    
                     return (
                         <motion.button
                             key={act.id}
-                            whileTap={{ scale: 0.97 }}
+                            whileTap={{ scale: 0.98 }}
                             onClick={() => onStart(act.code)}
-                            className="w-full bg-white border border-gray-200 shadow-sm rounded-2xl p-4 flex items-center justify-between gap-3 active:scale-[0.98] transition-all text-left"
+                            className="w-full bg-white border border-gray-100 shadow-sm rounded-2xl p-4 flex items-center justify-between group active:border-blue-200 transition-all"
                         >
-                            <div className="flex items-center gap-3">
-                                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${tone}`}>
-                                    <Icon size={20} />
+                            <div className="flex items-center gap-4">
+                                {/* Иконка */}
+                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${bg} ${text}`}>
+                                    <Icon size={24} />
                                 </div>
+                                
+                                {/* Текст */}
                                 <div className="text-left">
-                                    <p className="font-semibold text-sm text-[#1C1C1E] leading-snug">{cleanName}</p>
-                                    <p className="text-[11px] text-gray-500">Стартовать сценарий</p>
+                                    <div className="font-bold text-[#1C1C1E] text-[15px]">{act.name}</div>
+                                    <div className="text-xs text-gray-400 mt-0.5">Начать выполнение</div>
                                 </div>
                             </div>
-                            <ChevronRight size={16} className="text-gray-300 shrink-0" />
+
+                            {/* Стрелка */}
+                            <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-[#1C1C1E] group-hover:text-white transition-colors">
+                                <ChevronRight size={18} />
+                            </div>
                         </motion.button>
                     );
                 })}

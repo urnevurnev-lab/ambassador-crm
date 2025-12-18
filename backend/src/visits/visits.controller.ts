@@ -1,116 +1,66 @@
-import { Controller, Get, Post, Patch, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
-
-// Функция расчета расстояния (в метрах)
-function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
-    const R = 6371e3; // Радиус Земли в метрах
-    const φ1 = lat1 * Math.PI / 180;
-    const φ2 = lat2 * Math.PI / 180;
-    const Δφ = (lat2 - lat1) * Math.PI / 180;
-    const Δλ = (lon2 - lon1) * Math.PI / 180;
-
-    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-        Math.cos(φ1) * Math.cos(φ2) *
-        Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    return R * c;
-}
 
 @Controller('visits')
 export class VisitsController {
     constructor(private readonly prisma: PrismaService) { }
 
-    @Post()
-    async createVisit(@Body() data: {
-        userId: number;
-        facilityId: number;
-        activityId?: number; // Теперь привязываем к активности
-        type: string;
-        userLat?: number;
-        userLng?: number;
-        data?: any;
-        comment?: string;
-    }) {
-        // 1. Получаем координаты заведения
-        const facility = await this.prisma.facility.findUnique({
-            where: { id: data.facilityId }
-        });
-
-        // 2. Проверяем геопозицию
-        let isValidGeo = false;
-        let isSuspicious = false;
-
-        if (facility?.lat && facility?.lng && data.userLat && data.userLng) {
-            const distance = getDistanceInMeters(data.userLat, data.userLng, facility.lat, facility.lng);
-            console.log(`Проверка гео: Дистанция ${distance.toFixed(0)}м`);
-
-            if (distance <= 500) { // Допуск 500 метров
-                isValidGeo = true;
-            } else {
-                isSuspicious = true; // Слишком далеко
-            }
-        }
-
-        // 3. Создаем визит
-        const visit = await this.prisma.visit.create({
-            data: {
-                userId: data.userId,
-                facilityId: data.facilityId,
-                activityId: data.activityId, // ID выбранной активности
-                type: data.type,
-                comment: data.comment,
-                isValidGeo,
-                isSuspicious,
-                // Объединяем "сырые" данные локации с данными формы
-                data: {
-                    ...data.data, // <-- ВАЖНО: сохраняем то, что пришло из формы (checkboxes, comments etc)
-                    userLat: data.userLat,
-                    userLng: data.userLng
-                }
-            }
-        });
-
-        return visit;
-    }
-
     @Get()
     async getVisits() {
         return this.prisma.visit.findMany({
-            orderBy: { date: 'desc' },
-            take: 100, // Чтобы не грузить всё сразу
-            include: {
-                user: { select: { fullName: true } },
-                facility: { select: { name: true, address: true } },
-                activity: true,
-                productsAvailable: true,
-                productsTasted: true
+            include: { facility: true, user: true },
+            orderBy: { date: 'desc' }
+        });
+    }
+
+    @Post()
+    async createVisit(@Body() data: {
+        facilityId: number;
+        type: string;
+        userId: number | string;
+        userLat?: number;
+        userLng?: number;
+        status?: string;
+    }) {
+        // Ищем пользователя по Telegram ID или внутреннему ID
+        let user = await this.prisma.user.findFirst({
+            where: {
+                OR: [
+                    { telegramId: String(data.userId) },
+                    { id: Number(data.userId) }
+                ]
             }
+        });
+
+        // Фоллбек на ID 1 (для тестов/отладки)
+        if (!user) {
+            console.log(`⚠️ User not found for ID ${data.userId}. Using fallback ID 1.`);
+            user = await this.prisma.user.findUnique({ where: { id: 1 } });
+        }
+
+        if (!user) {
+            throw new HttpException('User not found in DB', HttpStatus.BAD_REQUEST);
+        }
+
+        return this.prisma.visit.create({
+            data: {
+                userId: user.id,
+                facilityId: Number(data.facilityId),
+                type: data.type,
+                date: new Date(),
+                status: data.status || 'IN_PROGRESS',
+                userLat: data.userLat || 0,
+                userLng: data.userLng || 0,
+                data: {},
+            },
         });
     }
 
     @Patch(':id')
     async updateVisit(@Param('id') id: string, @Body() data: any) {
-        const updateData: any = { ...data };
-
-        // Handle Relations
-        if (data.productsAvailableIds) {
-            updateData.productsAvailable = {
-                set: data.productsAvailableIds.map((pid: number) => ({ id: pid }))
-            };
-            delete updateData.productsAvailableIds;
-        }
-
-        if (data.productsTastedIds) {
-            updateData.productsTasted = {
-                set: data.productsTastedIds.map((pid: number) => ({ id: pid }))
-            };
-            delete updateData.productsTastedIds;
-        }
-
         return this.prisma.visit.update({
             where: { id: Number(id) },
-            data: updateData
+            data,
         });
     }
 }
