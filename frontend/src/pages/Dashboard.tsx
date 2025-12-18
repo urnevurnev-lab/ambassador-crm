@@ -37,14 +37,21 @@ const Dashboard: React.FC = () => {
       try {
         const [facRes, visitRes, ordersRes] = await Promise.all([
           apiClient.get('/api/facilities'),
-          apiClient.get('/api/visits'),
+          apiClient.get('/api/visits'), // Получаем все визиты (ниже фильтруем свои)
           apiClient.get('/api/orders/my-stats').catch(() => ({ data: { shippedSum: 0, pendingCount: 0, rejectedSum: 0 } })),
         ]);
 
-        const visits = visitRes.data || [];
-        
+        const allVisits = visitRes.data || [];
+        const currentUserId = telegramUser?.id;
+
+        const myVisits = currentUserId
+          ? allVisits.filter((v: any) =>
+              v.user?.telegramId === String(currentUserId) || v.userId === currentUserId
+            )
+          : allVisits; // если нет Telegram ID (dev), показываем все, чтобы не терять данные на стенде
+
         const now = new Date();
-        const todayCount = visits.filter((v: any) => {
+        const todayCount = myVisits.filter((v: any) => {
           const d = new Date(v.date || v.createdAt);
           return d.getDate() === now.getDate() &&
             d.getMonth() === now.getMonth() &&
@@ -53,7 +60,7 @@ const Dashboard: React.FC = () => {
 
         setStats({
           totalFacilities: facRes.data.length,
-          totalVisits: visits.length,
+          totalVisits: myVisits.length,
         });
         setOrderStats(ordersRes.data);
         setVisitsToday(todayCount);
@@ -64,7 +71,7 @@ const Dashboard: React.FC = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [telegramUser]);
 
   const progressPercent = Math.min(100, Math.round((visitsToday / DAILY_TARGET) * 100));
 

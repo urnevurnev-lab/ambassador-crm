@@ -3,8 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import apiClient from '../api/apiClient';
 import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
-import { MapPin, Package, ShoppingCart } from 'lucide-react';
-import { FacilityRating } from '../components/FacilityRating';
+import { MapPin, Package, ShoppingCart, Star } from 'lucide-react';
 import { FacilityHistory } from '../components/FacilityHistory';
 import { FastOrderWizard } from '../components/FastOrderWizard';
 import { FacilityActions } from '../components/FacilityActions';
@@ -79,58 +78,74 @@ const FacilityPage: React.FC = () => {
     const { facility, currentStock, missingRecommendations } = data;
     const missing = missingRecommendations || [];
     const healthScore = Math.max(0, 100 - (missing.length * 5));
+    const ratingColor = healthScore > 80 ? 'text-green-500' : healthScore > 50 ? 'text-yellow-500' : 'text-red-500';
+    const ratingBg = healthScore > 80 ? 'bg-green-500' : healthScore > 50 ? 'bg-yellow-500' : 'bg-red-500';
 
     return (
         <Layout>
-            <div className="pt-4 pb-4 space-y-4">
+            <div className="pt-2 pb-4 px-4 space-y-4">
                 <PageHeader title={facility.name} back />
 
-                {/* 1. Rating & Address Card */}
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 flex flex-col items-center justify-center">
-                    <FacilityRating score={healthScore} />
-                    <div className="mt-3 flex items-center gap-1.5 text-gray-400 text-sm font-medium">
-                        <MapPin size={14} /> 
-                        <span className="truncate max-w-[200px]">{facility.address}</span>
-                    </div>
-                </div>
-
-                {/* 2. Start Work - Actions List */}
-                <div className="px-1">
-                    <FacilityActions
-                        activities={activities}
-                        onStart={handleStartActivity}
-                        showHeader={true}
-                        className="mb-6"
-                    />
-                </div>
-
-                {/* 3. Smart Order Block */}
-                <motion.button
-                    whileTap={{ scale: 0.98 }}
-                    onClick={handleOpenOrder}
-                    className="w-full bg-[#1C1C1E] text-white rounded-2xl p-5 shadow-lg shadow-gray-200 flex items-center justify-between group relative overflow-hidden"
-                >
-                    <div className="absolute top-0 right-0 p-4 opacity-10 rotate-12">
-                        <ShoppingCart size={80} />
+                {/* 1. COMPACT INFO CARD (Вместо огромного круга) */}
+                <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
+                    <div className="flex items-center gap-2 mb-3">
+                        <MapPin size={16} className="text-gray-400" /> 
+                        <span className="text-sm font-medium text-gray-500 truncate">{facility.address}</span>
                     </div>
                     
-                    <div className="relative z-10 text-left">
-                        <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-bold text-lg">Сверка и Заказ</h3>
-                            {missing.length > 0 && (
-                                <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                    -{missing.length} SKU
-                                </span>
-                            )}
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Star size={20} className={ratingColor} fill="currentColor" />
+                            <span className="text-2xl font-bold text-[#1C1C1E]">{healthScore}%</span>
+                            <span className="text-xs text-gray-400 font-medium ml-1">Рейтинг наполненности</span>
                         </div>
-                        <p className="text-white/60 text-xs">
-                            {missing.length > 0 ? 'Есть отсутствующие позиции' : 'Склад полон'}
-                        </p>
                     </div>
-                    <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center relative z-10">
-                        <ShoppingCart size={20} />
+                    
+                    {/* Тонкая полоска рейтинга */}
+                    <div className="w-full h-1.5 bg-gray-100 rounded-full mt-3 overflow-hidden">
+                        <motion.div 
+                            initial={{ width: 0 }} 
+                            animate={{ width: `${healthScore}%` }} 
+                            className={`h-full ${ratingBg}`}
+                        />
                     </div>
-                </motion.button>
+                </div>
+
+                {/* 2. SCENARIOS (Блок сценариев) */}
+                <FacilityActions
+                    activities={activities}
+                    onStart={handleStartActivity}
+                    showHeader={true}
+                />
+
+                {/* 3. ORDER BUTTON (Теперь в стиле кнопок Сценариев) */}
+                <div className="px-1">
+                    <h3 className="font-bold text-[#1C1C1E] text-lg mb-3">Заказ</h3>
+                    <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        onClick={handleOpenOrder}
+                        className="w-full bg-white text-[#1C1C1E] border border-gray-200 rounded-2xl p-4 shadow-sm flex items-center justify-between group relative overflow-hidden active:border-blue-500 transition-all"
+                    >
+                        <div className="flex items-center gap-4 relative z-10">
+                            <div className="w-12 h-12 bg-[#1C1C1E] rounded-xl flex items-center justify-center text-white shadow-md">
+                                <ShoppingCart size={24} />
+                            </div>
+                            <div className="text-left">
+                                <div className="flex items-center gap-2">
+                                    <h3 className="font-bold text-[15px]">Сверка и Заказ</h3>
+                                    {missing.length > 0 && (
+                                        <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                            -{missing.length}
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="text-xs text-gray-400 mt-0.5">
+                                    {missing.length > 0 ? 'Есть отсутствующие позиции' : 'Склад полон'}
+                                </p>
+                            </div>
+                        </div>
+                    </motion.button>
+                </div>
 
                 {/* 4. Current Stock */}
                 <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200">
