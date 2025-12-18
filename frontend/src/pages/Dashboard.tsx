@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import apiClient from '../api/apiClient';
-import { CheckCircle, User, Footprints, Store, Trophy } from 'lucide-react';
+import { CheckCircle, User, Footprints, Store, Trophy, ShoppingBag, Wallet, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import WebApp from '@twa-dev/sdk';
 import { LeaderboardWidget } from '../components/LeaderboardWidget';
@@ -13,15 +13,20 @@ interface DashboardStats {
   totalVisits: number;
 }
 
+interface OrderStats {
+  shippedSum: number;
+  pendingCount: number;
+  rejectedSum: number;
+}
+
 const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [orderStats, setOrderStats] = useState<OrderStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [visitsToday, setVisitsToday] = useState(0);
 
-  // FIXME: В будущем получать с бэкенда
   const DAILY_TARGET = 5;
 
-  // Безопасное получение данных пользователя
   const telegramUser = useMemo(() => WebApp.initDataUnsafe?.user, []);
   const displayName = telegramUser
     ? [telegramUser.first_name, telegramUser.last_name].filter(Boolean).join(' ') || 'Сотрудник'
@@ -30,15 +35,14 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Параллельная загрузка для скорости
-        const [facRes, visitRes] = await Promise.all([
+        const [facRes, visitRes, ordersRes] = await Promise.all([
           apiClient.get('/api/facilities'),
           apiClient.get('/api/visits'),
+          apiClient.get('/api/orders/my-stats').catch(() => ({ data: { shippedSum: 0, pendingCount: 0, rejectedSum: 0 } })),
         ]);
 
         const visits = visitRes.data || [];
         
-        // Считаем визиты за сегодня (Локальное время)
         const now = new Date();
         const todayCount = visits.filter((v: any) => {
           const d = new Date(v.date || v.createdAt);
@@ -51,6 +55,7 @@ const Dashboard: React.FC = () => {
           totalFacilities: facRes.data.length,
           totalVisits: visits.length,
         });
+        setOrderStats(ordersRes.data);
         setVisitsToday(todayCount);
       } catch (err) {
         console.error("Dashboard load error:", err);
@@ -61,8 +66,10 @@ const Dashboard: React.FC = () => {
     fetchData();
   }, []);
 
-  // Вычисляем процент выполнения
   const progressPercent = Math.min(100, Math.round((visitsToday / DAILY_TARGET) * 100));
+
+  // Форматирование денег (15 000 ₽)
+  const formatMoney = (val: number) => new Intl.NumberFormat('ru-RU').format(val);
 
   if (loading) {
     return (
@@ -76,10 +83,9 @@ const Dashboard: React.FC = () => {
 
   return (
     <Layout>
-      {/* Safe area уже в Layout, здесь только лёгкий отступ */}
-      <div className="pt-6 px-4 pb-32 space-y-6">
+      <div className="pt-6 px-4 pb-32 space-y-4">
 
-        {/* 1. Header (Приветствие + Аватар) */}
+        {/* 1. Header */}
         <div className="flex items-center justify-between mb-2">
           <div>
             <h1 className="text-3xl font-bold text-[#1C1C1E] leading-tight mt-2">
@@ -100,23 +106,20 @@ const Dashboard: React.FC = () => {
           </Link>
         </div>
 
-        {/* 2. GRID LAYOUT (Как в Админке) */}
-        <div className="grid grid-cols-2 gap-4">
+        {/* 2. GRID LAYOUT */}
+        <div className="grid grid-cols-2 gap-3">
           
-          {/* BIG CARD: План на смену (Col-span-2) */}
+          {/* BIG CARD 1: План на смену */}
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
             whileTap={{ scale: 0.98 }}
-            className="col-span-2 bg-[#1C1C1E] rounded-[30px] p-6 min-h-[160px] shadow-lg flex flex-col justify-between relative overflow-hidden text-white"
+            className="col-span-2 bg-[#1C1C1E] rounded-[30px] p-6 min-h-[140px] shadow-lg flex flex-col justify-between relative overflow-hidden text-white"
           >
-             {/* Decor Background */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none" />
             
             <div className="flex justify-between items-start relative z-10">
               <div>
                 <h3 className="text-xl font-bold">План на смену</h3>
-                <p className="text-white/60 text-xs mt-1">Выполнено визитов</p>
+                <p className="text-white/60 text-xs mt-1">Визиты сегодня</p>
               </div>
               <div className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/10">
                 <CheckCircle size={20} className={progressPercent >= 100 ? "text-green-400" : "text-white"} />
@@ -128,8 +131,6 @@ const Dashboard: React.FC = () => {
                 <span className="text-4xl font-bold">{visitsToday}</span>
                 <span className="text-white/40 text-lg font-medium">/ {DAILY_TARGET}</span>
               </div>
-              
-              {/* Progress Bar */}
               <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
@@ -140,52 +141,86 @@ const Dashboard: React.FC = () => {
             </div>
           </motion.div>
 
-          {/* CARD 1: Точки (Facilities) */}
+          {/* BIG CARD 2: Мои Заказы (ФИНАНСЫ) */}
+          <motion.div
+            whileTap={{ scale: 0.98 }}
+            className="col-span-2 bg-white rounded-[30px] p-6 shadow-sm border border-gray-100 flex flex-col relative overflow-hidden"
+          >
+            <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-50 text-green-600 rounded-xl flex items-center justify-center">
+                        <Wallet size={20} />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-bold text-[#1C1C1E]">Мои продажи</h3>
+                        <p className="text-gray-400 text-xs">Подтвержденные</p>
+                    </div>
+                </div>
+                {/* Если есть заявки в ожидании - показываем бейдж */}
+                {orderStats && orderStats.pendingCount > 0 && (
+                     <div className="px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-bold rounded-full flex items-center gap-1">
+                        <ShoppingBag size={12} />
+                        {orderStats.pendingCount} в обр.
+                     </div>
+                )}
+            </div>
+
+            <div className="flex items-end gap-2">
+                <span className="text-3xl font-bold text-[#1C1C1E]">{formatMoney(orderStats?.shippedSum || 0)}</span>
+                <span className="text-lg font-bold text-gray-400 mb-1">₽</span>
+            </div>
+
+            {/* Если есть отказы - показываем мелким шрифтом внизу */}
+            {orderStats && orderStats.rejectedSum > 0 && (
+                <div className="mt-3 pt-3 border-t border-gray-50 flex items-center gap-2 text-xs text-red-500">
+                    <AlertCircle size={14} />
+                    <span>Отклонено на {formatMoney(orderStats.rejectedSum)} ₽</span>
+                </div>
+            )}
+          </motion.div>
+
+          {/* CARD 3: Точки */}
           <Link to="/facilities" className="contents">
             <motion.div
               whileTap={{ scale: 0.98 }}
-              className="bg-white rounded-[30px] p-5 h-[160px] shadow-sm border border-gray-100 flex flex-col justify-between relative overflow-hidden group"
+              className="bg-white rounded-[30px] p-5 h-[140px] shadow-sm border border-gray-100 flex flex-col justify-between relative overflow-hidden group"
             >
               <div className="absolute -bottom-4 -right-4 opacity-5 group-hover:opacity-10 transition-opacity rotate-12">
                 <Store size={80} />
               </div>
-              
               <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center text-purple-600 mb-2">
                 <Store size={20} />
               </div>
-              
               <div>
                 <h3 className="text-lg font-bold text-[#1C1C1E]">Точки</h3>
-                <p className="text-gray-400 text-xs">База: {stats?.totalFacilities || 0}</p>
+                <p className="text-gray-400 text-xs">Всего: {stats?.totalFacilities || 0}</p>
               </div>
             </motion.div>
           </Link>
 
-          {/* CARD 2: История (History) */}
+          {/* CARD 4: История визитов */}
           <Link to="/visits-history" className="contents">
             <motion.div
               whileTap={{ scale: 0.98 }}
-              className="bg-white rounded-[30px] p-5 h-[160px] shadow-sm border border-gray-100 flex flex-col justify-between relative overflow-hidden group"
+              className="bg-white rounded-[30px] p-5 h-[140px] shadow-sm border border-gray-100 flex flex-col justify-between relative overflow-hidden group"
             >
               <div className="absolute -top-4 -right-4 opacity-5 group-hover:opacity-10 transition-opacity">
                 <Footprints size={80} />
               </div>
-
               <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 mb-2">
                 <Footprints size={20} />
               </div>
-              
               <div>
                 <h3 className="text-lg font-bold text-[#1C1C1E]">История</h3>
-                <p className="text-gray-400 text-xs">Всего: {stats?.totalVisits || 0}</p>
+                <p className="text-gray-400 text-xs">Визитов: {stats?.totalVisits || 0}</p>
               </div>
             </motion.div>
           </Link>
 
         </div>
 
-        {/* 3. LEADERBOARD (Как отдельный виджет, но в стиле) */}
-        <div className="mt-8">
+        {/* 3. LEADERBOARD */}
+        <div className="mt-6">
            <div className="flex items-center gap-2 mb-4 px-1">
              <Trophy size={18} className="text-[#FFD700]" />
              <h2 className="text-lg font-bold text-[#1C1C1E]">Лидеры недели</h2>

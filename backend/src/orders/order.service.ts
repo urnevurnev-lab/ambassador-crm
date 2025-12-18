@@ -231,6 +231,39 @@ export class OrderService {
         });
     }
 
+    async getUserStats(telegramId: string) {
+        const user = await this.prisma.user.findUnique({ where: { telegramId } });
+        if (!user) {
+            return { shippedSum: 0, pendingCount: 0, rejectedSum: 0 };
+        }
+
+        const orders = await this.prisma.order.findMany({
+            where: { userId: user.id },
+            include: { items: { include: { product: true } } },
+        });
+
+        let shippedSum = 0;
+        let pendingCount = 0;
+        let rejectedSum = 0;
+
+        for (const order of orders) {
+            const orderTotal = order.items.reduce((acc, item) => {
+                const price = item.product?.price ?? 0;
+                return acc + price * (item.quantity ?? 1);
+            }, 0);
+
+            if (order.status === 'SHIPPED' || order.status === 'APPROVED') {
+                shippedSum += orderTotal;
+            } else if (order.status === 'REJECTED') {
+                rejectedSum += orderTotal;
+            } else {
+                pendingCount += 1;
+            }
+        }
+
+        return { shippedSum, pendingCount, rejectedSum };
+    }
+
     async updateStatus(id: number, status: string) {
         return this.prisma.order.update({
             where: { id },
