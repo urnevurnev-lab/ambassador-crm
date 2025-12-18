@@ -10,8 +10,14 @@ export const TelegramNavigator = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    WebApp.ready();
-    WebApp.expand();
+    // SDK может быть недоступен при открытии вне Telegram, не падаем в этом случае.
+    const tg = (WebApp as any);
+    if (!tg?.ready) {
+      return;
+    }
+
+    tg.ready();
+    tg.expand?.();
 
     const handleBackBtn = () => {
       navigate(-1);
@@ -20,14 +26,14 @@ export const TelegramNavigator = () => {
     const shouldShowButton = !ROOT_ROUTES.includes(location.pathname);
 
     if (shouldShowButton) {
-      WebApp.BackButton.show();
-      WebApp.BackButton.onClick(handleBackBtn);
+      tg.BackButton?.show?.();
+      tg.BackButton?.onClick?.(handleBackBtn);
     } else {
-      WebApp.BackButton.hide();
+      tg.BackButton?.hide?.();
     }
 
     return () => {
-      WebApp.BackButton.offClick(handleBackBtn);
+      tg.BackButton?.offClick?.(handleBackBtn);
     };
   }, [location, navigate]);
 
