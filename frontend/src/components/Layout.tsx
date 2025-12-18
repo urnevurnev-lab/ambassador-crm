@@ -1,29 +1,40 @@
 import React from 'react';
-import { useLocation } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { BottomTab } from './BottomTab';
 
 interface LayoutProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ children }) => {
+const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const showBottomTab = !location.pathname.startsWith('/admin') && location.pathname !== '/login';
+  const content = children ?? <Outlet />;
 
   return (
-    <div className="fixed inset-0 z-0 flex flex-col bg-[#F2F3F7] overflow-hidden text-[#1C1C1E]">
+    <div className="flex flex-col min-h-screen bg-gray-50">
+      {/* Основной контент с отступами безопасности */}
       <main
         className={`
-          flex-grow w-full flex flex-col overflow-y-auto 
-          /* Сдвигаем контент ниже "челки", но НЕ добавляем отступы по бокам */
-          pt-[var(--sat)] 
-          ${showBottomTab ? 'pb-32' : 'pb-[var(--sab)]'} 
+          flex-1 w-full max-w-md mx-auto relative
+          pt-[var(--tg-safe-area-top)]
+          ${showBottomTab ? 'pb-[90px]' : 'pb-[var(--tg-safe-area-bottom)]'}
         `}
       >
-        {children}
+        <div className="px-4 py-6 space-y-4">
+          {content}
+        </div>
       </main>
 
-      {showBottomTab && <BottomTab />}
+      {/* Нижнее меню: фиксированное, с учетом отступа iPhone */}
+      {showBottomTab && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-100 pb-[var(--tg-safe-area-bottom)]">
+          <BottomTab />
+        </div>
+      )}
     </div>
   );
 };
+
+export { Layout };
+export default Layout;

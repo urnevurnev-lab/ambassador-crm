@@ -1,95 +1,62 @@
-import React, { Suspense, lazy, useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { TelegramNavigator } from './components/TelegramNavigator';
-
-// --- ИСПРАВЛЕНИЕ: Главные страницы грузим СРАЗУ, чтобы переключение было мгновенным ---
-import Dashboard from './pages/Dashboard';
-import MapPage from './pages/MapPage';
-import OrderPage from './pages/OrderPage';
-import WorkHubPage from './pages/WorkHubPage';
-import FacilitiesListPage from './pages/FacilitiesListPage';
-import FacilityPage from './pages/FacilityPage';
-import VisitWizard from './pages/VisitWizard';
-import KnowledgeBasePage from './pages/KnowledgeBasePage';
-import ProfilePage from './pages/ProfilePage';
-import { VisitsHistoryPage } from './pages/VisitsHistoryPage';
-import AdminPage from './pages/AdminPage';
+import { useEffect, useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import Layout from './components/Layout';
 import SplashPage from './pages/SplashPage';
-import MyOrdersPage from './pages/MyOrdersPage';
+import Dashboard from './pages/Dashboard';
+// Импортируй остальные страницы по мере необходимости
+// import AdminPage from './pages/AdminPage';
 
-// Ленивая загрузка только для тяжелых/редких страниц
-const NewFacilityPage = lazy(() => import('./pages/NewFacilityPage'));
-const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboard })));
-const AdminLogin = lazy(() => import('./pages/admin/AdminLogin').then((m) => ({ default: m.AdminLogin })));
+// Типизация для Telegram WebApp (чтобы TS не ругался)
+declare global {
+  interface Window {
+    Telegram: any;
+  }
+}
 
-const PageLoader = () => (
-  <div className="flex h-screen w-full items-center justify-center bg-[#F8F9FA]">
-    <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#007AFF] border-t-transparent" />
-  </div>
-);
-
-const NotFound = () => <div className="p-10 text-center">404 | Страница не найдена</div>;
-
-
-
-// ...imports...
-
-const App: React.FC = () => {
-  // Показываем экран "Только для своих" при каждом запуске.
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+function App() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuth, setIsAuth] = useState(false); // Заглушка, позже подключишь реальную проверку
 
   useEffect(() => {
-    setIsAuthenticated(true);
+    // 1. Инициализация Telegram
+    const tg = window.Telegram.WebApp;
+    tg.expand(); // Раскрываем на весь экран
+    tg.ready();  // Сообщаем Telegram, что приложение готово
+
+    // 2. Эмуляция проверки авторизации (заменишь на свой API запрос)
+    const initApp = async () => {
+      try {
+        // Здесь будет await checkAuth();
+        // Имитация задержки (чтобы увидеть твой красивый Splash)
+        await new Promise(resolve => setTimeout(resolve, 2000)); 
+        setIsAuth(true); // Пока считаем, что все ок
+      } catch (error) {
+        console.error("Initialization failed", error);
+      } finally {
+        setIsLoading(false); // ВАЖНО: Это должно сработать всегда
+      }
+    };
+
+    initApp();
   }, []);
 
-  if (!isAuthenticated) {
+  // 3. Пока грузимся — показываем ТОЛЬКО Splash
+  if (isLoading) {
     return <SplashPage />;
   }
 
   return (
     <BrowserRouter>
-      <TelegramNavigator />
-      <div className="App">
-        {/* Suspense теперь нужен только для редких роутов */}
-        <Routes>
-          {/* Главные страницы (мгновенная загрузка) */}
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/map" element={<MapPage />} />
-          <Route path="/orders" element={<OrderPage />} />
-          <Route path="/facility/:id" element={<FacilityPage />} />
-          <Route path="/facilities" element={<FacilitiesListPage />} />
-          <Route path="/visit" element={<VisitWizard />} />
-          <Route path="/knowledge" element={<KnowledgeBasePage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/visits-history" element={<VisitsHistoryPage />} />
-          <Route path="/my-orders" element={<MyOrdersPage />} />
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="/work" element={<WorkHubPage />} />
-
-          {/* Редкие страницы (с лоадером) */}
-          <Route path="/facility/new" element={
-            <Suspense fallback={<PageLoader />}>
-              <NewFacilityPage />
-            </Suspense>
-          } />
-
-          {/* Админ-панель */}
-          <Route path="/admin" element={
-            <Suspense fallback={<PageLoader />}>
-              <AdminDashboard />
-            </Suspense>
-          } />
-          <Route path="/admin/login" element={
-            <Suspense fallback={<PageLoader />}>
-              <AdminLogin />
-            </Suspense>
-          } />
-
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </div>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Dashboard />} />
+          {/* Добавь свои роуты сюда */}
+          {/* <Route path="admin" element={<AdminPage />} /> */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
     </BrowserRouter>
   );
-};
+}
 
 export default App;

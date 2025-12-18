@@ -3,32 +3,26 @@
 @tailwind utilities;
 
 :root {
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  /* ОБЯЗАТЕЛЬНО: добавляем fallback , 0px */
-  --sat: env(safe-area-inset-top, 0px);
-  --sab: env(safe-area-inset-bottom, 0px);
-}
-
-html,
-body,
-#root {
-  height: 100%;
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  /* Убираем overflow-hidden отсюда, чтобы не блокировать нативный скролл, если скрипты упадут */
-  background-color: #F2F3F7; /* Цвет фона iOS */
+  /* Переменные для безопасных зон Telegram */
+  --tg-safe-area-top: env(safe-area-inset-top, 0px);
+  --tg-safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 body {
-  color: #1C1C1E;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  overscroll-behavior-y: none; /* Запрет "пружинивания" страницы */
+  @apply bg-gray-50 text-slate-900;
+  /* Защита от "резинового" скролла на iOS */
+  overscroll-behavior-y: none;
 }
 
-/* Скрываем скроллбар */
+/* Скроллбар для Webkit (Chrome, Safari) */
 ::-webkit-scrollbar {
-  width: 0px;
-  background: transparent;
+  width: 6px;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 rounded-full;
+}
+
+/* Утилита для "стеклянного" эффекта (опционально) */
+.glass {
+  @apply bg-white/80 backdrop-blur-md border-b border-gray-100;
 }

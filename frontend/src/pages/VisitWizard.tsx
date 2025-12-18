@@ -364,7 +364,7 @@ const VisitWizard: React.FC = () => {
     return (
         <div className="fixed inset-0 z-0 flex flex-col bg-[#F2F3F7] overflow-hidden text-[#1C1C1E]">
             {/* Header */}
-            <div className="bg-white px-4 py-4 pt-[var(--sat)] border-b border-gray-200 flex items-center justify-between z-10 shrink-0 shadow-sm">
+            <div className="bg-white px-4 py-4 pt-[var(--tg-safe-area-top)] border-b border-gray-200 flex items-center justify-between z-10 shrink-0 shadow-sm">
                 <h1 className="font-bold text-lg">{getTitle()}</h1>
                 <button onClick={() => navigate(-1)} className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center active:scale-90 transition">
                     <X size={18} className="text-gray-600" />
@@ -380,7 +380,7 @@ const VisitWizard: React.FC = () => {
             </div>
 
             {/* Footer Button */}
-            <div className="bg-white border-t border-gray-200 p-4 pb-[calc(20px+var(--sab))] shrink-0 z-10">
+            <div className="bg-white border-t border-gray-200 p-4 pb-[calc(20px+var(--tg-safe-area-bottom))] shrink-0 z-10">
                 <button 
                     onClick={handleFinish}
                     className="w-full bg-[#1C1C1E] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-gray-300 active:scale-[0.98] transition-all"
