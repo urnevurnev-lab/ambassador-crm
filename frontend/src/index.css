@@ -4,9 +4,9 @@
 
 :root {
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  /* Определяем безопасные зоны для телефонов с "челками" */
-  --sat: env(safe-area-inset-top);
-  --sab: env(safe-area-inset-bottom);
+  /* ОБЯЗАТЕЛЬНО: добавляем fallback , 0px */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
 }
 
 html,
@@ -16,36 +16,19 @@ body,
   width: 100%;
   margin: 0;
   padding: 0;
-  overflow: hidden; /* Скроллим только внутри Layout */
+  /* Убираем overflow-hidden отсюда, чтобы не блокировать нативный скролл, если скрипты упадут */
+  background-color: #F2F3F7; /* Цвет фона iOS */
 }
 
 body {
-  background-color: #F8F9FA;
   color: #1C1C1E;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overscroll-behavior-y: none;
+  overscroll-behavior-y: none; /* Запрет "пружинивания" страницы */
 }
 
-#root {
-  display: flex;
-  flex-direction: column;
-}
-
-/* Скрываем скроллбар, но оставляем функционал */
+/* Скрываем скроллбар */
 ::-webkit-scrollbar {
   width: 0px;
   background: transparent;
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: 200% center;
-  }
-  100% {
-    background-position: -200% center;
-  }
-}
-.animate-shimmer {
-  animation: shimmer 3s linear infinite;
 }

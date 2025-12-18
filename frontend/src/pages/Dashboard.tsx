@@ -76,16 +76,13 @@ const Dashboard: React.FC = () => {
 
   return (
     <Layout>
-      {/* Единый отступ сверху как в AdminPage: safe-area + 20px */}
-      <div className="pt-[calc(env(safe-area-inset-top)+20px)] px-4 pb-32 space-y-6">
+      {/* Safe area уже в Layout, здесь только лёгкий отступ */}
+      <div className="pt-6 px-4 pb-32 space-y-6">
 
         {/* 1. Header (Приветствие + Аватар) */}
         <div className="flex items-center justify-between mb-2">
           <div>
-            <div className="text-xs text-gray-400 font-bold uppercase tracking-wide mb-1">
-              {new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })}
-            </div>
-            <h1 className="text-3xl font-bold text-[#1C1C1E] leading-tight">
+            <h1 className="text-3xl font-bold text-[#1C1C1E] leading-tight mt-2">
               Привет,<br />{displayName}
             </h1>
           </div>

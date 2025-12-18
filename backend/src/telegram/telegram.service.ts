@@ -78,9 +78,9 @@ export class TelegramService {
         });
     }
 
-    async sendOrderNotification(chatId: string, orderId: number, details: string) {
+    async sendOrderNotification(chatId: string, orderId: number, message: string) {
         try {
-            await this.bot.sendMessage(chatId, `🆕 <b>НОВЫЙ ЗАКАЗ #${orderId}</b>\n\n${details}`, {
+            await this.bot.sendMessage(chatId, message, {
                 parse_mode: 'HTML',
                 reply_markup: {
                     inline_keyboard: [
