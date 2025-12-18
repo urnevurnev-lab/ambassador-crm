@@ -49,9 +49,10 @@ export class VisitsController {
                 type: data.type,
                 date: new Date(),
                 status: data.status || 'IN_PROGRESS',
-                userLat: data.userLat || 0,
-                userLng: data.userLng || 0,
-                data: {},
+                data: {
+                    userLat: data.userLat || 0,
+                    userLng: data.userLng || 0,
+                },
             },
         });
     }
