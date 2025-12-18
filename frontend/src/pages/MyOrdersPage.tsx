@@ -19,7 +19,7 @@ interface Order {
     id: number;
     status: 'PENDING' | 'SHIPPED' | 'REJECTED' | string;
     createdAt: string;
-    facility: { name: string; address: string };
+    facility?: { name?: string | null; address?: string | null } | null;
     items: OrderItem[];
 }
 
@@ -73,8 +73,10 @@ export const MyOrdersPage: React.FC = () => {
                 ) : (
                     <div className="space-y-3">
                         {orders.map((order) => {
-                            const total = getOrderTotal(order.items);
+                            const total = getOrderTotal(order.items || []);
                             const isExpanded = expandedIds.has(order.id);
+                            const facilityName = order.facility?.name || 'Без точки';
+                            const facilityAddress = order.facility?.address || 'Адрес не указан';
 
                             const statusConfig =
                                 {
@@ -111,11 +113,11 @@ export const MyOrdersPage: React.FC = () => {
                                                 </span>
                                             </div>
                                             <div className="font-bold text-[#1C1C1E] text-lg leading-tight mb-1">
-                                                {order.facility.name}
+                                                {facilityName}
                                             </div>
                                             <div className="text-xs text-gray-400 flex items-center gap-1">
                                                 <MapPin size={10} />
-                                                <span className="truncate max-w-[220px]">{order.facility.address}</span>
+                                                <span className="truncate max-w-[220px]">{facilityAddress}</span>
                                             </div>
                                         </div>
 
@@ -145,18 +147,18 @@ export const MyOrdersPage: React.FC = () => {
                                                     <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
                                                         Состав заказа
                                                     </div>
-                                                    {order.items.map((item) => (
+                                                    {(order.items || []).map((item) => (
                                                         <div key={item.id} className="flex justify-between items-center text-sm">
                                                             <div>
-                                                                <span className="font-medium text-[#1C1C1E]">{item.product.flavor}</span>
-                                                                <span className="text-gray-400 ml-2 text-xs">({item.product.line})</span>
+                                                                <span className="font-medium text-[#1C1C1E]">{item.product?.flavor || 'Вкус'}</span>
+                                                                <span className="text-gray-400 ml-2 text-xs">({item.product?.line || 'Линейка'})</span>
                                                             </div>
                                                             <div className="flex items-center gap-3">
                                                                 <span className="font-bold text-gray-600 bg-white px-2 py-0.5 rounded-md border border-gray-200 text-xs">
                                                                     {item.quantity} шт
                                                                 </span>
                                                                 <span className="w-16 text-right font-medium text-gray-500">
-                                                                    {formatMoney((item.product.price || 0) * item.quantity)} ₽
+                                                                    {formatMoney(((item.product?.price || 0) * item.quantity))} ₽
                                                                 </span>
                                                             </div>
                                                         </div>
