@@ -19,8 +19,8 @@ export default defineConfig({
     },
   },
   server: {
-    host: true,       // Listen on all IPs
-    allowedHosts: true, // Allow Ngrok and other tunnels
+    host: true, // Разрешает доступ по сети (0.0.0.0)
+    allowedHosts: ['all'], // (Для Vite 6+) Разрешает любые домены (включая serveo.net)
     proxy: {
       '/api': {
         target: 'http://localhost:3000',

@@ -5,6 +5,7 @@ import WebApp from '@twa-dev/sdk';
 // начинающиеся с /api, и направит их на http://localhost:3000.
 const apiClient = axios.create({
     baseURL: '',
+    withCredentials: true,
     timeout: 5000,
     headers: {
         'Content-Type': 'application/json',
