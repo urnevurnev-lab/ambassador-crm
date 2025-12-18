@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { BottomTab } from './BottomTab'; // Импортируем правильно (с фигурными скобками)
+import { BottomTab } from './BottomTab';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -8,14 +8,27 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
+  const showBottomTab = true; // Можно скрыть на некоторых экранах if (...)
 
-  // Скрываем нижнее меню на странице входа/сплэше/визите (если нужно)
-  // Пока оставляем везде, кроме, может быть, самого сплэша (который перекрывает всё)
-  const showBottomTab = true; 
+  // Скролл наверх при переходе между страницами
+  useEffect(() => {
+    const mainContainer = document.getElementById('main-scroll-container');
+    if (mainContainer) {
+      mainContainer.scrollTo(0, 0);
+    }
+  }, [location.pathname]);
 
   return (
-    <div className="min-h-screen bg-[#F3F4F6] text-gray-900 font-sans">
-      <main className="w-full max-w-md mx-auto min-h-screen bg-[#F3F4F6] relative shadow-2xl">
+    <div className="flex flex-col h-screen w-full max-w-md mx-auto bg-[var(--tg-theme-bg-color)] relative shadow-2xl overflow-hidden">
+      
+      {/* ОСНОВНОЙ КОНТЕЙНЕР ДЛЯ СКРОЛЛА */}
+      {/* pt-safe: отступ сверху под челку */}
+      {/* pb-safe: отступ снизу под меню и полоску */}
+      <main 
+        id="main-scroll-container"
+        className="flex-1 overflow-y-auto overflow-x-hidden pt-safe pb-safe no-scrollbar"
+        style={{ WebkitOverflowScrolling: 'touch' }} // Плавный скролл на iOS
+      >
         {children}
       </main>
       

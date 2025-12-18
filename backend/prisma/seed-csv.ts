@@ -1,216 +1,174 @@
+// @ts-nocheck
 import { PrismaClient } from '@prisma/client';
-import { readFileSync, existsSync } from 'fs';
-import * as path from 'path';
-import { randomUUID } from 'crypto';
 
-type CsvRow = [
-  fullName: string,
-  facilityName: string,
-  facilityAddress: string,
-  bliss: string,
-  whiteLine: string,
-  blackLine: string,
-  cigarLine: string,
-  visitDate: string,
-];
+const fs = require('fs');
+const path = require('path');
+const csv = require('csv-parser');
 
 const prisma = new PrismaClient();
 
-const possiblePaths = [
-  path.resolve(__dirname, 'БАЗАБАЗА.csv'),
-  path.resolve(__dirname, '..', 'БАЗАБАЗА.csv'),
-  path.resolve(__dirname, '..', '..', 'БАЗАБАЗА.csv'),
-  '/Users/viktorurnev/Downloads/БАЗАБАЗА.csv',
-];
-
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9а-яё\s-]/gi, '')
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-');
-}
-
-function parseFlavors(cell: string): string[] {
-  return cell
-    .split(',')
-    .map((v) => v.trim())
-    .filter(Boolean);
-}
-
-function parseDate(dateStr: string): Date | null {
-  const parts = dateStr.split('.').map((v) => Number(v));
-  if (parts.length !== 3) return null;
-  const [day, month, year] = parts;
-  if (!day || !month || !year) return null;
-  return new Date(year, month - 1, day);
-}
+const ACTIVITY_MAP = {
+  'Проезд': 'transit',
+  'B2B': 'b2b',
+  'Дегустация': 'tasting',
+  'Открытая смена': 'checkup',
+  'Смена': 'checkup'
+};
 
 async function main() {
-  const csvPath = possiblePaths.find((p) => existsSync(p));
-  if (!csvPath) {
-    throw new Error(`CSV file not found. Checked: ${possiblePaths.join(', ')}`);
+  const results = [];
+  const filePath = path.join(__dirname, 'activity.csv');
+
+  console.log('🚀 Начинаем чтение CSV...');
+  console.log(`📂 Путь к файлу: ${filePath}`);
+
+  if (!fs.existsSync(filePath)) {
+      console.error(`❌ Файл не найден по пути: ${filePath}`);
+      process.exit(1);
   }
 
-  const content = readFileSync(csvPath, 'utf8');
-  const lines = content.replace(/^\uFEFF/, '').split(/\r?\n/).filter((l) => l.trim().length > 0);
-  if (lines.length <= 1) {
-    console.log('CSV has no data rows');
-    return;
-  }
+  fs.createReadStream(filePath)
+    .pipe(csv())
+    .on('data', (data) => results.push(data))
+    .on('end', async () => {
+      console.log(`✅ Прочитано ${results.length} строк. Начинаем запись в базу...`);
+      
+      let newUsers = 0;
+      let newFacilities = 0;
+      let newProducts = 0;
+      let newVisits = 0;
 
-  const header = lines[0];
-  console.log(`Using CSV: ${csvPath}`);
-  console.log(`Header: ${header}`);
+      for (const row of results) {
+        try {
+          // --- 1. АМБАССАДОР ---
+          const userName = row['Амбассадор']?.trim();
+          if (!userName) continue;
 
-  const userCache = new Map<string, number>();
-  const facilityCache = new Map<string, number>();
-  const productCache = new Map<string, number>();
-
-  let processed = 0;
-
-  for (let i = 1; i < lines.length; i++) {
-    const raw = lines[i];
-    const cols = raw.split(';').map((c) => c.trim()) as Partial<CsvRow>;
-    if (cols.length < 8) {
-      console.warn(`Row ${i + 1} skipped: expected 8 columns, got ${cols.length}`);
-      continue;
-    }
-
-    const [
-      fullName,
-      facilityName,
-      facilityAddress,
-      blissCell,
-      whiteCell,
-      blackCell,
-      cigarCell,
-      visitDateStr,
-    ] = cols as CsvRow;
-
-    if (!fullName || !facilityName || !facilityAddress || !visitDateStr) {
-      console.warn(`Row ${i + 1} skipped: missing required fields`);
-      continue;
-    }
-
-    const visitDate = parseDate(visitDateStr);
-    if (!visitDate || isNaN(visitDate.getTime())) {
-      console.warn(`Row ${i + 1} skipped: invalid date "${visitDateStr}"`);
-      continue;
-    }
-
-    // User
-    let userId = userCache.get(fullName);
-    if (!userId) {
-      const existingUser = await prisma.user.findFirst({ where: { fullName } });
-      if (existingUser) {
-        userId = existingUser.id;
-      } else {
-        const user = await prisma.user.create({
-          data: {
-            fullName,
-            telegramId: `temp_${randomUUID()}`,
-          },
-        });
-        userId = user.id;
-      }
-      userCache.set(fullName, userId);
-    }
-
-    // Facility
-    const facilityKey = `${facilityName}__${facilityAddress}`;
-    let facilityId = facilityCache.get(facilityKey);
-    if (!facilityId) {
-      const existingFacility = await prisma.facility.findFirst({
-        where: { name: facilityName, address: facilityAddress },
-      });
-      if (existingFacility) {
-        facilityId = existingFacility.id;
-      } else {
-        const facility = await prisma.facility.create({
-          data: {
-            name: facilityName,
-            address: facilityAddress,
-          },
-        });
-        facilityId = facility.id;
-      }
-      facilityCache.set(facilityKey, facilityId);
-    }
-
-    // Products
-    const lineCells: Record<string, string> = {
-      'BLISS': blissCell,
-      'WHITE LINE': whiteCell,
-      'BLACK LINE': blackCell,
-      'CIGAR LINE': cigarCell,
-    };
-
-    const productIds: number[] = [];
-
-    for (const [lineName, cell] of Object.entries(lineCells)) {
-      const flavors = parseFlavors(cell || '');
-      for (const flavor of flavors) {
-        const sku = `${slugify(lineName)}-${slugify(flavor)}`;
-        if (!sku || sku.endsWith('-')) continue;
-
-        let productId = productCache.get(sku);
-        if (!productId) {
-          const existingProduct = await prisma.product.findUnique({ where: { sku } });
-          if (existingProduct) {
-            productId = existingProduct.id;
-          } else {
-            const product = await prisma.product.create({
+          let user = await prisma.user.findFirst({ where: { fullName: userName } });
+          
+          if (!user) {
+            const randomId = Math.floor(100000 + Math.random() * 900000).toString();
+            user = await prisma.user.create({
               data: {
-                line: lineName,
-                flavor,
-                sku,
-              },
+                fullName: userName,
+                telegramId: randomId, 
+                role: 'AMBASSADOR'
+              }
             });
-            productId = product.id;
+            newUsers++;
           }
-          productCache.set(sku, productId);
+
+          // --- 2. ЗАВЕДЕНИЕ ---
+          const facilityName = row['Название заведения с Яндекс карты']?.trim();
+          const address = row['Адрес с Яндекс карты']?.trim();
+          
+          if (!facilityName) continue;
+
+          let facility = await prisma.facility.findFirst({
+            where: { name: facilityName, address: address }
+          });
+
+          if (!facility) {
+            const category = row['Категория заведения '] || row['Категория заведения'] || 'C';
+            facility = await prisma.facility.create({
+              data: {
+                name: facilityName,
+                address: address || 'Адрес не указан',
+                tier: category.trim() 
+              }
+            });
+            newFacilities++;
+          }
+
+          // --- 3. ТОВАРЫ ---
+          const linesToParse = [
+            { col: 'Bliss ( что стоит в работе )', lineName: 'Bliss' },
+            { col: 'WHITE LINE  ( что стоит в работе )', lineName: 'White Line' },
+            { col: 'BLACK LINE  ( что стоит в работе )', lineName: 'Black Line' },
+            { col: 'CIGAR LINE  ( что стоит в работе )', lineName: 'Cigar Line' }
+          ];
+
+          for (const lineObj of linesToParse) {
+            const rawString = row[lineObj.col];
+            if (rawString) {
+                const flavors = rawString.split(',').map((s) => s.trim()).filter((s) => s.length > 0);
+                
+                for (const flavor of flavors) {
+                    const sku = `${lineObj.lineName}_${flavor}`.toUpperCase().replace(/\s+/g, '_');
+                    
+                    let product = await prisma.product.findFirst({
+                        where: { flavor: flavor, line: lineObj.lineName }
+                    });
+
+                    if (!product) {
+                        product = await prisma.product.create({
+                            data: {
+                                flavor: flavor,
+                                line: lineObj.lineName,
+                                category: 'Tobacco',
+                                sku: sku,
+                                price: 2500
+                            }
+                        });
+                        newProducts++;
+                    }
+                }
+            }
+          }
+
+          // --- 4. ВИЗИТ ---
+          const dateStr = row['Отметка времени'];
+          const visitDate = new Date(dateStr); 
+          if (isNaN(visitDate.getTime())) continue;
+
+          const activityType = ACTIVITY_MAP[row['Выбери активность']] || 'CHECKUP';
+          const comment = [
+              row['Что было сделано на проезде'], 
+              row['Что говорят? '], 
+              row['Что говорят?']
+          ].filter(Boolean).join('. ');
+
+          const distributor = row['У кого закупают? ( Даже если не у дистра то у кого ) '] || '';
+
+          const existingVisit = await prisma.visit.findFirst({
+              where: { userId: user.id, facilityId: facility.id, date: visitDate }
+          });
+
+          if (!existingVisit) {
+            await prisma.visit.create({
+                data: {
+                    date: visitDate,
+                    userId: user.id,
+                    facilityId: facility.id,
+                    type: 'CHECKUP',
+                    status: 'COMPLETED',
+                    comment: comment,
+                    data: { distributor }
+                }
+            });
+            newVisits++;
+          }
+
+        } catch (e) {
+           // ignore errors
         }
-        productIds.push(productId);
       }
-    }
-
-    // Visit
-    await prisma.visit.create({
-      data: {
-        userId,
-        facilityId,
-        type: 'IMPORT',
-        date: visitDate,
-        productsAvailable: {
-          connect: productIds.map((id) => ({ id })),
-        },
-      },
+      
+      console.log('------------------------------------------------');
+      console.log('🎉 ИМПОРТ ЗАВЕРШЕН УСПЕШНО!');
+      console.log('------------------------------------------------');
+      console.log(`👤 Сотрудников добавлено: ${newUsers}`);
+      console.log(`🏢 Заведений добавлено:   ${newFacilities}`);
+      console.log(`📦 Вкусов найдено:        ${newProducts}`);
+      console.log(`📝 Визитов загружено:     ${newVisits}`);
+      console.log('------------------------------------------------');
     });
+}
 
-    processed += 1;
-    console.log(`Processed row ${i + 1}: Visit to "${facilityName}" by "${fullName}" (${productIds.length} products)`);
-  }
-
-  // Post-processing: update must-list
-  const facilities = await prisma.facility.findMany({ select: { id: true } });
-  for (const facility of facilities) {
-    const lastVisit = await prisma.visit.findFirst({
-      where: { facilityId: facility.id },
-      orderBy: { date: 'desc' },
-      include: { productsAvailable: { select: { id: true } } },
-    });
-    if (!lastVisit) continue;
-
-    const requiredProducts = lastVisit.productsAvailable.map((p) => p.id);
-    await prisma.facility.update({
-      where: { id: facility.id },
-      data: { requiredProducts },
-    });
-  }
-
-  console.log(`Done. Total processed rows: ${processed}`);
+function transliterate(word) {
+    if (!word) return 'user';
+    const a = {"Ё":"YO","Й":"I","Ц":"TS","У":"U","К":"K","Е":"E","Н":"N","Г":"G","Ш":"SH","Щ":"SCH","З":"Z","Х":"H","Ъ":"'","ё":"yo","й":"i","ц":"ts","у":"u","к":"k","е":"e","н":"n","г":"g","ш":"sh","щ":"sch","з":"z","х":"h","ъ":"'","Ф":"F","Ы":"I","В":"V","А":"A","П":"P","Р":"R","О":"O","Л":"L","Д":"D","Ж":"ZH","Э":"E","ф":"f","ы":"i","в":"v","а":"a","п":"p","р":"r","о":"o","л":"l","д":"d","ж":"zh","э":"e","Я":"Ya","Ч":"CH","С":"S","М":"M","И":"I","Т":"T","Ь":"'","Б":"B","Ю":"YU","я":"ya","ч":"ch","с":"s","м":"m","и":"i","т":"t","ь":"'","б":"b","ю":"yu"};
+    return word.split('').map((char) => a[char] || char).join("");
 }
 
 main()

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
 
 import { Layout } from './components/Layout';
@@ -24,18 +24,33 @@ function App() {
   const [isSplashVisible, setSplashVisible] = useState(true);
 
   useEffect(() => {
-    // Пытаемся инициализировать Telegram, но не роняем приложение если не вышло
+    // Инициализация через SDK (убирает warning "WebApp is declared but not read")
     try {
-        if (typeof window !== 'undefined' && (window as any).Telegram) {
-            WebApp.expand();
-            WebApp.ready();
+        // Сообщаем Телеграму, что приложение готово
+        WebApp.ready();
+        
+        // Растягиваем на весь экран
+        WebApp.expand(); 
+
+        // Настраиваем цвета шапки под тему пользователя
+        // Используем параметры темы, если они доступны
+        const theme = WebApp.themeParams;
+        if (theme) {
+            WebApp.setHeaderColor(theme.secondary_bg_color || '#ffffff');
+            WebApp.setBackgroundColor(theme.bg_color || '#F3F4F6');
         }
+
+        // Отключаем вертикальные свайпы (закрытие), если версия позволяет
+        if (WebApp.isVersionAtLeast('7.7')) {
+            WebApp.disableVerticalSwipes();
+        }
+        
     } catch (e) {
-        console.warn('Telegram SDK init warning:', e);
+        console.warn('Telegram SDK init warning (Running in browser mode):', e);
     }
   }, []);
 
-  // Если Splash активен - показываем его и передаем функцию завершения
+  // Если Splash активен - показываем его
   if (isSplashVisible) {
     return <SplashPage onFinish={() => setSplashVisible(false)} />;
   }
@@ -45,24 +60,22 @@ function App() {
       <Layout>
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/work" element={<WorkHubPage />} />
+            <Route path="/knowledge" element={<KnowledgeBasePage />} />
+            <Route path="/admin" element={<AdminPage />} />
             
-            {/* Основные разделы меню */}
-            <Route path="/orders" element={<OrderPage />} /> {/* Портфель */}
-            <Route path="/facilities" element={<FacilitiesListPage />} /> {/* База */}
-            <Route path="/admin" element={<AdminPage />} /> {/* Админка */}
-            
-            {/* Дополнительные страницы */}
+            <Route path="/facilities" element={<FacilitiesListPage />} />
             <Route path="/facilities/new" element={<NewFacilityPage />} />
             <Route path="/facilities/:id" element={<FacilityPage />} />
+            
             <Route path="/visit" element={<VisitWizard />} />
+            <Route path="/orders" element={<OrderPage />} />
+            
             <Route path="/my-orders" element={<MyOrdersPage />} />
             <Route path="/visits-history" element={<VisitsHistoryPage />} />
-            <Route path="/knowledge" element={<KnowledgeBasePage />} />
             <Route path="/map" element={<MapPage />} />
             <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/work" element={<WorkHubPage />} />
 
-            {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
       </Layout>

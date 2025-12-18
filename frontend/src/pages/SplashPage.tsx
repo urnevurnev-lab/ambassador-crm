@@ -1,63 +1,58 @@
 import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 
-// Интерфейс для пропсов (чтобы App.tsx не ругался)
 interface SplashPageProps {
-    onFinish?: () => void;
+  onFinish: () => void;
 }
 
 const SplashPage: React.FC<SplashPageProps> = ({ onFinish }) => {
-    
-    useEffect(() => {
-        // Если передали функцию завершения - вызываем её через 2.5 сек
-        if (onFinish) {
-            const timer = setTimeout(() => {
-                onFinish();
-            }, 2500);
-            return () => clearTimeout(timer);
-        }
-    }, [onFinish]);
+  
+  useEffect(() => {
+    // Имитация загрузки и проверки "свой/чужой"
+    // Через 2.5 секунды переключаем на главное меню
+    const timer = setTimeout(() => {
+      onFinish();
+    }, 2500);
 
-    return (
-        <div className="fixed inset-0 z-50 bg-white flex flex-col items-center justify-center">
-            <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-                className="flex flex-col items-center"
-            >
-                {/* Логотип */}
-                <div className="w-28 h-28 mb-6 rounded-3xl overflow-hidden shadow-lg shadow-blue-100 border border-blue-50">
-                    {/* Если картинки нет, будет просто красивый квадрат */}
-                    <img 
-                        src="/logo_splash.png" 
-                        alt="Ambassador" 
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none'; 
-                            (e.target as HTMLImageElement).parentElement!.style.backgroundColor = '#F3F4F6';
-                        }} 
-                    />
-                </div>
+    return () => clearTimeout(timer);
+  }, [onFinish]);
 
-                {/* Текст */}
-                <h1 className="text-3xl font-bold tracking-tight mb-2">
-                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
-                        Ambassador
-                    </span>
-                    <span className="text-[#1C1C1E]">CRM</span>
-                </h1>
-                
-                <motion.p 
-                    animate={{ opacity: [0.3, 1, 0.3] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                    className="text-xs text-gray-400 font-medium uppercase tracking-widest"
-                >
-                    Загрузка профиля
-                </motion.p>
-            </motion.div>
-        </div>
-    );
+  return (
+    <div className="fixed inset-0 z-50 bg-[#F3F4F6] flex flex-col items-center justify-center">
+      
+      {/* Логотип с анимацией пульсации */}
+      <motion.div
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="relative"
+      >
+        {/* ВОТ ЗДЕСЬ ИСПРАВЛЕНИЕ: */}
+        <img 
+          src="/logo.png" 
+          alt="Loading..." 
+          className="w-32 h-32 rounded-full object-cover mix-blend-multiply shadow-xl"
+        />
+        
+        {/* Крутящийся спиннер вокруг логотипа (для красоты) */}
+        <div className="absolute inset-0 -m-2 border-2 border-gray-200 border-t-black rounded-full animate-spin" />
+      </motion.div>
+
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+        className="mt-8 text-center"
+      >
+        <h2 className="text-xl font-bold text-gray-800">Ambassador CRM</h2>
+        <p className="text-xs text-gray-400 mt-1 uppercase tracking-widest">Проверка доступа...</p>
+      </motion.div>
+
+      <div className="absolute bottom-10 text-gray-300 text-[10px]">
+        v1.0.0
+      </div>
+    </div>
+  );
 };
 
 export default SplashPage;
