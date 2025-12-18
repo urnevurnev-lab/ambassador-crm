@@ -66,3 +66,5 @@ export const BottomTab: React.FC = () => {
     </div>
   );
 };
+
+export default BottomTab;

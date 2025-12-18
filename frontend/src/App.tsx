@@ -3,10 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import SplashPage from './pages/SplashPage';
 import Dashboard from './pages/Dashboard';
-// Импортируй остальные страницы по мере необходимости
-// import AdminPage from './pages/AdminPage';
 
-// Типизация для Telegram WebApp (чтобы TS не ругался)
+// Типизация, чтобы TypeScript не ругался
 declare global {
   interface Window {
     Telegram: any;
@@ -15,32 +13,37 @@ declare global {
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
-  const [isAuth, setIsAuth] = useState(false); // Заглушка, позже подключишь реальную проверку
 
   useEffect(() => {
-    // 1. Инициализация Telegram
-    const tg = window.Telegram.WebApp;
-    tg.expand(); // Раскрываем на весь экран
-    tg.ready();  // Сообщаем Telegram, что приложение готово
-
-    // 2. Эмуляция проверки авторизации (заменишь на свой API запрос)
+    // Безопасная инициализация
     const initApp = async () => {
       try {
-        // Здесь будет await checkAuth();
-        // Имитация задержки (чтобы увидеть твой красивый Splash)
-        await new Promise(resolve => setTimeout(resolve, 2000)); 
-        setIsAuth(true); // Пока считаем, что все ок
-      } catch (error) {
-        console.error("Initialization failed", error);
+        // 1. Пробуем инициализировать Telegram (безопасно)
+        if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+          const tg = window.Telegram.WebApp;
+          tg.ready();  // Сообщаем, что приложение готово
+          tg.expand(); // Раскрываем на весь экран
+          
+          // Отключаем вертикальные свайпы (чтобы не закрывалось случайно)
+          if (tg.disableVerticalSwipes) {
+            tg.disableVerticalSwipes(); 
+          }
+        }
+        
+        // 2. Имитация загрузки данных / Auth
+        await new Promise(resolve => setTimeout(resolve, 2500));
+        
+      } catch (e) {
+        console.error("Ошибка инициализации:", e);
       } finally {
-        setIsLoading(false); // ВАЖНО: Это должно сработать всегда
+        // 3. ЭТО ГЛАВНОЕ: Убираем лоадер в любом случае
+        setIsLoading(false);
       }
     };
 
     initApp();
   }, []);
 
-  // 3. Пока грузимся — показываем ТОЛЬКО Splash
   if (isLoading) {
     return <SplashPage />;
   }
@@ -50,8 +53,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Dashboard />} />
-          {/* Добавь свои роуты сюда */}
-          {/* <Route path="admin" element={<AdminPage />} /> */}
+          {/* Если есть другие страницы, добавь их здесь */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

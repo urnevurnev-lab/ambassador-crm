@@ -8,6 +8,21 @@
   --tg-safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* СБРОС ОТСТУПОВ */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #f9fafb; /* Цвет bg-gray-50, чтобы бока не были белыми */
+  overflow-x: hidden; /* Запрещаем скролл влево-вправо */
+  overscroll-behavior: none; /* Запрещаем "пружинку" на iOS */
+}
+
+#root {
+  height: 100%;
+}
+
 body {
   @apply bg-gray-50 text-slate-900;
   /* Защита от "резинового" скролла на iOS */
