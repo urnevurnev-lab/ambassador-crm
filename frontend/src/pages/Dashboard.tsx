@@ -142,42 +142,44 @@ const Dashboard: React.FC = () => {
           </motion.div>
 
           {/* BIG CARD 2: Мои Заказы (ФИНАНСЫ) */}
-          <motion.div
-            whileTap={{ scale: 0.98 }}
-            className="col-span-2 bg-white rounded-[30px] p-6 shadow-sm border border-gray-100 flex flex-col relative overflow-hidden"
-          >
-            <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-green-50 text-green-600 rounded-xl flex items-center justify-center">
-                        <Wallet size={20} />
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-bold text-[#1C1C1E]">Мои продажи</h3>
-                        <p className="text-gray-400 text-xs">Подтвержденные</p>
-                    </div>
-                </div>
-                {/* Если есть заявки в ожидании - показываем бейдж */}
-                {orderStats && orderStats.pendingCount > 0 && (
-                     <div className="px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-bold rounded-full flex items-center gap-1">
-                        <ShoppingBag size={12} />
-                        {orderStats.pendingCount} в обр.
-                     </div>
-                )}
-            </div>
+          <Link to="/my-orders" className="contents">
+            <motion.div
+              whileTap={{ scale: 0.98 }}
+              className="col-span-2 bg-white rounded-[30px] p-6 shadow-sm border border-gray-100 flex flex-col relative overflow-hidden cursor-pointer"
+            >
+              <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-green-50 text-green-600 rounded-xl flex items-center justify-center">
+                          <Wallet size={20} />
+                      </div>
+                      <div>
+                          <h3 className="text-lg font-bold text-[#1C1C1E]">Мои продажи</h3>
+                          <p className="text-gray-400 text-xs">Подтвержденные</p>
+                      </div>
+                  </div>
+                  {/* Если есть заявки в ожидании - показываем бейдж */}
+                  {orderStats && orderStats.pendingCount > 0 && (
+                       <div className="px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-bold rounded-full flex items-center gap-1">
+                          <ShoppingBag size={12} />
+                          {orderStats.pendingCount} в обр.
+                       </div>
+                  )}
+              </div>
 
-            <div className="flex items-end gap-2">
-                <span className="text-3xl font-bold text-[#1C1C1E]">{formatMoney(orderStats?.shippedSum || 0)}</span>
-                <span className="text-lg font-bold text-gray-400 mb-1">₽</span>
-            </div>
+              <div className="flex items-end gap-2">
+                  <span className="text-3xl font-bold text-[#1C1C1E]">{formatMoney(orderStats?.shippedSum || 0)}</span>
+                  <span className="text-lg font-bold text-gray-400 mb-1">₽</span>
+              </div>
 
-            {/* Если есть отказы - показываем мелким шрифтом внизу */}
-            {orderStats && orderStats.rejectedSum > 0 && (
-                <div className="mt-3 pt-3 border-t border-gray-50 flex items-center gap-2 text-xs text-red-500">
-                    <AlertCircle size={14} />
-                    <span>Отклонено на {formatMoney(orderStats.rejectedSum)} ₽</span>
-                </div>
-            )}
-          </motion.div>
+              {/* Если есть отказы - показываем мелким шрифтом внизу */}
+              {orderStats && orderStats.rejectedSum > 0 && (
+                  <div className="mt-3 pt-3 border-t border-gray-50 flex items-center gap-2 text-xs text-red-500">
+                      <AlertCircle size={14} />
+                      <span>Отклонено на {formatMoney(orderStats.rejectedSum)} ₽</span>
+                  </div>
+              )}
+            </motion.div>
+          </Link>
 
           {/* CARD 3: Точки */}
           <Link to="/facilities" className="contents">

@@ -15,6 +15,7 @@ import ProfilePage from './pages/ProfilePage';
 import { VisitsHistoryPage } from './pages/VisitsHistoryPage';
 import AdminPage from './pages/AdminPage';
 import SplashPage from './pages/SplashPage';
+import MyOrdersPage from './pages/MyOrdersPage';
 
 // Ленивая загрузка только для тяжелых/редких страниц
 const NewFacilityPage = lazy(() => import('./pages/NewFacilityPage'));
@@ -59,6 +60,7 @@ const App: React.FC = () => {
           <Route path="/knowledge" element={<KnowledgeBasePage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/visits-history" element={<VisitsHistoryPage />} />
+          <Route path="/my-orders" element={<MyOrdersPage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/work" element={<WorkHubPage />} />
 

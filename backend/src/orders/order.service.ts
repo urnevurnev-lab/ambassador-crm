@@ -231,6 +231,25 @@ export class OrderService {
         });
     }
 
+    // История заказов текущего пользователя
+    async getMyOrders(telegramId: string) {
+        const user = await this.prisma.user.findUnique({ where: { telegramId } });
+        if (!user) {
+            return [];
+        }
+
+        return this.prisma.order.findMany({
+            where: { userId: user.id },
+            orderBy: { createdAt: 'desc' },
+            include: {
+                facility: true,
+                items: {
+                    include: { product: true },
+                },
+            },
+        });
+    }
+
     async getUserStats(telegramId: string) {
         const user = await this.prisma.user.findUnique({ where: { telegramId } });
         if (!user) {
