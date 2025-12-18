@@ -20,7 +20,15 @@ export default defineConfig({
   },
   server: {
     host: true, // Разрешает доступ по сети (0.0.0.0)
-    allowedHosts: ['all'], // (Для Vite 6+) Разрешает любые домены (включая serveo.net)
+    // Разрешаем доступ с туннелей Serveo/Ngrok и любых хостов
+    allowedHosts: [
+      'localhost',
+      '127.0.0.1',
+      '::1',
+      '.serveo.net',
+      '.serveousercontent.com',
+      'all', // Vite 7: пропускает все домены
+    ],
     proxy: {
       '/api': {
         target: 'http://localhost:3000',
