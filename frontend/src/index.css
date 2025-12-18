@@ -3,41 +3,29 @@
 @tailwind utilities;
 
 :root {
-  /* Переменные для безопасных зон Telegram */
   --tg-safe-area-top: env(safe-area-inset-top, 0px);
   --tg-safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* СБРОС ОТСТУПОВ */
+/* СБРОС СТАНДАРТНЫХ ОТСТУПОВ */
 html, body {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
-  background-color: #f9fafb; /* Цвет bg-gray-50, чтобы бока не были белыми */
-  overflow-x: hidden; /* Запрещаем скролл влево-вправо */
-  overscroll-behavior: none; /* Запрещаем "пружинку" на iOS */
+  background-color: #f9fafb; /* bg-gray-50 */
+  overflow-x: hidden; /* Нет горизонтального скролла */
+  -webkit-font-smoothing: antialiased;
+  touch-action: pan-y; /* Улучшает скролл на мобилках */
 }
 
 #root {
   height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
-body {
-  @apply bg-gray-50 text-slate-900;
-  /* Защита от "резинового" скролла на iOS */
-  overscroll-behavior-y: none;
-}
-
-/* Скроллбар для Webkit (Chrome, Safari) */
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-thumb {
-  @apply bg-slate-300 rounded-full;
-}
-
-/* Утилита для "стеклянного" эффекта (опционально) */
-.glass {
-  @apply bg-white/80 backdrop-blur-md border-b border-gray-100;
+/* Чтобы клики по кнопкам срабатывали мгновенно */
+* {
+  -webkit-tap-highlight-color: transparent;
 }
