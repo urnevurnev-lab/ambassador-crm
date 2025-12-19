@@ -6,20 +6,17 @@ import { PrismaService } from '../prisma.service';
 export class UsersController {
     constructor(private readonly prisma: PrismaService) { }
 
-    // Метод 1: Авторизация/Регистрация через бота (старый)
+    // Метод 1: Проверка регистрации при входе (ТОЛЬКО ДЛЯ ТЕХ КТО В АДМИНКЕ)
     @Post('auth')
     async authUser(@Body() data: { telegramId: string; fullName: string }) {
         const user = await this.prisma.user.findUnique({
             where: { telegramId: data.telegramId },
-            include: { allowedDistributors: true } // Возвращаем сразу с чатами
+            include: { allowedDistributors: true }
         });
-        if (user) return user;
-        return this.prisma.user.create({
-            data: {
-                telegramId: data.telegramId,
-                fullName: data.fullName,
-            },
-        });
+        if (!user) {
+            throw new HttpException('Доступ запрещен. Обратитесь к администратору для регистрации.', HttpStatus.FORBIDDEN);
+        }
+        return user;
     }
 
     // Метод 2: Ручное создание сотрудника из Админки (НОВЫЙ)

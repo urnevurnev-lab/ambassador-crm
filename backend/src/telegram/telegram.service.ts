@@ -76,32 +76,36 @@ export class TelegramService implements OnModuleInit {
     }
 
     async onModuleInit(): Promise<void> {
-        // КОМАНДА 1: Узнать ID чата (для групп)
-        this.bot.onText(/^\/id(?:@[\w_]+)?$/i, (msg) => {
+        // Контроль команд через обычные сообщения (для удобства пользователя)
+        this.bot.on('message', (msg) => {
+            const text = msg.text?.toLowerCase().trim();
             const chatId = msg.chat.id;
-            const title = msg.chat.type === 'private' ? 'Личный чат' : msg.chat.title || 'Чат';
-            this.bot.sendMessage(
-                chatId,
-                `📍 <b>${title}</b>\nID: <code>${chatId}</code>`,
-                { parse_mode: 'HTML' }
-            );
-        });
 
-        // КОМАНДА 2: Узнать свой ID (для сотрудников)
-        this.bot.onText(/^\/myid(?:@[\w_]+)?$/i, (msg) => {
-            const userId = msg.from?.id;
-            if (!userId) {
-                return;
+            // КОМАНДА 1: ID группы
+            if (text === 'id группы' || text === '/id') {
+                const title = msg.chat.type === 'private' ? 'Личный чат' : msg.chat.title || 'Чат';
+                this.bot.sendMessage(
+                    chatId,
+                    `📍 <b>${title}</b>\nID: <code>${chatId}</code>`,
+                    { parse_mode: 'HTML' }
+                );
             }
-            const name = [msg.from.first_name, msg.from.last_name].filter(Boolean).join(' ') || 'Пользователь';
-            this.bot.sendMessage(
-                msg.chat.id,
-                `👤 <b>${name}</b>\nТвой ID: <code>${userId}</code>`,
-                { parse_mode: 'HTML' }
-            );
+
+            // КОМАНДА 2: мой ID
+            if (text === 'мой id' || text === '/myid') {
+                const userId = msg.from?.id;
+                if (userId) {
+                    const name = [msg.from.first_name, msg.from.last_name].filter(Boolean).join(' ') || 'Пользователь';
+                    this.bot.sendMessage(
+                        chatId,
+                        `👤 <b>${name}</b>\nТвой ID: <code>${userId}</code>`,
+                        { parse_mode: 'HTML' }
+                    );
+                }
+            }
         });
 
-        this.logger.log('Telegram Bot started with commands /id and /myid');
+        this.logger.log('Telegram Bot started with commands "ID группы" and "мой ID"');
     }
 
     async sendOrderNotification(chatId: string, orderId: number, message: string) {

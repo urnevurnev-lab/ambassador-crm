@@ -17,11 +17,14 @@ export class FacilitiesService {
                 id: true,
                 name: true,
                 address: true,
+                city: true,
+                isVerified: true,
                 requiredProducts: true,
                 visits: {
                     take: 1,
                     orderBy: { date: 'desc' },
                     select: {
+                        date: true,
                         productsAvailable: { select: { id: true } }
                     }
                 }
@@ -29,18 +32,38 @@ export class FacilitiesService {
         });
 
         const TARGET_SKU_COUNT = 20;
+        const now = new Date();
 
         return facilities.map(f => {
             const lastVisit = f.visits[0];
             const stockCount = lastVisit?.productsAvailable?.length || 0;
             const score = Math.min(Math.round((stockCount / TARGET_SKU_COUNT) * 100), 100);
 
+            let daysSinceLastVisit = null;
+            if (lastVisit?.date) {
+                const diffTime = Math.abs(now.getTime() - new Date(lastVisit.date).getTime());
+                daysSinceLastVisit = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            }
+
             return {
                 id: f.id,
                 name: f.name,
                 address: f.address,
-                score
+                city: f.city,
+                isVerified: f.isVerified,
+                score,
+                lastVisitDate: lastVisit?.date || null,
+                daysSinceLastVisit
             };
+        }).sort((a, b) => {
+            // Priority:
+            // 1. Forgotten venues (daysSinceLastVisit >= 7)
+            // 2. Never visited (daysSinceLastVisit === null)
+            // 3. Recently visited
+            if (a.daysSinceLastVisit === null && b.daysSinceLastVisit === null) return 0;
+            if (a.daysSinceLastVisit === null) return -1;
+            if (b.daysSinceLastVisit === null) return 1;
+            return b.daysSinceLastVisit - a.daysSinceLastVisit;
         });
     }
 
@@ -69,6 +92,7 @@ export class FacilitiesService {
         const newFacility = await this.prisma.facility.create({
             data: {
                 ...data,
+                isVerified: false, // New venues need verification
                 requiredProducts: data.requiredProducts ?? [],
             },
         });

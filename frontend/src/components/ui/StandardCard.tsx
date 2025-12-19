@@ -32,12 +32,12 @@ export const StandardCard: React.FC<StandardCardProps> = ({
   const floatingDelay = useMemo(() => Math.random() * 2, []);
 
   const themes: Record<CardColorTheme, string> = {
-    white: 'bg-white text-gray-900 shadow-[0_4px_16px_rgba(0,0,0,0.04)] border border-gray-100',
-    dark: 'bg-[#1c1c1e] text-white shadow-xl border border-white/10',
-    blue: 'bg-gradient-to-br from-[#0052D4] to-[#6FB1FC] text-white shadow-[0_12px_30px_-6px_rgba(0,82,212,0.4)]',
-    purple: 'bg-gradient-to-br from-[#654ea3] to-[#eaafc8] text-white shadow-[0_12px_30px_-6px_rgba(101,78,163,0.4)]',
-    coral: 'bg-gradient-to-br from-[#FF512F] to-[#DD2476] text-white shadow-[0_12px_30px_-6px_rgba(255,81,47,0.4)]',
-    teal: 'bg-gradient-to-br from-[#11998e] to-[#38ef7d] text-white shadow-[0_12px_30px_-6px_rgba(17,153,142,0.4)]',
+    white: 'bg-white text-[#000000] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.05)] border border-[#C6C6C8]/20',
+    dark: 'bg-[#1C1C1E] text-white shadow-elevated border border-white/10',
+    blue: 'bg-white text-[#000000] shadow-[0_20px_40px_-10px_rgba(0,122,255,0.1)] border border-[#007AFF]/10',
+    purple: 'bg-white text-[#000000] shadow-[0_20px_40px_-10px_rgba(88,86,214,0.1)] border border-[#5856D6]/10',
+    coral: 'bg-white text-[#000000] shadow-[0_20px_40px_-10px_rgba(255,45,85,0.1)] border border-[#FF2D55]/10',
+    teal: 'bg-white text-[#000000] shadow-[0_20px_40px_-10px_rgba(48,176,199,0.1)] border border-[#30B0C7]/10',
   };
 
   return (
@@ -58,16 +58,16 @@ export const StandardCard: React.FC<StandardCardProps> = ({
       whileHover={isClickable ? { y: -2 } : undefined}
       onClick={onClick}
       className={`
-        relative overflow-hidden rounded-[30px] p-6 flex flex-col 
+        relative overflow-hidden rounded-[24px] p-5 flex flex-col 
         transition-all duration-300 
         ${themes[color]} 
-        ${isClickable ? 'cursor-pointer active:brightness-95' : ''} 
+        ${isClickable ? 'cursor-pointer active:scale-[0.98]' : ''} 
         ${className}
       `}
     >
       {/* Смысловые Иллюстрации (Large, semi-transparent) */}
       {illustration && (
-        <div className="absolute -right-6 -bottom-6 opacity-[0.15] pointer-events-none transform -rotate-12 scale-125">
+        <div className="absolute -right-2 -bottom-2 pointer-events-none z-0">
           {illustration}
         </div>
       )}
@@ -92,8 +92,8 @@ export const StandardCard: React.FC<StandardCardProps> = ({
       </div>
 
       <div className="relative z-10 mt-auto">
-        <h3 className="text-[20px] font-extrabold leading-tight tracking-tight drop-shadow-sm">{title}</h3>
-        {subtitle && <p className="text-[14px] font-medium mt-1 opacity-80 leading-snug">{subtitle}</p>}
+        <h3 className="text-[22px] font-extrabold leading-tight tracking-tight">{title}</h3>
+        {subtitle && <p className="text-[14px] text-[#8E8E93] font-medium mt-1 leading-snug">{subtitle}</p>}
       </div>
 
       {children && (

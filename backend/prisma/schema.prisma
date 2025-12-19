@@ -78,6 +78,8 @@ model Facility {
   id          Int      @id @default(autoincrement())
   name        String
   address     String
+  city        String?  @default("")
+  isVerified  Boolean  @default(true)
   mustList    Json?    
   requiredProducts Int[] @default([])
   visits      Visit[]

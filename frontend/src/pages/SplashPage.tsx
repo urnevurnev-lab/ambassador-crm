@@ -1,49 +1,71 @@
-import React, { useEffect } from 'react';
-import { motion } from 'framer-motion';
+import React, { useEffect, useState } from 'react';
+import WebApp from '@twa-dev/sdk';
+import apiClient from '../api/apiClient';
 
 interface SplashPageProps {
   onFinish: () => void;
 }
 
 const SplashPage: React.FC<SplashPageProps> = ({ onFinish }) => {
+  const [status, setStatus] = useState<'checking' | 'granted' | 'denied'>('checking');
+  const [error, setError] = useState('');
+
   useEffect(() => {
-    const timer = setTimeout(() => onFinish(), 2500);
-    return () => clearTimeout(timer);
+    console.log('DEBUG: SplashPage init');
+    const checkAccess = async () => {
+      try {
+        const res = await apiClient.get('/api/users/me');
+        console.log('DEBUG: Access OK', res.data);
+        setStatus('granted');
+        setTimeout(() => onFinish(), 2000);
+      } catch (e: any) {
+        console.warn('DEBUG: Access Fail', e);
+        setStatus('denied');
+        setError(e.response?.data?.message || 'Access Denied');
+      }
+    };
+    checkAccess();
   }, [onFinish]);
 
   return (
-    <div className="fixed inset-0 z-[100] bg-[#F8F9FE] flex flex-col items-center justify-center overflow-hidden">
-      
-      {/* Фоновые пятна */}
-      <div className="absolute top-0 left-0 w-64 h-64 bg-blue-500/10 blur-3xl rounded-full" />
-      <div className="absolute bottom-0 right-0 w-64 h-64 bg-purple-500/10 blur-3xl rounded-full" />
+    <div style={{
+      position: 'fixed', inset: 0, backgroundColor: 'white',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      zIndex: 9999, color: 'black', fontFamily: 'sans-serif', textAlign: 'center'
+    }}>
+      <style>{`
+        @keyframes spin { 
+          0% { transform: rotate(0deg); } 
+          100% { transform: rotate(360deg); } 
+        }
+      `}</style>
 
-      {/* Логотип */}
-      <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
-        className="relative z-10"
-      >
-        <div className="w-32 h-32 bg-white rounded-[32px] shadow-2xl shadow-blue-500/20 flex items-center justify-center">
-           {/* Вставь сюда свой <img src="/logo.png" /> если есть */}
-           <span className="text-4xl">💎</span>
+      {status === 'checking' || status === 'granted' ? (
+        <div>
+          <div style={{
+            width: 60, height: 60, border: '6px solid #f3f3f3', borderTop: '6px solid #d4af37',
+            borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 20px'
+          }} />
+          <div style={{ fontWeight: '900', fontSize: 20, letterSpacing: 1 }}>ЗАГРУЗКА...</div>
+          <div style={{ fontSize: 13, color: '#888', marginTop: 8 }}>Проверка прав доступа</div>
         </div>
-      </motion.div>
-
-      <motion.div 
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-        className="mt-8 text-center z-10"
-      >
-        <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight">Ambassador CRM</h2>
-        <div className="mt-2 flex justify-center gap-1">
-           <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1 }} className="w-2 h-2 bg-blue-500 rounded-full" />
-           <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="w-2 h-2 bg-purple-500 rounded-full" />
-           <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="w-2 h-2 bg-coral-500 rounded-full" />
+      ) : (
+        <div style={{ padding: 30 }}>
+          <div style={{ fontSize: 60, marginBottom: 20 }}>🔒</div>
+          <h2 style={{ margin: '0 0 10px 0', fontSize: 24, fontWeight: '900' }}>ДОСТУП ОГРАНИЧЕН</h2>
+          <p style={{ color: '#666', marginBottom: 30, fontSize: 16 }}>{error}</p>
+          <button
+            onClick={() => WebApp.close()}
+            style={{
+              padding: '16px 32px', backgroundColor: '#000', color: '#fff',
+              border: 'none', borderRadius: 16, fontWeight: 'bold', fontSize: 14,
+              boxShadow: '0 10px 20px rgba(0,0,0,0.1)'
+            }}
+          >
+            ЗАКРЫТЬ ПРИЛОЖЕНИЕ
+          </button>
         </div>
-      </motion.div>
+      )}
     </div>
   );
 };

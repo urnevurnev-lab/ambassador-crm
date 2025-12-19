@@ -12,20 +12,20 @@ export const BottomTab: React.FC = () => {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[9999] pb-[calc(env(safe-area-inset-bottom)+12px)] pointer-events-none px-4">
-      <div className="flex justify-center pointer-events-auto">
+    <div className="fixed bottom-0 left-0 right-0 z-[9999] pointer-events-none">
+      <div className="flex justify-center pointer-events-auto px-4 pb-[max(env(safe-area-inset-bottom),16px)]">
         <motion.div
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ type: "spring", stiffness: 260, damping: 20 }}
           className="
             flex items-center justify-around 
-            w-full max-w-[400px] h-[72px]
+            w-full max-w-md h-[72px]
             bg-white/80 backdrop-blur-2xl 
-            border border-white/40
+            border border-[#C6C6C8]/30
             rounded-[32px] 
-            shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)]
-            px-4
+            shadow-elevated
+            px-2
           "
         >
           {navItems.map((item) => (
@@ -34,33 +34,27 @@ export const BottomTab: React.FC = () => {
               to={item.path}
               className={({ isActive }) => `
                 relative flex flex-col items-center justify-center h-full flex-1 transition-all duration-300
-                ${isActive ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}
+                ${isActive ? 'text-[#007AFF]' : 'text-[#8E8E93]'}
               `}
             >
               {({ isActive }) => (
-                <>
-                  <motion.div
-                    animate={isActive ? { y: -4, scale: 1.1 } : { y: 0, scale: 1 }}
-                    className="flex flex-col items-center gap-1"
-                  >
-                    <item.icon
-                      size={24}
-                      strokeWidth={isActive ? 2.5 : 2}
-                      className="relative z-10"
-                    />
-                    <span className={`text-[10px] font-bold tracking-tight ${isActive ? 'opacity-100' : 'opacity-0 translate-y-2'} transition-all duration-300`}>
-                      {item.label}
-                    </span>
-                  </motion.div>
+                <div className="flex flex-col items-center gap-1 relative z-10 transition-transform duration-300 active:scale-90">
+                  <item.icon
+                    size={22}
+                    strokeWidth={isActive ? 2.5 : 2}
+                  />
+                  <span className={`text-[10px] font-bold tracking-tight transition-all duration-300 ${isActive ? 'opacity-100' : 'opacity-60'}`}>
+                    {item.label}
+                  </span>
 
                   {isActive && (
                     <motion.div
-                      layoutId="active-pill"
-                      className="absolute inset-0 bg-blue-50/50 rounded-[24px] -z-0"
+                      layoutId="active-dot"
+                      className="absolute -top-1 w-1 h-1 bg-[#007AFF] rounded-full"
                       transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                     />
                   )}
-                </>
+                </div>
               )}
             </NavLink>
           ))}

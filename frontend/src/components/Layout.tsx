@@ -18,16 +18,14 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       WebApp.expand();
 
       // Настройка темы
-      const bgColor = '#F8F9FE';
+      const bgColor = '#F2F2F7'; // Match var(--ios-bg)
       WebApp.setHeaderColor(bgColor);
       WebApp.setBackgroundColor(bgColor);
 
-      // Блокировка свайпа вниз (только для новых версий)
       if (WebApp.isVersionAtLeast('7.7')) {
         WebApp.disableVerticalSwipes();
       }
 
-      // Настройка высоты вьюпорта
       document.documentElement.style.setProperty('--tg-viewport-height', `${WebApp.viewportHeight}px`);
       document.documentElement.style.setProperty('--tg-viewport-stable-height', `${WebApp.viewportStableHeight}px`);
 
@@ -36,7 +34,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
   }, []);
 
-  // Управление кнопкой "Назад"
   useEffect(() => {
     const isRoot = location.pathname === '/';
 
@@ -56,27 +53,37 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     };
   }, [location.pathname, navigate]);
 
-  // Скролл вверх при смене страницы
   useEffect(() => {
     document.getElementById('main-scroll-container')?.scrollTo(0, 0);
   }, [location.pathname]);
 
   return (
-    <div className="flex flex-col h-[100dvh] w-full relative bg-[#F8F9FE] text-[#111827] overflow-hidden">
+    <div className="flex flex-col min-h-screen w-full relative bg-[var(--ios-bg)] text-[var(--ios-text)]">
       <main
         id="main-scroll-container"
-        className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar w-full"
+        className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar w-full safe-p-top"
         style={{
-          paddingTop: 'env(safe-area-inset-top)',
-          paddingBottom: 'calc(env(safe-area-inset-bottom) + 120px)'
+          paddingBottom: '140px'
         }}
       >
-        <div className="w-full max-w-md mx-auto px-4 pt-4 relative z-0">
+        <div className="w-full max-w-md mx-auto relative z-0 px-1">
           {children}
         </div>
       </main>
 
-      <Toaster position="top-center" />
+      <Toaster position="top-center"
+        toastOptions={{
+          style: {
+            borderRadius: '16px',
+            background: '#FFFFFF',
+            color: '#000000',
+            fontWeight: 600,
+            fontSize: '14px',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.08)',
+            border: '1px solid rgba(198, 198, 200, 0.3)'
+          }
+        }}
+      />
       <BottomTab />
     </div>
   );

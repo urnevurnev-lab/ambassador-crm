@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
 import { StandardCard } from '../components/ui/StandardCard';
-import { LockScreen } from '../components/LockScreen'; // <--- ИСПРАВЛЕНО: Добавил { }
+import { LockScreen } from '../components/LockScreen';
 import apiClient from '../api/apiClient';
 import {
     Users, Package, DollarSign,
@@ -10,6 +9,7 @@ import {
     Building2, CheckCircle, ShoppingBag, Download, BookOpen, Truck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import WebApp from '@twa-dev/sdk';
 
 // --- ТИПЫ ДАННЫХ ---
 interface Product {
@@ -75,7 +75,7 @@ const ProductManager = ({ onBack }: { onBack: () => void }) => {
                 flavor: newFlavor,
                 price: Number(newPrice),
                 category: 'Tobacco',
-                isTopFlavor: false // По умолчанию false при быстром создании
+                isTopFlavor: false
             });
             setIsCreating(false);
             setNewLine('');
@@ -145,7 +145,6 @@ const ProductManager = ({ onBack }: { onBack: () => void }) => {
                 </div>
             ))}
 
-            {/* Модалка создания */}
             {isCreating && (
                 <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-4">
                     <div className="bg-white w-full max-w-md rounded-3xl p-6 space-y-4 animate-fade-in">
@@ -153,7 +152,6 @@ const ProductManager = ({ onBack }: { onBack: () => void }) => {
                             <h3 className="text-xl font-bold">Новый продукт</h3>
                             <button onClick={() => setIsCreating(false)}><X size={24} /></button>
                         </div>
-
                         <div>
                             <label className="text-xs font-bold text-gray-400 ml-1">Линейка</label>
                             <select
@@ -166,7 +164,6 @@ const ProductManager = ({ onBack }: { onBack: () => void }) => {
                                 <option value="NEW">+ Создать новую...</option>
                             </select>
                         </div>
-
                         {selectedLine === 'NEW' && (
                             <input
                                 placeholder="Название новой линейки"
@@ -175,7 +172,6 @@ const ProductManager = ({ onBack }: { onBack: () => void }) => {
                                 className="w-full bg-white border-2 border-black p-3 rounded-xl font-bold"
                             />
                         )}
-
                         <div>
                             <label className="text-xs font-bold text-gray-400 ml-1">Вкус</label>
                             <input
@@ -185,7 +181,6 @@ const ProductManager = ({ onBack }: { onBack: () => void }) => {
                                 className="w-full bg-gray-50 p-3 rounded-xl mt-1 border border-gray-200"
                             />
                         </div>
-
                         <div>
                             <label className="text-xs font-bold text-gray-400 ml-1">Цена (₽)</label>
                             <input
@@ -195,7 +190,6 @@ const ProductManager = ({ onBack }: { onBack: () => void }) => {
                                 className="w-full bg-gray-50 p-3 rounded-xl mt-1 border border-gray-200"
                             />
                         </div>
-
                         <button onClick={handleAddProduct} className="w-full bg-black text-white py-4 rounded-xl font-bold text-lg">
                             Сохранить
                         </button>
@@ -234,7 +228,6 @@ const PriceManager = ({ onBack }: { onBack: () => void }) => {
     return (
         <div className="pb-32 px-4 space-y-3 pt-2">
             <PageHeader title="Цены (по линейкам)" rightAction={<button onClick={onBack}>Закрыть</button>} />
-
             {loading ? <div className="text-center">Загрузка...</div> : Object.entries(prices).map(([line, price]) => (
                 <StandardCard key={line} title={line} icon={DollarSign}>
                     <div className="flex gap-2 mt-2">
@@ -304,14 +297,12 @@ const UserManager = ({ onBack }: { onBack: () => void }) => {
     return (
         <div className="pb-32 px-4 space-y-3 pt-2">
             <PageHeader title="Команда" rightAction={<button onClick={onBack}>Закрыть</button>} />
-
             <button
                 onClick={() => setIsCreating(true)}
                 className="w-full py-4 bg-black text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg mb-4 active:scale-95 transition-transform"
             >
                 <Plus size={20} /> Добавить сотрудника
             </button>
-
             {loading ? <div className="text-center py-10 text-gray-400">Загрузка...</div> : (
                 <div className="space-y-3">
                     {users.map(u => (
@@ -332,10 +323,8 @@ const UserManager = ({ onBack }: { onBack: () => void }) => {
                             </div>
                         </StandardCard>
                     ))}
-                    {users.length === 0 && <div className="text-center text-gray-400 py-10">Сотрудники не найдены</div>}
                 </div>
             )}
-
             {isCreating && (
                 <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm">
                     <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white w-full max-w-md rounded-3xl p-6 space-y-4">
@@ -343,21 +332,17 @@ const UserManager = ({ onBack }: { onBack: () => void }) => {
                             <h3 className="font-bold text-xl">Новый сотрудник</h3>
                             <button onClick={() => setIsCreating(false)}><X size={24} /></button>
                         </div>
-
                         <div className="space-y-3">
                             <input placeholder="Полное имя" className="w-full bg-gray-50 p-3.5 rounded-xl border border-gray-100 font-medium outline-none focus:ring-2 focus:ring-blue-500/20"
                                 onChange={e => setNewUser({ ...newUser, name: e.target.value })} />
-
-                            <input placeholder="Telegram ID (чифры)" className="w-full bg-gray-50 p-3.5 rounded-xl border border-gray-100 font-medium outline-none focus:ring-2 focus:ring-blue-500/20"
+                            <input placeholder="Telegram ID" className="w-full bg-gray-50 p-3.5 rounded-xl border border-gray-100 font-medium outline-none focus:ring-2 focus:ring-blue-500/20"
                                 onChange={e => setNewUser({ ...newUser, telegramId: e.target.value })} />
-
                             <select className="w-full bg-gray-50 p-3.5 rounded-xl border border-gray-100 font-medium outline-none focus:ring-2 focus:ring-blue-500/20"
                                 onChange={e => setNewUser({ ...newUser, role: e.target.value })}>
                                 <option value="AMBASSADOR">Амбассадор</option>
                                 <option value="ADMIN">Админ</option>
                             </select>
                         </div>
-
                         <button onClick={handleSave} className="w-full bg-black text-white py-4 rounded-xl font-bold text-lg shadow-lg">
                             Сохранить
                         </button>
@@ -400,7 +385,6 @@ const FacilityManager = ({ onBack }: { onBack: () => void }) => {
     return (
         <div className="pb-32 px-4 space-y-3 pt-2">
             <PageHeader title="Объекты" rightAction={<button onClick={onBack}>Закрыть</button>} />
-
             {loading ? <div className="text-center py-10">Загрузка...</div> : facilities.map(f => (
                 <StandardCard key={f.id} title={f.name} subtitle={f.address} icon={Building2}
                     action={
@@ -432,14 +416,12 @@ const ReportsManager = ({ onBack }: { onBack: () => void }) => {
     return (
         <div className="pb-32 px-4 space-y-3 pt-2">
             <PageHeader title="Журнал визитов" rightAction={<button onClick={onBack}>Закрыть</button>} />
-
             <button
                 onClick={exportActivity}
                 className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg mb-4 active:scale-95 transition-transform"
             >
-                <Download size={20} /> Выгрузить Excel (Активность)
+                <Download size={20} /> Выгрузить Excel
             </button>
-
             {loading ? <div className="text-center py-10">Загрузка...</div> : visits.map(v => (
                 <StandardCard
                     key={v.id}
@@ -449,41 +431,8 @@ const ReportsManager = ({ onBack }: { onBack: () => void }) => {
                 >
                     <div className="text-[11px] text-gray-400 mt-2">
                         Амбассадор: <b>{v.user?.fullName || '—'}</b>
-                        {v.comment && <div className="mt-1 italic">"{v.comment}"</div>}
                     </div>
                 </StandardCard>
-            ))}
-        </div>
-    );
-};
-
-// 7. МЕНЕДЖЕР БАЗЫ ЗНАНИЙ
-const KnowledgeManager = ({ onBack }: { onBack: () => void }) => {
-    const [posts, setPosts] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        apiClient.get('/api/posts')
-            .then(res => setPosts(res.data || []))
-            .finally(() => setLoading(false));
-    }, []);
-
-    return (
-        <div className="pb-32 px-4 space-y-3 pt-2">
-            <PageHeader title="Контент" rightAction={<button onClick={onBack}>Закрыть</button>} />
-
-            <button className="w-full py-4 bg-black text-white rounded-2xl font-bold flex items-center justify-center gap-2 mb-4">
-                <Plus size={20} /> Написать статью
-            </button>
-
-            {loading ? <div className="text-center py-10">Загрузка...</div> : posts.map(p => (
-                <StandardCard
-                    key={p.id}
-                    title={p.title}
-                    subtitle={p.category || 'Общее'}
-                    icon={BookOpen}
-                    action={<button className="p-2 text-gray-400"><Trash2 size={16} /></button>}
-                />
             ))}
         </div>
     );
@@ -507,34 +456,50 @@ const SampleOrdersManager = ({ onBack }: { onBack: () => void }) => {
     return (
         <div className="pb-32 px-4 space-y-3 pt-2">
             <PageHeader title="Заказы" rightAction={<button onClick={onBack}>Закрыть</button>} />
-
             <button
                 onClick={exportSamples}
                 className="w-full py-4 bg-green-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg mb-4 active:scale-95 transition-transform"
             >
-                <Download size={20} /> Экспорт в Excel (Пробники)
+                <Download size={20} /> Экспорт в Excel
             </button>
-
             {loading ? <div className="text-center py-10">Загрузка...</div> : orders.map(o => (
                 <StandardCard
                     key={o.id}
                     title={`Заказ #${o.id}`}
-                    subtitle={o.facility?.name || 'Заказ пробников'}
+                    subtitle={o.facility?.name || 'Заказ'}
                     icon={ShoppingBag}
-                    action={
-                        <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${o.status === 'PENDING' ? 'bg-orange-50 text-orange-500' : 'bg-green-50 text-green-500'
-                            }`}>
-                            {o.status}
-                        </span>
-                    }
                 >
                     <div className="text-[11px] text-gray-400 mt-2">
                         Амбассадор: <b>{o.user?.fullName || '—'}</b>
-                        <div className="mt-1">{new Date(o.createdAt).toLocaleString()}</div>
                     </div>
                 </StandardCard>
             ))}
-            {orders.length === 0 && !loading && <div className="text-center text-gray-400 py-10">Заказов пока нет</div>}
+        </div>
+    );
+};
+
+// 7. МЕНЕДЖЕР БАЗЫ ЗНАНИЙ
+const KnowledgeManager = ({ onBack }: { onBack: () => void }) => {
+    const [posts, setPosts] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        apiClient.get('/api/posts')
+            .then(res => setPosts(res.data || []))
+            .finally(() => setLoading(false));
+    }, []);
+
+    return (
+        <div className="pb-32 px-4 space-y-3 pt-2">
+            <PageHeader title="Контент" rightAction={<button onClick={onBack}>Закрыть</button>} />
+            {loading ? <div className="text-center py-10">Загрузка...</div> : posts.map(p => (
+                <StandardCard
+                    key={p.id}
+                    title={p.title}
+                    subtitle={p.category || 'Общее'}
+                    icon={BookOpen}
+                />
+            ))}
         </div>
     );
 };
@@ -553,21 +518,13 @@ const DistributorManager = ({ onBack }: { onBack: () => void }) => {
     return (
         <div className="pb-32 px-4 space-y-3 pt-2">
             <PageHeader title="Дистрибьюторы" rightAction={<button onClick={onBack}>Закрыть</button>} />
-
-            <button className="w-full py-4 bg-black text-white rounded-2xl font-bold flex items-center justify-center gap-2 mb-4">
-                <Plus size={20} /> Добавить партнера
-            </button>
-
             {loading ? <div className="text-center py-10">Загрузка...</div> : distributors.map(d => (
                 <StandardCard
                     key={d.id}
                     title={d.name}
                     subtitle={d.address || 'Адрес не указан'}
                     icon={Truck}
-                    action={<button className="p-2 text-gray-400"><Trash2 size={16} /></button>}
-                >
-                    <div className="text-[10px] font-mono text-gray-400 mt-2">Chat ID: {d.chatId || '—'}</div>
-                </StandardCard>
+                />
             ))}
         </div>
     );
@@ -579,107 +536,136 @@ const AdminPage: React.FC = () => {
     const [view, setView] = useState<'menu' | 'products' | 'prices' | 'users' | 'facilities' | 'reports' | 'orders' | 'posts' | 'distributors'>('menu');
     const [isUnlocked, setIsUnlocked] = useState(false);
 
+    const handleNavigate = (newView: typeof view) => {
+        setView(newView);
+        WebApp.HapticFeedback.impactOccurred('medium');
+    };
+
     if (!isUnlocked) {
         return <LockScreen onSuccess={() => setIsUnlocked(true)} />;
     }
 
     return (
-        <Layout>
-            <div className="min-h-screen bg-[#F8F9FE]">
-                <AnimatePresence mode="wait">
-                    {view === 'menu' && (
-                        <motion.div
-                            key="menu"
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="px-4 pb-32 pt-2"
-                        >
-                            <PageHeader title="Управление" />
+        <div className="min-h-screen bg-[#F8F9FB] pb-32">
+            <AnimatePresence mode="wait">
+                {view === 'menu' ? (
+                    <motion.div
+                        key="menu"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="px-5 pt-8 space-y-8"
+                    >
+                        <div className="pt-4">
+                            <h1 className="text-[34px] font-[900] text-[#000000] tracking-tight leading-none">Панель управления</h1>
+                            <p className="text-[14px] text-[#8E8E93] font-bold mt-2 uppercase tracking-tight opacity-70">Настройка системы</p>
+                        </div>
 
-                            <div className="space-y-3 mt-4">
-                                <h3 className="text-xs font-bold text-gray-400 uppercase ml-1 mb-2">Контент</h3>
-
-                                <StandardCard
-                                    title="Товары и Вкусы"
-                                    subtitle="Редактировать каталог"
-                                    icon={Package}
-                                    onClick={() => setView('products')}
-                                    showArrow={true}
-                                />
-
-                                <StandardCard
-                                    title="Цены линеек"
-                                    subtitle="Массовое изменение"
-                                    icon={DollarSign}
-                                    onClick={() => setView('prices')}
-                                    showArrow={true}
-                                />
-
-                                <StandardCard
-                                    title="База Знаний"
-                                    subtitle="Статьи и обучение"
-                                    icon={BookOpen}
-                                    onClick={() => setView('posts')}
-                                    showArrow={true}
-                                />
-
-                                <h3 className="text-xs font-bold text-gray-400 uppercase ml-1 mb-2 mt-6">Операционка</h3>
-
+                        {/* SECTION: DIRECTORY */}
+                        <div className="space-y-4">
+                            <h2 className="text-[13px] font-black text-blue-500 uppercase tracking-widest px-1">Справочники</h2>
+                            <div className="grid grid-cols-1 gap-3">
                                 <StandardCard
                                     title="Амбассадоры"
-                                    subtitle="Команда и доступы"
+                                    subtitle="Команда и роли"
                                     icon={Users}
-                                    onClick={() => setView('users')}
-                                    showArrow={true}
+                                    onClick={() => handleNavigate('users')}
+                                    showArrow
+                                    color="white"
                                 />
-
                                 <StandardCard
-                                    title="База объектов"
-                                    subtitle="Управление точками"
+                                    title="Заведения"
+                                    subtitle="Объекты и адреса"
                                     icon={Building2}
-                                    onClick={() => setView('facilities')}
-                                    showArrow={true}
-                                />
-
-                                <StandardCard
-                                    title="Журнал визитов"
-                                    subtitle="Все отчеты с полей"
-                                    icon={CheckCircle}
-                                    onClick={() => setView('reports')}
-                                    showArrow={true}
-                                />
-
-                                <StandardCard
-                                    title="Дистрибьюторы"
-                                    subtitle="Партнеры и логистика"
-                                    icon={Truck}
-                                    onClick={() => setView('distributors')}
-                                    showArrow={true}
-                                />
-
-                                <StandardCard
-                                    title="Заказы пробников"
-                                    subtitle="История заявок"
-                                    icon={ShoppingBag}
-                                    onClick={() => setView('orders')}
-                                    showArrow={true}
+                                    onClick={() => handleNavigate('facilities')}
+                                    showArrow
+                                    color="white"
                                 />
                             </div>
-                        </motion.div>
-                    )}
+                        </div>
 
-                    {view === 'products' && <ProductManager onBack={() => setView('menu')} />}
-                    {view === 'prices' && <PriceManager onBack={() => setView('menu')} />}
-                    {view === 'users' && <UserManager onBack={() => setView('menu')} />}
-                    {view === 'facilities' && <FacilityManager onBack={() => setView('menu')} />}
-                    {view === 'reports' && <ReportsManager onBack={() => setView('menu')} />}
-                    {view === 'orders' && <SampleOrdersManager onBack={() => setView('menu')} />}
-                    {view === 'posts' && <KnowledgeManager onBack={() => setView('menu')} />}
-                    {view === 'distributors' && <DistributorManager onBack={() => setView('menu')} />}
+                        {/* SECTION: LOGISTICS */}
+                        <div className="space-y-4">
+                            <h2 className="text-[13px] font-black text-orange-500 uppercase tracking-widest px-1">Логистика и продажи</h2>
+                            <div className="grid grid-cols-1 gap-3">
+                                <StandardCard
+                                    title="Заказы"
+                                    subtitle="История и статусы"
+                                    icon={ShoppingBag}
+                                    onClick={() => handleNavigate('orders')}
+                                    showArrow
+                                    color="white"
+                                />
+                                <StandardCard
+                                    title="Дистрибьюторы"
+                                    subtitle="Чаты и контакты"
+                                    icon={Truck}
+                                    onClick={() => handleNavigate('distributors')}
+                                    showArrow
+                                    color="white"
+                                />
+                                <StandardCard
+                                    title="Визиты"
+                                    subtitle="Журнал отчетов"
+                                    icon={CheckCircle}
+                                    onClick={() => handleNavigate('reports')}
+                                    showArrow
+                                    color="white"
+                                />
+                            </div>
+                        </div>
 
-                </AnimatePresence>
-            </div>
-        </Layout>
+                        {/* SECTION: SYSTEM */}
+                        <div className="space-y-4">
+                            <h2 className="text-[13px] font-black text-purple-500 uppercase tracking-widest px-1">Система и контент</h2>
+                            <div className="grid grid-cols-1 gap-3">
+                                <StandardCard
+                                    title="Товары"
+                                    subtitle="Вкусы и остатки"
+                                    icon={Package}
+                                    onClick={() => handleNavigate('products')}
+                                    showArrow
+                                    color="white"
+                                />
+                                <StandardCard
+                                    title="Цены"
+                                    subtitle="Управление прайсом"
+                                    icon={DollarSign}
+                                    onClick={() => handleNavigate('prices')}
+                                    showArrow
+                                    color="white"
+                                />
+                                <StandardCard
+                                    title="Обучение"
+                                    subtitle="Digital Book контент"
+                                    icon={BookOpen}
+                                    onClick={() => handleNavigate('posts')}
+                                    showArrow
+                                    color="white"
+                                />
+                            </div>
+                        </div>
+                    </motion.div>
+                ) : (
+                    <motion.div
+                        key="view"
+                        initial={{ opacity: 0, x: 50 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -50 }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                    >
+                        {view === 'products' && <ProductManager onBack={() => handleNavigate('menu')} />}
+                        {view === 'prices' && <PriceManager onBack={() => handleNavigate('menu')} />}
+                        {view === 'users' && <UserManager onBack={() => handleNavigate('menu')} />}
+                        {view === 'facilities' && <FacilityManager onBack={() => handleNavigate('menu')} />}
+                        {view === 'reports' && <ReportsManager onBack={() => handleNavigate('menu')} />}
+                        {view === 'orders' && <SampleOrdersManager onBack={() => handleNavigate('menu')} />}
+                        {view === 'posts' && <KnowledgeManager onBack={() => handleNavigate('menu')} />}
+                        {view === 'distributors' && <DistributorManager onBack={() => handleNavigate('menu')} />}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
     );
 };
 
