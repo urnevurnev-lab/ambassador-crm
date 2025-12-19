@@ -2,53 +2,59 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 1. Настройка переменных Телеграма (по умолчанию светлая, но адаптивная) */
 :root {
-  --tg-theme-bg-color: var(--tg-theme-bg-color, #F3F4F6);
-  --tg-theme-text-color: var(--tg-theme-text-color, #000000);
-  --tg-theme-hint-color: var(--tg-theme-hint-color, #9CA3AF);
-  --tg-theme-button-color: var(--tg-theme-button-color, #000000);
-  --tg-theme-button-text-color: var(--tg-theme-button-text-color, #ffffff);
-  
-  /* Safe Area для iPhone (с запасом 20px, если env не сработает) */
-  --tg-safe-area-top: env(safe-area-inset-top, 0px);
+  --tg-safe-area-top: env(safe-area-inset-top, 20px);
   --tg-safe-area-bottom: env(safe-area-inset-bottom, 20px);
 }
 
-/* 2. Блокируем "резинку" и прокрутку самого body */
-html, body {
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
   height: 100%;
-  overflow: hidden; /* Важно! Скроллить будем только внутренний контейнер */
-  overscroll-behavior: none; /* Убивает пружину на iOS */
-  background-color: var(--tg-theme-bg-color);
-  color: var(--tg-theme-text-color);
+  overflow: hidden;
+  background-color: #F8F9FE; /* Светлый-светлый голубоватый оттенок */
+  color: #111827;
   -webkit-font-smoothing: antialiased;
-  -webkit-tap-highlight-color: transparent; /* Убирает синий квадрат при клике */
 }
 
-/* 3. Утилиты для отступов */
-.pt-safe {
-  padding-top: var(--tg-safe-area-top);
+/* АТМОСФЕРНЫЙ ФОН (Градиентные пятна) */
+body::before {
+  content: '';
+  position: absolute;
+  top: -100px;
+  left: -100px;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(67, 100, 247, 0.08) 0%, transparent 70%);
+  filter: blur(60px);
+  z-index: -1;
+  pointer-events: none;
 }
 
-.pb-safe {
-  padding-bottom: calc(var(--tg-safe-area-bottom) + 80px); /* Отступ под меню */
+body::after {
+  content: '';
+  position: absolute;
+  top: 40%;
+  right: -100px;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(221, 36, 118, 0.06) 0%, transparent 70%);
+  filter: blur(50px);
+  z-index: -1;
+  pointer-events: none;
 }
 
-/* 4. Скроллбар (скрываем для красоты) */
+#root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
-}
-
-/* Анимация загрузки */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.animate-fade-in {
-  animation: fadeIn 0.4s ease-out forwards;
 }

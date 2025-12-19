@@ -1,142 +1,97 @@
 import React, { useState } from 'react';
-import { Layout } from '../components/Layout';
-import { PageHeader } from '../components/PageHeader';
+import { 
+  BookOpen, 
+  Search, 
+  FileText, 
+  PlayCircle,
+  GraduationCap,
+  HelpCircle
+} from 'lucide-react';
 import { StandardCard } from '../components/ui/StandardCard';
-import { Book, ChevronRight, FileText, Search, BarChart3, Gift, Package } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-
-// Импорты наших новых блоков
-import SampleOrderWizard from '../components/SampleOrderWizard';
-import { FlavorRatingView } from '../components/FlavorRatingView';
-import { BirthdayCalendar } from '../components/BirthdayCalendar';
-
-// Типы для статей (оставляем старое)
-interface Article {
-    id: number;
-    title: string;
-    category: string;
-}
+import { motion } from 'framer-motion';
 
 const KnowledgeBasePage: React.FC = () => {
-    // Состояние навигации внутри страницы
-    const [view, setView] = useState<'menu' | 'abc' | 'birthdays'>('menu');
-    const [isSampleWizardOpen, setSampleWizardOpen] = useState(false);
-    
-    // Поиск по статьям
-    const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
-    const articles: Article[] = [
-        { id: 1, category: 'Скрипты', title: 'Приветствие и презентация' },
-        { id: 2, category: 'Продукты', title: 'Описание линейки Bliss' },
-        { id: 3, category: 'Регламент', title: 'Правила внешнего вида' },
-    ];
+  return (
+    <div className="space-y-6 pb-24">
+      
+      {/* ЗАГОЛОВОК */}
+      <div className="pt-2 px-1">
+        <h1 className="text-3xl font-extrabold text-gray-900">База Знаний</h1>
+        <p className="text-gray-400 font-medium">Учись и развивайся</p>
+      </div>
 
-    const filteredArticles = articles.filter(a => a.title.toLowerCase().includes(searchTerm.toLowerCase()));
+      {/* ПОИСК (В стиле Apple) */}
+      <div className="relative">
+        <Search className="absolute left-4 top-3.5 text-gray-400" size={20} />
+        <input 
+          type="text" 
+          placeholder="Найти скрипт или инструкцию..." 
+          className="w-full bg-white h-12 pl-11 pr-4 rounded-[20px] shadow-sm border border-gray-100 text-sm focus:ring-2 focus:ring-purple-500/20 outline-none transition-all"
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+        />
+      </div>
 
-    return (
-        <Layout>
-            <AnimatePresence mode="wait">
-                
-                {/* 1. ГЛАВНОЕ МЕНЮ БАЗЫ */}
-                {view === 'menu' && (
-                    <motion.div 
-                        key="menu"
-                        initial={{ opacity: 0, x: -20 }} 
-                        animate={{ opacity: 1, x: 0 }} 
-                        className="pt-2 px-4 pb-32 space-y-4"
-                    >
-                        <PageHeader title="База знаний" />
+      {/* ГЛАВНЫЕ РАЗДЕЛЫ (Цветные карточки) */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* ОБУЧЕНИЕ (Фиолетовый) */}
+        <div className="col-span-2">
+           <StandardCard 
+             title="Академия" 
+             subtitle="Курсы и тестирование"
+             color="purple"
+             illustration={<GraduationCap size={120} className="text-white opacity-20 -rotate-12 translate-x-4" />}
+             showArrow
+           />
+        </div>
 
-                        {/* --- НОВЫЕ БЛОКИ (ТОП) --- */}
-                        <div className="grid grid-cols-2 gap-3">
-                            <button 
-                                onClick={() => setView('abc')}
-                                className="col-span-2 bg-gradient-to-r from-gray-900 to-gray-800 text-white p-5 rounded-[24px] shadow-lg flex items-center justify-between active:scale-98 transition-transform"
-                            >
-                                <div className="flex flex-col items-start">
-                                    <span className="text-2xl mb-1">📊</span>
-                                    <span className="font-bold text-lg">ABC Анализ</span>
-                                    <span className="text-gray-400 text-xs mt-1">Топ вкусов HoReCa</span>
-                                </div>
-                                <ChevronRight className="text-gray-500" />
-                            </button>
+        {/* СКРИПТЫ (Тил/Зеленый) */}
+        <div className="h-[180px]">
+           <StandardCard 
+             title="Скрипты" 
+             subtitle="Продажи"
+             color="teal"
+             className="h-full"
+             illustration={<FileText size={100} className="text-white opacity-20 rotate-6" />}
+           />
+        </div>
 
-                            <button 
-                                onClick={() => setSampleWizardOpen(true)}
-                                className="bg-white p-4 rounded-[24px] border border-gray-200 shadow-sm flex flex-col justify-between h-32 active:scale-95 transition-transform"
-                            >
-                                <div className="w-10 h-10 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center">
-                                    <Package size={20} />
-                                </div>
-                                <div className="text-left">
-                                    <span className="font-bold text-gray-900 block leading-tight">Заказ пробников</span>
-                                    <span className="text-[10px] text-gray-400">Для себя</span>
-                                </div>
-                            </button>
+        {/* ВИДЕО (Розовый/Коралл) */}
+        <div className="h-[180px]">
+           <StandardCard 
+             title="Видео" 
+             subtitle="Уроки"
+             color="coral"
+             className="h-full"
+             illustration={<PlayCircle size={100} className="text-white opacity-20 -rotate-6" />}
+           />
+        </div>
+      </div>
 
-                            <button 
-                                onClick={() => setView('birthdays')}
-                                className="bg-white p-4 rounded-[24px] border border-gray-200 shadow-sm flex flex-col justify-between h-32 active:scale-95 transition-transform"
-                            >
-                                <div className="w-10 h-10 bg-purple-50 text-purple-500 rounded-full flex items-center justify-center">
-                                    <Gift size={20} />
-                                </div>
-                                <div className="text-left">
-                                    <span className="font-bold text-gray-900 block leading-tight">Дни рождения</span>
-                                    <span className="text-[10px] text-gray-400">Календарь</span>
-                                </div>
-                            </button>
-                        </div>
+      {/* СПИСОК СТАТЕЙ (Белые парящие карточки) */}
+      <div className="space-y-3">
+        <h3 className="text-lg font-bold text-gray-900 px-2 mt-2">Популярное</h3>
+        
+        <StandardCard 
+          title="F.A.Q." 
+          subtitle="Частые вопросы амбассадоров"
+          color="white"
+          icon={HelpCircle}
+          showArrow
+        />
+        <StandardCard 
+          title="Гайд по продукции" 
+          subtitle="Линейка 2025 года"
+          color="white"
+          icon={BookOpen}
+          showArrow
+        />
+      </div>
 
-                        {/* --- ПОИСК И СТАТЬИ --- */}
-                        <div className="mt-6">
-                            <h3 className="text-xs font-bold text-gray-400 uppercase mb-3 ml-1">Материалы</h3>
-                            <div className="relative mb-4">
-                                <Search className="absolute left-4 top-3.5 text-gray-400" size={18} />
-                                <input 
-                                    type="text" 
-                                    placeholder="Поиск инструкций..." 
-                                    className="w-full bg-white rounded-2xl pl-11 pr-4 py-3 shadow-sm border border-gray-100 text-sm outline-none focus:ring-2 focus:ring-black/5"
-                                    value={searchTerm}
-                                    onChange={e => setSearchTerm(e.target.value)}
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                {filteredArticles.map(article => (
-                                    <StandardCard 
-                                        key={article.id} 
-                                        title={article.title} 
-                                        subtitle={article.category}
-                                        icon={FileText}
-                                        showArrow={true}
-                                        onClick={() => alert("Открыть статью (в разработке)")}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
-
-                {/* 2. ПОД-ЭКРАНЫ */}
-                {view === 'abc' && (
-                    <motion.div key="abc" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-                        <FlavorRatingView onBack={() => setView('menu')} />
-                    </motion.div>
-                )}
-
-                {view === 'birthdays' && (
-                    <motion.div key="birthdays" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-                        <BirthdayCalendar onBack={() => setView('menu')} />
-                    </motion.div>
-                )}
-
-            </AnimatePresence>
-
-            {/* МОДАЛКА ЗАКАЗА ПРОБНИКОВ */}
-            <SampleOrderWizard isOpen={isSampleWizardOpen} onClose={() => setSampleWizardOpen(false)} />
-        </Layout>
-    );
+    </div>
+  );
 };
 
 export default KnowledgeBasePage;

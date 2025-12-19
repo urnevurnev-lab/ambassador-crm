@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Layout } from '../components/Layout';
-import { PageHeader } from '../components/PageHeader';
 import apiClient from '../api/apiClient';
 import WebApp from '@twa-dev/sdk';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Loader2 } from 'lucide-react';
+import { MapPin, Loader2, ArrowLeft } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const formats = [
   { value: 'Лаунж', label: 'Лаунж' },
@@ -21,30 +21,19 @@ const NewFacilityPage: React.FC = () => {
   const [facilities, setFacilities] = useState<{ id: number; name: string; address: string }[]>([]);
   const navigate = useNavigate();
 
-  // Auto-detect location on page load
+  useEffect(() => { detectLocation(); }, []);
   useEffect(() => {
-    detectLocation();
-  }, []);
-
-  // Load existing facilities for smart suggestions (avoid duplicates)
-  useEffect(() => {
-    apiClient
-      .get('/api/facilities')
-      .then((res) => setFacilities(res.data || []))
-      .catch((e) => console.error('Failed to load facilities for suggestions', e));
+    apiClient.get('/api/facilities').then((res) => setFacilities(res.data || []));
   }, []);
 
   const nameSuggestions = useMemo(() => {
     const term = name.trim().toLowerCase();
     if (term.length < 2) return [];
-    return facilities
-      .filter((f) => f.name?.toLowerCase().includes(term))
-      .slice(0, 6);
+    return facilities.filter((f) => f.name?.toLowerCase().includes(term)).slice(0, 5);
   }, [facilities, name]);
 
   const detectLocation = async () => {
     if (!navigator.geolocation) return;
-
     setGeoLoading(true);
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -54,51 +43,27 @@ const NewFacilityPage: React.FC = () => {
             `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=ru`
           );
           const data = await resp.json();
-          const city = data.address?.city || data.address?.town || data.address?.village || '';
-          const region = data.address?.state || '';
-          const road = data.address?.road || '';
-          const houseNumber = data.address?.house_number || '';
-
-          // Build address string
-          let addrParts = [];
-          if (city) addrParts.push(city);
-          if (region && region !== city) addrParts.push(region);
-          if (road) addrParts.push(road);
-          if (houseNumber) addrParts.push(houseNumber);
-
-          if (addrParts.length > 0) {
-            setAddress(addrParts.join(', '));
-          }
-        } catch (e) {
-          console.error('Geocoding error:', e);
-        } finally {
-          setGeoLoading(false);
-        }
+          // Упрощенная логика адреса для примера
+          setAddress(data.display_name || `${latitude}, ${longitude}`);
+        } catch (e) { console.error(e); } 
+        finally { setGeoLoading(false); }
       },
-      () => setGeoLoading(false),
-      { enableHighAccuracy: true, timeout: 10000 }
+      () => setGeoLoading(false)
     );
   };
 
   const handleSubmit = async () => {
-    if (name.trim().length < 2 || address.trim().length < 5) {
-      WebApp.showAlert('Заполните название и адрес');
+    if (name.trim().length < 2) {
+      WebApp.showAlert('Введите название');
       return;
     }
     setLoading(true);
     try {
       const res = await apiClient.post('/api/facilities', { name, address, format });
-      const facilityId = res.data?.facility?.id || res.data?.id;
       WebApp.HapticFeedback?.notificationOccurred('success');
-      if (facilityId) navigate(`/facilities/${facilityId}`);
-      else navigate('/facilities');
-    } catch (e: any) {
-      WebApp.HapticFeedback?.notificationOccurred('error');
-      const msg =
-        e?.response?.data?.message === 'Такое заведение уже есть'
-          ? 'Это заведение уже есть в базе'
-          : 'Ошибка сохранения';
-      WebApp.showAlert(msg);
+      navigate(`/facilities/${res.data.id}`);
+    } catch (e) {
+      WebApp.showAlert('Ошибка сохранения');
     } finally {
       setLoading(false);
     }
@@ -106,99 +71,94 @@ const NewFacilityPage: React.FC = () => {
 
   return (
     <Layout>
-      <PageHeader title="Новое заведение" back />
-      <div className="bg-[#F8F9FA] min-h-screen pt-[calc(env(safe-area-inset-top)+60px)] px-4 pb-24 space-y-5">
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-3">
-          <label className="text-sm font-semibold text-[#1C1C1E]">Название</label>
-          <div className="relative">
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onFocus={() => setNameFocused(true)}
-              onBlur={() => setTimeout(() => setNameFocused(false), 150)}
-              className="w-full bg-gray-100 rounded-xl p-3 text-sm"
-              placeholder="Например: Мята Lounge"
-            />
-
-            {nameFocused && nameSuggestions.length > 0 && (
-              <div className="absolute left-0 right-0 top-[calc(100%+8px)] bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden z-20">
-                <div className="px-4 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                  Похожие заведения в базе
-                </div>
-                <div className="max-h-[240px] overflow-y-auto">
-                  {nameSuggestions.map((f) => (
-                    <button
-                    key={f.id}
-                    type="button"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => {
-                      WebApp.HapticFeedback?.impactOccurred('light');
-                      navigate(`/facilities/${f.id}`);
-                    }}
-                    className="w-full text-left px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition"
-                  >
-                    <div className="font-semibold text-sm text-[#1C1C1E]">{f.name}</div>
-                    <div className="text-xs text-gray-400 mt-0.5 truncate">{f.address}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-3">
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-semibold text-[#1C1C1E]">Адрес</label>
-            <button
-              type="button"
-              onClick={detectLocation}
-              disabled={geoLoading}
-              className="flex items-center gap-1.5 text-xs text-[#007AFF] font-medium active:opacity-70 transition disabled:opacity-50"
-            >
-              {geoLoading ? (
-                <>
-                  <Loader2 size={14} className="animate-spin" />
-                  <span>Определяем...</span>
-                </>
-              ) : (
-                <>
-                  <MapPin size={14} />
-                  <span>Определить</span>
-                </>
-              )}
+      <div className="bg-[#F8F9FE] min-h-screen px-4 pb-24 pt-4 space-y-6">
+        
+        {/* Хедер */}
+        <div className="flex items-center gap-3">
+            <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-gray-400">
+                <ArrowLeft size={24} />
             </button>
-          </div>
-          <input
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            className="w-full bg-gray-100 rounded-xl p-3 text-sm"
-            placeholder="Город, улица, дом"
-          />
+            <h1 className="text-2xl font-extrabold text-gray-900">Новая точка</h1>
         </div>
 
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-3">
-          <label className="text-sm font-semibold text-[#1C1C1E]">Формат</label>
-          <select
-            value={format}
-            onChange={(e) => setFormat(e.target.value)}
-            className="w-full bg-gray-100 rounded-xl p-3 text-sm"
-          >
-            {formats.map((f) => (
-              <option key={f.value} value={f.value}>
-                {f.label}
-              </option>
-            ))}
-          </select>
+        {/* Карточка с формой */}
+        <div className="bg-white rounded-[28px] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-100 space-y-5">
+            
+            {/* Название */}
+            <div className="space-y-2 relative">
+                <label className="text-xs font-bold text-gray-400 uppercase ml-1">Название</label>
+                <input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    onFocus={() => setNameFocused(true)}
+                    onBlur={() => setTimeout(() => setNameFocused(false), 200)}
+                    className="w-full bg-gray-50 rounded-2xl px-4 py-3.5 text-gray-900 font-medium border border-gray-100 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+                    placeholder="Например: Мята Lounge"
+                />
+                {/* Подсказки */}
+                {nameFocused && nameSuggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+                        {nameSuggestions.map(f => (
+                            <div key={f.id} className="px-4 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50">
+                                <div className="font-bold text-sm text-gray-800">{f.name}</div>
+                                <div className="text-xs text-gray-400">{f.address}</div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Адрес */}
+            <div className="space-y-2">
+                <div className="flex justify-between items-center px-1">
+                    <label className="text-xs font-bold text-gray-400 uppercase">Адрес</label>
+                    <button 
+                        onClick={detectLocation}
+                        className="text-xs font-bold text-blue-600 flex items-center gap-1 active:opacity-60"
+                    >
+                        {geoLoading ? <Loader2 size={12} className="animate-spin" /> : <MapPin size={12} />}
+                        Геопозиция
+                    </button>
+                </div>
+                <input
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    className="w-full bg-gray-50 rounded-2xl px-4 py-3.5 text-gray-900 font-medium border border-gray-100 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+                    placeholder="Улица, дом..."
+                />
+            </div>
+
+            {/* Формат */}
+            <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 uppercase ml-1">Формат</label>
+                <div className="flex gap-2">
+                    {formats.map(f => (
+                        <button
+                            key={f.value}
+                            onClick={() => setFormat(f.value)}
+                            className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${
+                                format === f.value 
+                                ? 'bg-black text-white shadow-lg' 
+                                : 'bg-gray-100 text-gray-500'
+                            }`}
+                        >
+                            {f.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
         </div>
 
-        <button
-          onClick={handleSubmit}
-          disabled={loading}
-          className="w-full bg-[#007AFF] text-white py-4 rounded-2xl font-semibold shadow-lg shadow-blue-500/20 active:scale-[0.98] transition disabled:opacity-60"
+        {/* Кнопка Сохранить */}
+        <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={handleSubmit}
+            disabled={loading}
+            className="w-full py-4 rounded-[24px] bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold text-lg shadow-[0_10px_30px_rgba(37,99,235,0.4)] disabled:opacity-70 disabled:shadow-none"
         >
-          {loading ? 'Сохраняем...' : 'Сохранить'}
-        </button>
+            {loading ? 'Создаем...' : 'Создать точку'}
+        </motion.button>
+
       </div>
     </Layout>
   );

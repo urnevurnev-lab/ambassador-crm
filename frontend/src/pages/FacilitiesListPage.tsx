@@ -2,9 +2,9 @@ import React, { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, Plus, Building2 } from 'lucide-react';
 import { Layout } from '../components/Layout';
-import { PageHeader } from '../components/PageHeader';
-import { StandardCard } from '../components/ui/StandardCard'; // Наш новый стандарт
+import { StandardCard } from '../components/ui/StandardCard';
 import { useFacilities } from '../context/FacilitiesContext';
+import { motion } from 'framer-motion';
 
 const FacilitiesListPage: React.FC = () => {
     const { facilities, loading } = useFacilities();
@@ -21,36 +21,35 @@ const FacilitiesListPage: React.FC = () => {
 
     return (
         <Layout>
-            <PageHeader title="База точек" />
-
-            <div className="min-h-screen bg-[#F3F4F6] px-4 pb-32">
+            <div className="min-h-screen px-4 pb-32 pt-4 space-y-5">
                 
-                {/* Поиск - в стиле карточки */}
-                <div className="sticky top-[60px] z-30 mb-4 pt-2">
-                    <div className="relative">
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                            <Search size={20} />
-                        </div>
-                        <input
-                            type="text"
-                            placeholder="Поиск точки или адреса..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="w-full bg-white text-gray-900 rounded-2xl py-3 pl-11 pr-4 border border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-black/5"
-                        />
-                    </div>
+                {/* Header */}
+                <div className="px-1">
+                    <h1 className="text-3xl font-extrabold text-gray-900">База Точек</h1>
+                    <p className="text-gray-400 text-sm font-medium">Полный список</p>
+                </div>
+                
+                {/* Search */}
+                <div className="relative">
+                    <Search className="absolute left-4 top-3.5 text-gray-400" size={20} />
+                    <input
+                        type="text"
+                        placeholder="Поиск..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="w-full bg-white rounded-[20px] h-12 pl-11 pr-4 border border-gray-100 shadow-sm focus:ring-2 focus:ring-blue-500/20 outline-none"
+                    />
                 </div>
 
-                {/* Список заведений */}
-                {loading ? (
-                    <div className="flex justify-center mt-10">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-                    </div>
-                ) : (
-                    <div className="space-y-3">
-                        {filtered.map((f) => {
-                            const score = f.score || 0;
-                            // Цвет рейтинга
+                {/* List */}
+                <div className="space-y-3">
+                    {loading ? (
+                        <div className="text-center py-10 text-gray-400">Загрузка...</div>
+                    ) : filtered.length > 0 ? (
+                        filtered.map((f) => {
+                            // Безопасное получение рейтинга
+                            const score = f.score ?? 0; // Если undefined, будет 0
+                            
                             let badgeColor = "bg-gray-100 text-gray-500";
                             if (score > 75) badgeColor = "bg-green-100 text-green-700";
                             else if (score < 30 && score > 0) badgeColor = "bg-red-50 text-red-500";
@@ -60,9 +59,12 @@ const FacilitiesListPage: React.FC = () => {
                                     key={f.id}
                                     title={f.name}
                                     subtitle={f.address}
-                                    icon={Building2}
+                                    color="white"
+                                    floating={false}
                                     onClick={() => navigate(`/facilities/${f.id}`)}
-                                    showArrow={true} // Стрелочка сама появится
+                                    showArrow
+                                    icon={Building2}
+                                    // Передаем кастомный бейдж в action
                                     action={
                                         score > 0 && (
                                             <span className={`px-2.5 py-1 rounded-lg text-[11px] font-bold ${badgeColor}`}>
@@ -72,21 +74,20 @@ const FacilitiesListPage: React.FC = () => {
                                     }
                                 />
                             );
-                        })}
+                        })
+                    ) : (
+                        <div className="text-center py-10 text-gray-400">Пусто</div>
+                    )}
+                </div>
 
-                        {filtered.length === 0 && (
-                            <div className="text-center text-gray-400 py-10 font-medium">
-                                Ничего не найдено
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* FAB - Кнопка добавления */}
-                <Link to="/facilities/new" className="fixed bottom-safe right-4 z-40 mb-20">
-                    <div className="w-14 h-14 bg-black rounded-full flex items-center justify-center text-white shadow-xl active:scale-90 transition-transform">
+                {/* FAB (Floating Button) */}
+                <Link to="/facilities/new" className="fixed bottom-24 right-4 z-40">
+                    <motion.div 
+                        whileTap={{ scale: 0.9 }}
+                        className="w-14 h-14 bg-gradient-to-tr from-blue-600 to-blue-500 rounded-full flex items-center justify-center text-white shadow-xl shadow-blue-500/40"
+                    >
                         <Plus size={28} />
-                    </div>
+                    </motion.div>
                 </Link>
 
             </div>

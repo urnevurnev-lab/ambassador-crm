@@ -1,38 +1,58 @@
 import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { BottomTab } from './BottomTab';
+import BottomTab from './BottomTab';
+import { Toaster } from 'react-hot-toast';
+import WebApp from '@twa-dev/sdk';
 
 interface LayoutProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
-  const showBottomTab = true; // Можно скрыть на некоторых экранах if (...)
 
-  // Скролл наверх при переходе между страницами
   useEffect(() => {
-    const mainContainer = document.getElementById('main-scroll-container');
-    if (mainContainer) {
-      mainContainer.scrollTo(0, 0);
+    WebApp.ready();
+    WebApp.expand();
+    
+    if (WebApp.isVersionAtLeast('6.1')) {
+       try {
+         WebApp.setHeaderColor('#F8F9FE'); 
+         WebApp.setBackgroundColor('#F8F9FE');
+       } catch (e) { console.warn(e); }
     }
+  }, []);
+
+  useEffect(() => {
+    document.getElementById('main-scroll-container')?.scrollTo(0, 0);
   }, [location.pathname]);
 
   return (
-    <div className="flex flex-col h-screen w-full max-w-md mx-auto bg-[var(--tg-theme-bg-color)] relative shadow-2xl overflow-hidden">
-      
-      {/* ОСНОВНОЙ КОНТЕЙНЕР ДЛЯ СКРОЛЛА */}
-      {/* pt-safe: отступ сверху под челку */}
-      {/* pb-safe: отступ снизу под меню и полоску */}
+    <div className="flex flex-col h-full relative bg-[#F8F9FE] text-[#111827]">
+      {/* Контент */}
       <main 
         id="main-scroll-container"
-        className="flex-1 overflow-y-auto overflow-x-hidden pt-safe pb-safe no-scrollbar"
-        style={{ WebkitOverflowScrolling: 'touch' }} // Плавный скролл на iOS
+        className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar w-full"
       >
-        {children}
+        <div className="pt-[calc(env(safe-area-inset-top)+20px)] w-full max-w-md mx-auto">
+           {children}
+        </div>
       </main>
-      
-      {showBottomTab && <BottomTab />}
+
+      <Toaster 
+        position="top-center"
+        toastOptions={{
+          style: {
+            background: 'rgba(255, 255, 255, 0.8)',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255,255,255,0.5)',
+            borderRadius: '16px',
+            color: '#1D1D1F',
+          },
+        }}
+      />
+
+      <BottomTab />
     </div>
   );
 };
