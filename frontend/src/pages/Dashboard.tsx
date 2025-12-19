@@ -1,128 +1,125 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Footprints, 
-  BookOpen,   
-  ShoppingBag, 
-  Trophy,     
-  Bell,
-  MapPin,
-  Sparkles
+import {
+  Trophy,
+  Building2, ShoppingBag, BookOpen
 } from 'lucide-react';
 import { StandardCard } from '../components/ui/StandardCard';
 import { motion } from 'framer-motion';
+import WebApp from '@twa-dev/sdk';
+import apiClient from '../api/apiClient';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const userName = "Амбассадор"; 
+  const user = WebApp.initDataUnsafe?.user;
+  const userName = user?.first_name || "Амбассадор";
+
+  const [leaderboard, setLeaderboard] = useState<string[]>([]);
+
+  useEffect(() => {
+    apiClient.get('/api/orders/leaderboard')
+      .then(res => setLeaderboard(res.data || []))
+      .catch(console.error);
+  }, []);
 
   return (
-    <div className="space-y-6 pb-12">
-      
-      {/* ШАПКА */}
-      <div className="pt-2 px-1 flex justify-between items-center">
-        <div>
-          <h1 className="text-[32px] font-extrabold text-gray-900 leading-none tracking-tight">
-            Привет,<br /> 
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
-              {userName}
-            </span>
-          </h1>
-        </div>
-        
-        <motion.div 
-           whileHover={{ rotate: 15, scale: 1.1 }}
-           whileTap={{ scale: 0.9 }}
-           onClick={() => navigate('/profile')}
-           className="w-12 h-12 bg-white rounded-full border border-gray-100 flex items-center justify-center text-xl shadow-lg cursor-pointer"
+    <div className="space-y-6 pb-24 pt-2 text-left">
+      {/* ПРЕМИАЛЬНАЯ ШАПКА */}
+      <div className="px-1 flex justify-between items-center">
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
         >
-          😼
+          <p className="text-gray-400 text-sm font-bold uppercase tracking-widest mb-1">Панель управления</p>
+          <h1 className="text-[34px] font-extrabold text-gray-900 leading-none tracking-tight">
+            Привет, <span className="text-blue-600">{userName}</span>
+          </h1>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, scale: 0.5 }}
+          animate={{ opacity: 1, scale: 1 }}
+          whileHover={{ rotate: 10, scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => navigate('/profile')}
+          className="w-14 h-14 bg-white rounded-2xl border border-gray-100 flex items-center justify-center text-2xl shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] cursor-pointer overflow-hidden"
+        >
+          {user?.photo_url ? (
+            <img src={user.photo_url} alt="Profile" className="w-full h-full object-cover" />
+          ) : (
+            "👤"
+          )}
         </motion.div>
       </div>
 
-      {/* --- ЖИВАЯ СЕТКА --- */}
+      {/* РЕЙТИНГ АМБАССАДОРОВ */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+      >
+        <StandardCard
+          title="Рейтинг Амбассадоров"
+          subtitle="Топ по заказам и чеку"
+          icon={Trophy}
+          color="blue"
+        >
+          <div className="space-y-3 mt-4">
+            {(leaderboard.length > 0 ? leaderboard : ['Загрузка...']).map((name, i) => (
+              <div key={i} className="flex items-center justify-between p-3 bg-white/40 rounded-xl border border-white/20">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600 border border-blue-200">
+                    {i + 1}
+                  </div>
+                  <span className="text-sm font-bold text-gray-800">{name}</span>
+                </div>
+                <div className={`w-2 h-2 rounded-full ${i === 0 && leaderboard.length > 0 ? 'bg-green-500 shadow-[0_0_8px_#22c55e]' : 'bg-gray-300'}`} />
+              </div>
+            ))}
+          </div>
+        </StandardCard>
+      </motion.div>
+
+      {/* ОСНОВНЫЕ ДЕЙСТВИЯ */}
       <div className="grid grid-cols-2 gap-4">
-        
-        {/* 1. НАЧАТЬ ВИЗИТ (Синий) - delay={0} */}
-        <div className="col-span-2 h-[170px]">
+        <div className="col-span-2">
           <StandardCard
-            title="Начать Визит"
-            subtitle="Зафиксировать приход"
+            title="Рабочая Смена"
+            subtitle="Выбери заведение и начни работу"
             color="blue"
-            delay={0} // Начинает движение сразу
-            onClick={() => navigate('/facilities/new')}
-            className="h-full"
+            onClick={() => navigate('/work')}
+            className="min-h-[140px]"
             illustration={
-              <Footprints size={150} className="text-white drop-shadow-2xl" strokeWidth={1.5} />
+              <Building2 size={120} className="text-white opacity-20" strokeWidth={1} />
             }
           />
         </div>
 
-        {/* 2. БАЗА ЗНАНИЙ (Фиолетовый) - delay={1} */}
-        <div className="h-[200px]">
+        <div className="h-[180px]">
           <StandardCard
             title="Знания"
-            subtitle="Скрипты"
+            subtitle="Обучение"
             color="purple"
-            delay={1} // Чуть позже
             onClick={() => navigate('/knowledge')}
             className="h-full"
             illustration={
-              <BookOpen size={120} className="text-white -rotate-12 translate-x-4" strokeWidth={1.5} />
+              <BookOpen size={100} className="text-white opacity-20 rotate-6" strokeWidth={1} />
             }
           />
         </div>
 
-        {/* 3. ЗАКАЗЫ (Коралл) - delay={0.5} */}
-        <div className="h-[200px]">
+        <div className="h-[180px]">
           <StandardCard
             title="Заказы"
             subtitle="История"
-            value="12"
             color="coral"
-            delay={0.5} // В другом ритме
             onClick={() => navigate('/my-orders')}
             className="h-full"
             illustration={
-              <ShoppingBag size={120} className="text-white rotate-6 translate-x-3" strokeWidth={1.5} />
+              <ShoppingBag size={100} className="text-white opacity-20 -rotate-6" strokeWidth={1} />
             }
           />
         </div>
-
-        {/* 4. КАРТА (Белая) */}
-        <div className="col-span-2 h-[110px]">
-           <StandardCard
-            title="Карта Территории"
-            subtitle="Построить маршрут к точке"
-            color="white"
-            floating={false} // Белые не парят, чтобы не рябило
-            onClick={() => navigate('/map')}
-            className="h-full"
-            showArrow
-            illustration={
-              <MapPin size={90} className="text-blue-500/10 rotate-12 -translate-y-2" />
-            }
-          />
-        </div>
-      </div>
-
-      {/* ДОП. БЛОКИ */}
-      <div className="grid grid-cols-2 gap-4">
-         <StandardCard 
-            title="Топ-3" 
-            subtitle="Рейтинг"
-            color="teal"
-            delay={1.5}
-            onClick={() => navigate('/profile')}
-            illustration={<Trophy size={80} className="text-white/30 translate-x-4 translate-y-2" />}
-         />
-         <StandardCard 
-            title="Задачи" 
-            subtitle="Все чисто"
-            color="white"
-            floating={false}
-            illustration={<Sparkles size={80} className="text-yellow-400/20 translate-x-2" />}
-         />
       </div>
     </div>
   );

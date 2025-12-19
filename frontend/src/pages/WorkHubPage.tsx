@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { StandardCard } from '../components/ui/StandardCard';
-import { Building2, Search, Plus, MapPin } from 'lucide-react';
+import { Building2, Search, Plus, MapPin, ChevronRight } from 'lucide-react';
 import apiClient from '../api/apiClient';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const WorkHubPage: React.FC = () => {
     const navigate = useNavigate();
@@ -19,70 +19,101 @@ const WorkHubPage: React.FC = () => {
             .finally(() => setLoading(false));
     }, []);
 
-    const filtered = facilities.filter(f => 
-        f.name.toLowerCase().includes(search.toLowerCase()) || 
+    const filtered = facilities.filter(f =>
+        f.name.toLowerCase().includes(search.toLowerCase()) ||
         (f.address && f.address.toLowerCase().includes(search.toLowerCase()))
     );
 
     return (
         <Layout>
-            <div className="px-4 pb-32 pt-4 bg-[#F8F9FE] min-h-screen space-y-6">
-                
-                {/* ЗАГОЛОВОК + КНОПКА ДОБАВИТЬ */}
+            <div className="space-y-6 pb-12">
+
+                {/* ЗАГОЛОВОК */}
                 <div className="flex justify-between items-end px-1">
-                    <div>
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                    >
+                        <p className="text-gray-400 text-sm font-bold uppercase tracking-widest mb-1">Выбор объекта</p>
                         <h1 className="text-3xl font-extrabold text-gray-900 leading-none">
-                            Работа
+                            Где сегодня?
                         </h1>
-                        <p className="text-gray-400 text-sm font-medium mt-1">Твоя территория</p>
-                    </div>
-                    <motion.button 
+                    </motion.div>
+
+                    <motion.button
                         whileTap={{ scale: 0.9 }}
                         onClick={() => navigate('/facilities/new')}
-                        className="w-12 h-12 bg-blue-600 rounded-full text-white flex items-center justify-center shadow-lg shadow-blue-500/30"
+                        className="w-12 h-12 bg-white rounded-2xl border border-gray-100 flex items-center justify-center text-blue-600 shadow-sm"
                     >
-                        <Plus size={24} strokeWidth={3} />
+                        <Plus size={24} strokeWidth={2.5} />
                     </motion.button>
                 </div>
 
-                {/* ПОИСК (Красивый инпут) */}
-                <div className="relative shadow-sm">
-                    <Search className="absolute left-4 top-3.5 text-gray-400" size={20} />
-                    <input 
-                        type="text" 
-                        placeholder="Найти заведение или адрес..." 
+                {/* ПОИСК */}
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="relative"
+                >
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                        <Search size={20} />
+                    </div>
+                    <input
+                        type="text"
+                        placeholder="Найти заведение или адрес..."
                         value={search}
                         onChange={e => setSearch(e.target.value)}
-                        className="w-full pl-11 pr-4 h-12 bg-white rounded-[20px] border border-gray-100 text-sm focus:ring-2 focus:ring-blue-500/20 outline-none transition-all placeholder:text-gray-400 font-medium"
+                        className="w-full pl-12 pr-4 h-14 bg-white rounded-[24px] border border-gray-100 text-base focus:ring-4 focus:ring-blue-500/5 outline-none transition-all placeholder:text-gray-400 font-medium shadow-sm shadow-blue-500/5"
                     />
-                </div>
+                </motion.div>
 
                 {/* СПИСОК ЗАВЕДЕНИЙ */}
                 <div className="space-y-3">
                     {loading ? (
-                         <div className="text-center py-10 text-gray-400 animate-pulse">Загрузка базы...</div>
+                        <div className="flex flex-col items-center justify-center py-20 gap-4">
+                            <div className="w-8 h-8 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+                            <p className="text-gray-400 font-medium animate-pulse">Загрузка базы...</p>
+                        </div>
                     ) : (
-                        <>
-                            {filtered.map(f => (
-                                <StandardCard
-                                    key={f.id}
-                                    title={f.name}
-                                    subtitle={f.address || 'Адрес не указан'}
-                                    color="white" // Белые аккуратные карточки
-                                    floating={false} // Списки не должны плавать, иначе укачает
-                                    onClick={() => navigate(`/facilities/${f.id}`)}
-                                    showArrow
-                                    icon={Building2}
-                                />
-                            ))}
-                            
-                            {filtered.length === 0 && (
-                                <div className="flex flex-col items-center justify-center py-10 text-gray-400">
-                                    <MapPin size={48} className="mb-2 opacity-20" />
-                                    <p>Ничего не найдено</p>
-                                </div>
+                        <AnimatePresence mode="popLayout">
+                            {filtered.length > 0 ? (
+                                filtered.map((f, index) => (
+                                    <motion.div
+                                        key={f.id}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: index * 0.05 }}
+                                    >
+                                        <StandardCard
+                                            title={f.name}
+                                            subtitle={f.address || 'Адрес не указан'}
+                                            color="white"
+                                            floating={false}
+                                            onClick={() => navigate(`/facilities/${f.id}`)}
+                                            icon={Building2}
+                                            action={
+                                                <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center">
+                                                    <ChevronRight size={18} className="text-gray-300" />
+                                                </div>
+                                            }
+                                        />
+                                    </motion.div>
+                                ))
+                            ) : (
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    className="flex flex-col items-center justify-center py-20 text-gray-400"
+                                >
+                                    <div className="p-6 bg-gray-50 rounded-full mb-4">
+                                        <MapPin size={40} className="opacity-20 translate-y-1" />
+                                    </div>
+                                    <p className="font-bold">Ничего не найдено</p>
+                                    <p className="text-sm">Попробуй другой запрос</p>
+                                </motion.div>
                             )}
-                        </>
+                        </AnimatePresence>
                     )}
                 </div>
             </div>

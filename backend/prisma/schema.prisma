@@ -24,9 +24,6 @@ model User {
   telegramId  String   @unique
   fullName    String
   role        Role     @default(AMBASSADOR)
-  xp          Int      @default(0)
-  level       Int      @default(1)
-  balance     Float    @default(0)
   
   // Profile Fields
   birthDate   DateTime?
@@ -81,10 +78,6 @@ model Facility {
   id          Int      @id @default(autoincrement())
   name        String
   address     String
-  lat         Float?
-  lng         Float?
-  format      String?
-  tier        String?
   mustList    Json?    
   requiredProducts Int[] @default([])
   visits      Visit[]
@@ -104,8 +97,6 @@ model Visit {
   data        Json?
   productsAvailable Product[] @relation("VisitProducts")
   productsTasted    Product[] @relation("VisitTasted")
-  isValidGeo  Boolean  @default(false)
-  isSuspicious Boolean @default(false)
   comment     String?
   contactName String?
   endedAt     DateTime?

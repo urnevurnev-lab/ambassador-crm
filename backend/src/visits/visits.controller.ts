@@ -1,9 +1,13 @@
 import { Controller, Get, Post, Body, Patch, Param, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
+import { TelegramService } from '../telegram/telegram.service';
 
 @Controller('visits')
 export class VisitsController {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly telegramService: TelegramService
+    ) { }
 
     @Get()
     async getVisits() {
@@ -21,8 +25,8 @@ export class VisitsController {
         userLat?: number;
         userLng?: number;
         status?: string;
+        scenarioData?: any;
     }) {
-        // Ищем пользователя по Telegram ID или внутреннему ID
         let user = await this.prisma.user.findFirst({
             where: {
                 OR: [
@@ -32,9 +36,7 @@ export class VisitsController {
             }
         });
 
-        // Фоллбек на ID 1 (для тестов/отладки)
         if (!user) {
-            console.log(`⚠️ User not found for ID ${data.userId}. Using fallback ID 1.`);
             user = await this.prisma.user.findUnique({ where: { id: 1 } });
         }
 
@@ -42,19 +44,67 @@ export class VisitsController {
             throw new HttpException('User not found in DB', HttpStatus.BAD_REQUEST);
         }
 
-        return this.prisma.visit.create({
+        const facility = await this.prisma.facility.findUnique({
+            where: { id: Number(data.facilityId) }
+        });
+
+        const visit = await this.prisma.visit.create({
             data: {
                 userId: user.id,
                 facilityId: Number(data.facilityId),
                 type: data.type,
                 date: new Date(),
-                status: data.status || 'IN_PROGRESS',
-                data: {
-                    userLat: data.userLat || 0,
-                    userLng: data.userLng || 0,
-                },
+                status: data.status || 'COMPLETED',
+                comment: data.scenarioData?.comment,
+                data: data.scenarioData || {},
             },
+            include: { user: true, facility: true }
         });
+
+        // Синхронизация остатков с объектом (если это проезд/инвентаризация)
+        if (data.type === 'transit' && data.scenarioData?.inventory) {
+            // Превращаем { product_id: boolean } в массив объектов или обновляем JSON
+            // Для простоты работы OrderPage, сохраним это в facility.mustList или отдельное поле.
+            // В схеме есть mustList: Json?
+            await this.prisma.facility.update({
+                where: { id: Number(data.facilityId) },
+                data: {
+                    mustList: data.scenarioData.inventory
+                }
+            });
+        }
+
+        // Отправка уведомления в Telegram (Manager или Admin чат)
+        const managerChatId = process.env.TELEGRAM_MANAGER_CHAT_ID;
+        if (managerChatId) {
+            try {
+                const typeMap: any = {
+                    transit: '🚗 ПРОЕЗД/ЧЕК-ИН',
+                    tasting: '🍷 ДЕГУСТАЦИЯ',
+                    b2b: '💼 B2B ВСТРЕЧА',
+                    checkup: '⏱ СМЕНА/КОНТРОЛЬ'
+                };
+
+                let extraInfo = '';
+                const sData = data.scenarioData;
+                if (data.type === 'checkup') extraInfo = `\n📊 Продажи: ${sData?.shift?.cups} шт`;
+                if (data.type === 'tasting') extraInfo = `\n👥 Гостей: ${sData?.guests?.length || 0}`;
+
+                const message = `
+<b>📍 Новый отчет: ${typeMap[data.type] || data.type}</b>
+👤 Амбассадор: ${user.fullName}
+🏢 Объект: ${facility?.name || 'Неизвестно'}
+💬 Коммент: ${data.scenarioData?.comment || '—'}
+${extraInfo}
+                `.trim();
+
+                await this.telegramService.sendMessage(managerChatId, message);
+            } catch (e) {
+                console.error('Failed to send visit notification', e);
+            }
+        }
+
+        return visit;
     }
 
     @Patch(':id')

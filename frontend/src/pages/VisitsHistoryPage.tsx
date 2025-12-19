@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import apiClient from '../api/apiClient';
 import { Layout } from '../components/Layout';
 import { PageHeader } from '../components/PageHeader';
-import { MapPin } from 'lucide-react';
+import { StandardCard } from '../components/ui/StandardCard';
+import { MapPin, Calendar, Clock } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 
 const VisitsHistoryPage: React.FC = () => {
@@ -25,19 +26,37 @@ const VisitsHistoryPage: React.FC = () => {
 
     return (
         <Layout>
-            <div className="pt-4 px-4 pb-32 space-y-4">
-                <PageHeader title="Моя история" back />
+            <div className="pt-4 px-4 pb-32 space-y-5">
+                <PageHeader title="История Визитов" back />
+                
                 {loading ? <div className="text-center py-10 text-gray-400">Загрузка...</div> : 
-                visits.map(visit => (
-                    <div key={visit.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-                        <div className="flex justify-between mb-1">
-                            <span className="font-bold text-[#1C1C1E]">{visit.facility?.name}</span>
-                            <span className="text-xs text-gray-400">{new Date(visit.date).toLocaleDateString()}</span>
-                        </div>
-                        <div className="text-xs text-gray-500 flex items-center gap-1"><MapPin size={12}/> {visit.facility?.address}</div>
-                        <div className="mt-2 text-xs bg-gray-50 p-2 rounded-lg text-gray-700">{visit.type}</div>
+                visits.length > 0 ? (
+                    <div className="space-y-3">
+                        {visits.map(visit => (
+                            <StandardCard
+                                key={visit.id}
+                                title={visit.facility?.name || "Неизвестная точка"}
+                                subtitle={visit.type || "Визит"}
+                                color="white"
+                                floating={false}
+                                icon={MapPin}
+                            >
+                                <div className="flex items-center justify-between mt-2 text-xs text-gray-400 border-t border-gray-50 pt-2">
+                                    <div className="flex items-center gap-1">
+                                        <Calendar size={12} />
+                                        {new Date(visit.date).toLocaleDateString()}
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <Clock size={12} />
+                                        {new Date(visit.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                    </div>
+                                </div>
+                            </StandardCard>
+                        ))}
                     </div>
-                ))}
+                ) : (
+                    <div className="text-center text-gray-400 py-10">История пуста</div>
+                )}
             </div>
         </Layout>
     );

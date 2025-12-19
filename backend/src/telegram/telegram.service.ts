@@ -42,10 +42,7 @@ export class TelegramService implements OnModuleInit {
                 });
 
                 if (action === 'APPROVED' && existing.user?.id && !wasAlreadyApproved) {
-                    await this.prisma.user.update({
-                        where: { id: existing.user.id },
-                        data: { balance: { increment: 500 } },
-                    });
+                    // Gamification (balance) removed
                 }
 
                 const statusText =

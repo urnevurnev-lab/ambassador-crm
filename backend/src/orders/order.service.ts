@@ -118,7 +118,7 @@ function formatOrderMessage(params: {
     return parts.join('\n');
 }
 
-interface CreateOrderDto {
+export interface CreateOrderDto {
     facilityId: number;
     distributorId: number;
     items: { sku: string; quantity: number }[];
@@ -281,6 +281,42 @@ export class OrderService {
         }
 
         return { shippedSum, pendingCount, rejectedSum };
+    }
+
+    async getLeaderboard() {
+        const users = await this.prisma.user.findMany({
+            where: { role: 'AMBASSADOR' },
+            include: {
+                orders: {
+                    include: { items: { include: { product: true } } }
+                }
+            }
+        });
+
+        const stats = users.map(user => {
+            const orderCount = user.orders.length;
+            let totalSum = 0;
+            user.orders.forEach(o => {
+                o.items.forEach(i => {
+                    totalSum += (i.product?.price ?? 0) * (i.quantity ?? 1);
+                });
+            });
+            const avgCheck = orderCount > 0 ? totalSum / orderCount : 0;
+
+            // Simple combined score: 1 order = 1000 sum value for weighting
+            const score = (totalSum / 1000) + (orderCount * 5);
+
+            return {
+                name: user.fullName,
+                statsVisible: false, // Per user request "only names"
+                score
+            };
+        });
+
+        return stats
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 10)
+            .map(s => s.name);
     }
 
     async updateStatus(id: number, status: string) {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Lock, Delete } from 'lucide-react';
+import { Lock, Delete, Fingerprint } from 'lucide-react';
+import WebApp from '@twa-dev/sdk';
 
 interface LockScreenProps {
     onSuccess: () => void;
@@ -15,6 +16,30 @@ export const LockScreen: React.FC<LockScreenProps> = ({ onSuccess }) => {
         if (input.length < 8) {
             setInput(prev => prev + digit);
             setError(false);
+        }
+    };
+
+    useEffect(() => {
+        // Инициализация биометрии
+        if (WebApp.BiometricManager) {
+            WebApp.BiometricManager.init(() => {
+                if (WebApp.BiometricManager.isBiometricAvailable) {
+                    // Можно попробовать авто-запрос или просто показать кнопку
+                }
+            });
+        }
+    }, []);
+
+    const handleBiometry = () => {
+        if (WebApp.BiometricManager?.isBiometricAvailable) {
+            WebApp.BiometricManager.authenticate({ reason: 'Вход в панель администратора' }, (success: boolean) => {
+                if (success) {
+                    WebApp.HapticFeedback.notificationOccurred('success');
+                    onSuccess();
+                } else {
+                    WebApp.HapticFeedback.notificationOccurred('error');
+                }
+            });
         }
     };
 
@@ -71,7 +96,15 @@ export const LockScreen: React.FC<LockScreenProps> = ({ onSuccess }) => {
                     <KeypadButton key={num} number={num} onClick={() => handlePress(num.toString())} />
                 ))}
                 <div className="flex items-center justify-center">
-                    {/* Empty or FaceID icon */}
+                    {WebApp.BiometricManager?.isBiometricAvailable && (
+                        <motion.button
+                            whileTap={{ scale: 0.85 }}
+                            onClick={handleBiometry}
+                            className="w-[75px] h-[75px] rounded-full bg-white/5 flex items-center justify-center text-white/70"
+                        >
+                            <Fingerprint size={32} />
+                        </motion.button>
+                    )}
                 </div>
                 <KeypadButton number={0} onClick={() => handlePress('0')} />
                 <div className="flex items-center justify-center">

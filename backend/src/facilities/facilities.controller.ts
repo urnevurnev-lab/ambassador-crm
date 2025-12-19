@@ -6,14 +6,11 @@ export class FacilitiesController {
     constructor(private readonly facilitiesService: FacilitiesService) { }
 
     @Post()
-    async createFacility(@Body() data: { name: string; address: string; city?: string; lat?: number; lng?: number; format?: string; requiredProducts?: number[] }) {
+    async createFacility(@Body() data: { name: string; address: string; city?: string; format?: string; requiredProducts?: number[] }) {
         const address = data.city ? `${data.city}, ${data.address}` : data.address;
         return this.facilitiesService.create({
             name: data.name,
             address,
-            lat: data.lat !== undefined ? Number(data.lat) : null,
-            lng: data.lng !== undefined ? Number(data.lng) : null,
-            format: data.format,
             requiredProducts: data.requiredProducts ?? [],
         });
     }
@@ -23,25 +20,9 @@ export class FacilitiesController {
         return this.facilitiesService.findAll();
     }
 
-    @Patch(':id/geo')
-    async updateFacilityGeo(@Param('id') id: string, @Body() data: { lat: number; lng: number }) {
-        return this.facilitiesService.update(Number(id), {
-            lat: Number(data.lat),
-            lng: Number(data.lng),
-        });
-    }
-
-    @Patch(':id/fix-location')
-    async fixLocation(@Param('id') id: string, @Body() data: { lat: number; lng: number }) {
-        return this.facilitiesService.update(Number(id), {
-            lat: Number(data.lat),
-            lng: Number(data.lng),
-        });
-    }
-
     @Patch(':id')
     async updateFacility(@Param('id') id: string, @Body() data: any) {
-        // Позволяем менять координаты и прочие поля; числа приводим явно
+        // Позволяем менять прочие поля; числа приводим явно если они есть
         const prepared = { ...data };
         if (prepared.lat !== undefined) prepared.lat = Number(prepared.lat);
         if (prepared.lng !== undefined) prepared.lng = Number(prepared.lng);
@@ -50,8 +31,6 @@ export class FacilitiesController {
 
     @Get(':id')
     async getFacility(@Param('id') id: string) {
-        const visitCount = await this.facilitiesService['prisma'].visit.count({ where: { facilityId: Number(id) } });
-        console.log('DEBUG: Visits found for facility ' + id + ': ' + visitCount);
         return this.facilitiesService.findWithAnalytics(Number(id));
     }
 }

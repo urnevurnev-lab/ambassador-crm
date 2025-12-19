@@ -1,94 +1,95 @@
 import React from 'react';
-import { 
-  User, 
-  Settings, 
-  Shield, 
-  LogOut, 
-  Crown, 
-  Star,
-  Zap
+import {
+  User,
+  Settings,
+  Shield,
+  LogOut,
+  ChevronRight
 } from 'lucide-react';
 import { StandardCard } from '../components/ui/StandardCard';
 import WebApp from '@twa-dev/sdk';
+import { motion } from 'framer-motion';
+import { PageHeader } from '../components/PageHeader';
 
 const ProfilePage: React.FC = () => {
   const user = WebApp.initDataUnsafe?.user;
 
   return (
-    <div className="space-y-5 pb-24">
-      
-      {/* 1. КАРТОЧКА ПРОФИЛЯ (Темная, Премиальная) */}
-      <StandardCard
-        title={user?.first_name || 'Амбассадор'}
-        subtitle={`@${user?.username || 'username'} • Pro Account`}
-        color="dark"
-        className="min-h-[220px]"
-        illustration={
-          <User size={180} className="text-white opacity-10 translate-y-4" />
-        }
+    <div className="space-y-6 pb-24 pt-2">
+      <PageHeader title="Профиль" />
+
+      {/* 1. КАРТОЧКА ПРОФИЛЯ */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
       >
-        {/* Бейджи внутри карточки */}
-        <div className="flex gap-2 mt-4">
-          <div className="bg-white/10 backdrop-blur-md px-3 py-1 rounded-lg text-xs font-bold border border-white/10 flex items-center gap-1">
-            <Crown size={12} className="text-yellow-400" /> Leader
+        <StandardCard
+          title={user?.first_name || 'Амбассадор'}
+          subtitle={user?.username ? `@${user.username}` : 'Амбассадор'}
+          icon={User}
+          color="purple"
+        >
+          <div className="flex flex-col gap-2 mt-4">
+            <div className="flex justify-between items-center p-3 bg-white/50 rounded-xl border border-white/20">
+              <span className="text-xs font-bold text-gray-500 uppercase">Telegram ID</span>
+              <span className="text-sm font-bold text-gray-900 font-mono">@{user?.id || '—'}</span>
+            </div>
           </div>
-          <div className="bg-white/10 backdrop-blur-md px-3 py-1 rounded-lg text-xs font-bold border border-white/10">
-            Lv. 5
-          </div>
-        </div>
-      </StandardCard>
+        </StandardCard>
+      </motion.div>
 
-      {/* 2. СЕТКА СТАТИСТИКИ (Bento Grid) */}
-      <div className="grid grid-cols-2 gap-3">
-        <StandardCard 
-          title="Рейтинг" 
-          value="4.98"
-          color="white"
-          illustration={<Star size={60} className="text-yellow-400 opacity-20 rotate-12" />}
-        />
-        <StandardCard 
-          title="XP" 
-          value="12,450"
-          color="white"
-          illustration={<Zap size={60} className="text-blue-400 opacity-20 -rotate-12" />}
-        />
-      </div>
-
-      {/* 3. НАСТРОЙКИ (Парящие белые блоки) */}
+      {/* 2. НАСТРОЙКИ */}
       <div className="space-y-3">
-        <h3 className="text-lg font-bold text-gray-900 px-2">Настройки</h3>
-        
-        <StandardCard 
-          title="Личные данные" 
-          subtitle="Изменить фото и имя"
+        <h3 className="text-sm font-bold text-gray-400 uppercase px-1 mt-6 tracking-widest">Настройки</h3>
+
+        <StandardCard
+          title="Личные данные"
+          subtitle="Аккаунт и фото"
           color="white"
-          showArrow
           floating={false}
           icon={User}
-        />
-        
-        <StandardCard 
-          title="Безопасность" 
-          subtitle="Пароль и FaceID"
-          color="white"
-          showArrow
-          floating={false}
-          icon={Shield}
+          action={
+            <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center">
+              <ChevronRight size={18} className="text-gray-300" />
+            </div>
+          }
         />
 
-        <StandardCard 
-          title="Настройки приложения" 
+        <StandardCard
+          title="Безопасность"
+          subtitle="Доступ и сессии"
           color="white"
-          showArrow
+          floating={false}
+          icon={Shield}
+          action={
+            <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center">
+              <ChevronRight size={18} className="text-gray-300" />
+            </div>
+          }
+        />
+
+        <StandardCard
+          title="Приложение"
+          subtitle="Тема и уведомления"
+          color="white"
           floating={false}
           icon={Settings}
+          action={
+            <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center">
+              <ChevronRight size={18} className="text-gray-300" />
+            </div>
+          }
         />
       </div>
 
       {/* Кнопка выхода */}
-      <button className="w-full py-4 text-red-500 font-bold bg-red-50 rounded-[24px] active:scale-95 transition-transform">
-        Выйти из аккаунта
-      </button>
+      <motion.button
+        whileTap={{ scale: 0.98 }}
+        className="w-full py-5 text-red-500 font-extrabold bg-red-50 rounded-[28px] border border-red-100 flex items-center justify-center gap-2 active:brightness-95 transition-all mt-4"
+      >
+        <LogOut size={20} />
+        Выйти из системы
+      </motion.button>
     </div>
   );
 };

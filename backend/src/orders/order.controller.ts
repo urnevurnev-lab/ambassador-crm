@@ -1,16 +1,8 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
-import { OrderService } from './order.service';
+import { Body, Controller, Get, Post, Req, UseGuards, Param, Patch } from '@nestjs/common';
+import { OrderService, CreateOrderDto } from './order.service';
 import { TelegramAuthGuard } from '../telegram/telegram.guard';
 import { parseTelegramUserFromAuthHeader } from '../telegram/telegram.utils';
 import { Request } from 'express';
-
-interface CreateOrderDto {
-    facilityId: number;
-    distributorId: number;
-    items: { sku: string; quantity: number }[];
-    contactName?: string;
-    contactPhone?: string;
-}
 
 @Controller('orders')
 @UseGuards(TelegramAuthGuard)

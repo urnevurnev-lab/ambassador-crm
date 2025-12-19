@@ -1,96 +1,131 @@
-import React, { useState } from 'react';
-import { 
-  BookOpen, 
-  Search, 
-  FileText, 
+import React, { useState, useEffect } from 'react';
+import {
+  BookOpen,
+  Search,
+  FileText,
   PlayCircle,
   GraduationCap,
-  HelpCircle
+  HelpCircle,
+  ChevronRight
 } from 'lucide-react';
 import { StandardCard } from '../components/ui/StandardCard';
 import { motion } from 'framer-motion';
+import apiClient from '../api/apiClient';
+import { Layout } from '../components/Layout';
+
+interface Post {
+  id: number;
+  title: string;
+  content: string;
+  category: string;
+}
 
 const KnowledgeBasePage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiClient.get('/api/posts')
+      .then(res => setPosts(res.data || []))
+      .catch(err => console.error(err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filteredPosts = posts.filter(p =>
+    p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.category.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
 
   return (
-    <div className="space-y-6 pb-24">
-      
-      {/* ЗАГОЛОВОК */}
-      <div className="pt-2 px-1">
-        <h1 className="text-3xl font-extrabold text-gray-900">База Знаний</h1>
-        <p className="text-gray-400 font-medium">Учись и развивайся</p>
-      </div>
-
-      {/* ПОИСК (В стиле Apple) */}
-      <div className="relative">
-        <Search className="absolute left-4 top-3.5 text-gray-400" size={20} />
-        <input 
-          type="text" 
-          placeholder="Найти скрипт или инструкцию..." 
-          className="w-full bg-white h-12 pl-11 pr-4 rounded-[20px] shadow-sm border border-gray-100 text-sm focus:ring-2 focus:ring-purple-500/20 outline-none transition-all"
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-        />
-      </div>
-
-      {/* ГЛАВНЫЕ РАЗДЕЛЫ (Цветные карточки) */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* ОБУЧЕНИЕ (Фиолетовый) */}
-        <div className="col-span-2">
-           <StandardCard 
-             title="Академия" 
-             subtitle="Курсы и тестирование"
-             color="purple"
-             illustration={<GraduationCap size={120} className="text-white opacity-20 -rotate-12 translate-x-4" />}
-             showArrow
-           />
+    <Layout>
+      <div className="space-y-6 pb-32 pt-4 px-4">
+        {/* ЗАГОЛОВОК */}
+        <div className="px-1">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <p className="text-gray-400 text-[10px] font-bold uppercase tracking-[0.2em] mb-1">Центр обучения</p>
+            <h1 className="text-3xl font-black text-gray-900 leading-none">База Знаний</h1>
+          </motion.div>
         </div>
 
-        {/* СКРИПТЫ (Тил/Зеленый) */}
-        <div className="h-[180px]">
-           <StandardCard 
-             title="Скрипты" 
-             subtitle="Продажи"
-             color="teal"
-             className="h-full"
-             illustration={<FileText size={100} className="text-white opacity-20 rotate-6" />}
-           />
+        {/* ПОИСК */}
+        <div className="relative">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+            <Search size={20} />
+          </div>
+          <input
+            type="text"
+            placeholder="Найти скрипт или инструкцию..."
+            className="w-full bg-white h-14 pl-12 pr-4 rounded-[24px] border border-gray-100 text-base focus:ring-4 focus:ring-blue-500/5 outline-none transition-all placeholder:text-gray-400 font-medium shadow-sm"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+          />
         </div>
 
-        {/* ВИДЕО (Розовый/Коралл) */}
-        <div className="h-[180px]">
-           <StandardCard 
-             title="Видео" 
-             subtitle="Уроки"
-             color="coral"
-             className="h-full"
-             illustration={<PlayCircle size={100} className="text-white opacity-20 -rotate-6" />}
-           />
+        {/* ГЛАВНЫЕ РАЗДЕЛЫ (Bento) */}
+        {!searchTerm && (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <StandardCard
+                title="Академия"
+                subtitle="Интерактивные курсы и тесты"
+                color="purple"
+                className="min-h-[120px]"
+                illustration={<GraduationCap size={100} className="text-white opacity-10 absolute -right-4 -bottom-4" />}
+                action={<ChevronRight size={20} className="text-white opacity-40" />}
+              />
+            </div>
+            <StandardCard
+              title="Скрипты"
+              subtitle="Продажи"
+              color="teal"
+              className="h-32"
+              illustration={<FileText size={80} className="text-white opacity-10 absolute -right-2 -bottom-2" />}
+            />
+            <StandardCard
+              title="Видео"
+              subtitle="Ворки"
+              color="coral"
+              className="h-32"
+              illustration={<PlayCircle size={80} className="text-white opacity-10 absolute -right-2 -bottom-2" />}
+            />
+          </div>
+        )}
+
+        {/* СПИСОК СТАТЕЙ */}
+        <div className="space-y-3">
+          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest px-1 mt-6">
+            {searchTerm ? `Результаты поиска (${filteredPosts.length})` : "Все статьи"}
+          </h3>
+
+          {loading ? (
+            <div className="flex justify-center py-10">
+              <div className="w-6 h-6 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+            </div>
+          ) : filteredPosts.length > 0 ? (
+            filteredPosts.map(p => (
+              <StandardCard
+                key={p.id}
+                title={p.title}
+                subtitle={p.category}
+                color="white"
+                floating={false}
+                icon={p.category === 'FAQ' ? HelpCircle : BookOpen}
+                action={<ChevronRight size={18} className="text-gray-300" />}
+              />
+            ))
+          ) : (
+            <div className="text-center py-12 text-gray-400 font-medium border-2 border-dashed border-gray-100 rounded-[30px]">
+              Ничего не найдено
+            </div>
+          )}
         </div>
       </div>
-
-      {/* СПИСОК СТАТЕЙ (Белые парящие карточки) */}
-      <div className="space-y-3">
-        <h3 className="text-lg font-bold text-gray-900 px-2 mt-2">Популярное</h3>
-        
-        <StandardCard 
-          title="F.A.Q." 
-          subtitle="Частые вопросы амбассадоров"
-          color="white"
-          icon={HelpCircle}
-          showArrow
-        />
-        <StandardCard 
-          title="Гайд по продукции" 
-          subtitle="Линейка 2025 года"
-          color="white"
-          icon={BookOpen}
-          showArrow
-        />
-      </div>
-
-    </div>
+    </Layout>
   );
 };
 

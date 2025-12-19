@@ -12,18 +12,12 @@ export class AdminController {
     constructor(
         private readonly adminService: AdminService,
         private readonly facilitiesService: FacilitiesService,
-    ) {}
+    ) { }
 
     @Delete('reset')
     @HttpCode(200)
     async reset() {
         return this.adminService.resetDatabase();
-    }
-
-    @Post('geocode')
-    @HttpCode(200)
-    async geocode() {
-        return this.adminService.geocode();
     }
 
     @Post('create-distributor')

@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
-import { GeocodingService } from '../facilities/geocoding.service';
 import * as XLSX from 'xlsx';
 
 @Injectable()
@@ -9,14 +8,10 @@ export class AdminService {
 
     constructor(
         private readonly prisma: PrismaService,
-        private readonly geocodingService: GeocodingService
-    ) {}
+    ) { }
 
     // --- СТАРЫЕ МЕТОДЫ (для совместимости) ---
 
-    async geocode() {
-        return this.geocodingService.geocodeMissingFacilities();
-    }
 
     async createMainDistributor() {
         const exists = await this.prisma.distributor.findFirst();
@@ -24,7 +19,7 @@ export class AdminService {
             return this.prisma.distributor.create({
                 data: {
                     name: 'Main Distributor',
-                    telegramChatId: '' 
+                    telegramChatId: ''
                 }
             });
         }
@@ -55,15 +50,12 @@ export class AdminService {
                     { name: { startsWith: 'Activity', mode: 'insensitive' } },
                     { name: { startsWith: 'Test', mode: 'insensitive' } },
                     { name: { startsWith: 'Тест', mode: 'insensitive' } },
-                    
+
                     // Плохие адреса (пустые строки)
                     { address: '' },
                     { address: 'Адрес не указан' },
                     { address: { lt: '     ' } }, // Короче 5 символов (примерно)
-                    
-                    // Безнадежные (без координат)
-                    { lat: null },
-                    { lat: 0 },
+
                 ]
             },
             select: { id: true }
@@ -83,7 +75,7 @@ export class AdminService {
         await this.prisma.orderItem.deleteMany({
             where: { order: { facilityId: { in: idsToDelete } } }
         });
-        
+
         // Удаляем Orders
         const deletedOrders = await this.prisma.order.deleteMany({
             where: { facilityId: { in: idsToDelete } }
@@ -99,13 +91,13 @@ export class AdminService {
             where: { id: { in: idsToDelete } }
         });
 
-        const result = { 
-            message: 'Cleanup successful', 
+        const result = {
+            message: 'Cleanup successful',
             deletedFacilities: deletedFacilities.count,
             deletedVisits: deletedVisits.count,
             deletedOrders: deletedOrders.count
         };
-        
+
         this.logger.log(`Cleanup Done: ${JSON.stringify(result)}`);
         return result;
     }

@@ -3,46 +3,28 @@
 @tailwind utilities;
 
 :root {
-  --tg-safe-area-top: env(safe-area-inset-top, 20px);
-  --tg-safe-area-bottom: env(safe-area-inset-bottom, 20px);
+  --tg-safe-area-top: env(safe-area-inset-top, 0px);
+  --tg-safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --bg-main: #F8F9FE;
+}
+
+html {
+  height: 100dvh;
+  overflow: hidden;
+  background-color: var(--bg-main);
 }
 
 body {
   margin: 0;
   padding: 0;
   width: 100%;
-  height: 100%;
+  height: 100dvh;
   overflow: hidden;
-  background-color: #F8F9FE; /* Светлый-светлый голубоватый оттенок */
+  background-color: var(--bg-main);
   color: #111827;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
-}
-
-/* АТМОСФЕРНЫЙ ФОН (Градиентные пятна) */
-body::before {
-  content: '';
-  position: absolute;
-  top: -100px;
-  left: -100px;
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, rgba(67, 100, 247, 0.08) 0%, transparent 70%);
-  filter: blur(60px);
-  z-index: -1;
-  pointer-events: none;
-}
-
-body::after {
-  content: '';
-  position: absolute;
-  top: 40%;
-  right: -100px;
-  width: 300px;
-  height: 300px;
-  background: radial-gradient(circle, rgba(221, 36, 118, 0.06) 0%, transparent 70%);
-  filter: blur(50px);
-  z-index: -1;
-  pointer-events: none;
+  overscroll-behavior: none;
 }
 
 #root {
@@ -51,10 +33,55 @@ body::after {
   flex-direction: column;
 }
 
+/* Bento Grid Utilities */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.bento-item-large {
+  grid-column: span 2;
+}
+
+/* Custom Shadows (Glow Effects) */
+.glow-blue {
+  box-shadow: 0 20px 40px -12px rgba(0, 82, 212, 0.3);
+}
+
+.glow-purple {
+  box-shadow: 0 20px 40px -12px rgba(101, 78, 163, 0.3);
+}
+
+.glow-coral {
+  box-shadow: 0 20px 40px -12px rgba(255, 81, 47, 0.3);
+}
+
+.glow-teal {
+  box-shadow: 0 20px 40px -12px rgba(17, 153, 142, 0.3);
+}
+
+/* Scrollbar Hide */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Animations */
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
 }

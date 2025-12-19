@@ -12,45 +12,84 @@ export class ReportsService {
             include: {
                 user: true,
                 facility: true,
-                activity: true,
             },
             orderBy: { date: 'desc' }
         });
 
         const workbook = new ExcelJS.Workbook();
-        const sheet = workbook.addWorksheet('Визиты');
 
+        // 1. ПОДРОБНЫЙ ЖУРНАЛ
+        const sheet = workbook.addWorksheet('Журнал Визитов');
         sheet.columns = [
             { header: 'ID', key: 'id', width: 10 },
             { header: 'Дата', key: 'date', width: 15 },
             { header: 'Сотрудник', key: 'user', width: 25 },
             { header: 'Точка', key: 'facility', width: 25 },
-            { header: 'Адрес', key: 'address', width: 30 },
-            { header: 'Тип активности', key: 'type', width: 20 },
+            { header: 'Тип', key: 'type', width: 20 },
+            { header: 'Продажи (шт)', key: 'sales', width: 12 },
+            { header: 'Гости (чел)', key: 'guests', width: 12 },
+            { header: 'B2B Контакт', key: 'b2b', width: 25 },
             { header: 'Комментарий', key: 'comment', width: 30 },
-            { header: 'Гео-статус', key: 'geo', width: 15 },
-            { header: 'Данные (JSON)', key: 'data', width: 50 },
+            { header: 'Сырые данные', key: 'raw', width: 50 },
         ];
 
         visits.forEach(v => {
-            // Flatten JSON data into a string for overview
-            const dataStr = v.data ? JSON.stringify(v.data, null, 2) : '';
+            const sData = (v.data || {}) as any;
 
             sheet.addRow({
                 id: v.id,
-                date: new Date(v.date).toLocaleDateString() + ' ' + new Date(v.date).toLocaleTimeString(),
+                date: new Date(v.date).toLocaleString('ru-RU'),
                 user: v.user?.fullName || 'N/A',
                 facility: v.facility?.name || 'N/A',
-                address: v.facility?.address || '',
-                type: v.activity?.name || v.type, // Use activity name if available
-                comment: v.comment,
-                geo: v.isSuspicious ? '❌ Далеко' : (v.isValidGeo ? '✅ ОК' : '❓ Неизвестно'),
-                data: dataStr
+                type: v.type,
+                sales: sData.shift?.cups || 0,
+                guests: sData.guests?.length || 0,
+                b2b: sData.b2bContact?.name || '',
+                comment: sData.comment || v.comment || '',
+                raw: JSON.stringify(sData),
             });
         });
 
+        // 2. СВОДНАЯ ПО СОТРУДНИКАМ
+        const summarySheet = workbook.addWorksheet('Сводка по Амбассадорам');
+        summarySheet.columns = [
+            { header: 'ФИО Сотрудника', key: 'name', width: 30 },
+            { header: 'Всего активностей', key: 'total', width: 20 },
+            { header: 'Продажи (суммарно)', key: 'totalSales', width: 20 },
+            { header: 'Дегустации', key: 'tastings', width: 15 },
+            { header: 'B2B Встречи', key: 'b2b', width: 15 },
+            { header: 'Проезд/Чек-ин', key: 'transit', width: 15 },
+        ];
+
+        // Aggregate by user
+        const userStats = new Map<number, any>();
+        visits.forEach(v => {
+            if (!v.user) return;
+            const userId = v.user.id;
+            if (!userStats.has(userId)) {
+                userStats.set(userId, {
+                    name: v.user.fullName, total: 0, totalSales: 0,
+                    tastings: 0, b2b: 0, transit: 0, checkup: 0
+                });
+            }
+            const stat = userStats.get(userId);
+            stat.total++;
+            const sData = (v.data || {}) as any;
+            if (v.type === 'checkup') {
+                stat.totalSales += Number(sData.shift?.cups || 0);
+                stat.checkup++;
+            }
+            if (v.type === 'tasting') stat.tastings++;
+            if (v.type === 'b2b') stat.b2b++;
+            if (v.type === 'transit') stat.transit++;
+        });
+
+        Array.from(userStats.values()).forEach(s => {
+            summarySheet.addRow(s);
+        });
+
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', 'attachment; filename=visits_report.xlsx');
+        res.setHeader('Content-Disposition', 'attachment; filename=activity_report.xlsx');
 
         await workbook.xlsx.write(res);
         res.end();

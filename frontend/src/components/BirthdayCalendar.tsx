@@ -1,7 +1,7 @@
 import React from 'react';
 import { PageHeader } from './PageHeader';
 import { StandardCard } from './ui/StandardCard';
-import { Calendar, Gift } from 'lucide-react';
+import { Gift } from 'lucide-react';
 
 export const BirthdayCalendar: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     // В будущем будем брать из API: apiClient.get('/api/users/birthdays')
@@ -32,10 +32,10 @@ export const BirthdayCalendar: React.FC<{ onBack: () => void }> = ({ onBack }) =
             </div>
 
             <h3 className="font-bold text-gray-400 uppercase text-xs pl-2">Скоро</h3>
-            
+
             <div className="space-y-2">
                 {birthdays.map((b) => (
-                    <StandardCard key={b.id}>
+                    <StandardCard key={b.id} title={b.name}>
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-red-50 text-red-500 rounded-full flex items-center justify-center font-bold text-xs">

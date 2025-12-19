@@ -1,10 +1,9 @@
 import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
-import { GeocodingService } from './geocoding.service';
 
 @Injectable()
 export class FacilitiesService {
-    constructor(private prisma: PrismaService, private geocodingService: GeocodingService) { }
+    constructor(private prisma: PrismaService) { }
 
     async findAll() {
         const facilities = await this.prisma.facility.findMany({
@@ -18,8 +17,6 @@ export class FacilitiesService {
                 id: true,
                 name: true,
                 address: true,
-                lat: true,
-                lng: true,
                 requiredProducts: true,
                 visits: {
                     take: 1,
@@ -31,23 +28,17 @@ export class FacilitiesService {
             }
         });
 
-        // 20 is arbitrary "perfect" number of SKUs for now, can be adjusted
         const TARGET_SKU_COUNT = 20;
 
         return facilities.map(f => {
             const lastVisit = f.visits[0];
             const stockCount = lastVisit?.productsAvailable?.length || 0;
-            // Simple score: % of target (capped at 100)
-            // If stockCount = 0 -> score 0 (RED)
-            // If stockCount = 20 -> score 100 (GREEN)
             const score = Math.min(Math.round((stockCount / TARGET_SKU_COUNT) * 100), 100);
 
             return {
                 id: f.id,
                 name: f.name,
                 address: f.address,
-                lat: f.lat,
-                lng: f.lng,
                 score
             };
         });
@@ -78,8 +69,6 @@ export class FacilitiesService {
         const newFacility = await this.prisma.facility.create({
             data: {
                 ...data,
-                lat: data.lat ?? null,
-                lng: data.lng ?? null,
                 requiredProducts: data.requiredProducts ?? [],
             },
         });

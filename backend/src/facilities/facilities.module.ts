@@ -2,11 +2,11 @@ import { Module } from '@nestjs/common';
 import { FacilitiesService } from './facilities.service';
 import { FacilitiesController } from './facilities.controller';
 import { PrismaService } from '../prisma.service';
-import { GeocodingService } from './geocoding.service';
 
 @Module({
+    imports: [],
     controllers: [FacilitiesController],
-    providers: [FacilitiesService, PrismaService, GeocodingService],
-    exports: [FacilitiesService, GeocodingService],
+    providers: [FacilitiesService, PrismaService],
+    exports: [FacilitiesService],
 })
 export class FacilitiesModule { }

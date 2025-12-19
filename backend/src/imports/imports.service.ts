@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx';
 
 @Injectable()
 export class ImportsService {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
     private clean(str: any): string {
         if (!str) return '';
@@ -14,7 +14,7 @@ export class ImportsService {
     // Генерация SKU: Bliss + Ананас -> bliss_ananas
     private generateSku(line: string, flavor: string): string {
         const translit = (str: string) => {
-            const ru = {'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'e','ж':'j','з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'c','ч':'ch','ш':'sh','щ':'sch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya'};
+            const ru = { 'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e', 'ж': 'j', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'c', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya' };
             return str.toLowerCase().split('').map(char => ru[char] || char).join('').replace(/[^a-z0-9]/g, '_');
         };
         return `${translit(line)}_${translit(flavor)}`;
@@ -84,14 +84,14 @@ export class ImportsService {
                     else continue;
                 }
                 const { finalName, finalAddress } = this.fixNameAndAddress(facilityName, facilityAddress);
-                
+
                 let facility = await this.prisma.facility.findFirst({
                     where: { name: finalName, ...(finalAddress ? { address: finalAddress } : {}) }
                 });
 
                 if (!facility) {
                     facility = await this.prisma.facility.create({
-                        data: { name: finalName, address: finalAddress || '', lat: 0, lng: 0 }
+                        data: { name: finalName, address: finalAddress || '' }
                     });
                 }
 
@@ -102,7 +102,6 @@ export class ImportsService {
                         facilityId: facility.id,
                         type: activityType || 'VISIT',
                         date: visitDate,
-                        isValidGeo: true // Доверяем Excel
                     }
                 });
 
@@ -121,7 +120,7 @@ export class ImportsService {
 
                         // Ищем или создаем Продукт
                         let product = await this.prisma.product.findUnique({ where: { sku } });
-                        
+
                         if (!product) {
                             // Если вкус новый - создаем
                             product = await this.prisma.product.create({
