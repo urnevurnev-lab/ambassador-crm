@@ -6,35 +6,30 @@ export default {
   ],
   theme: {
     extend: {
-      // Пиксельный / Терминальный шрифт (найди потом "Press Start 2P" или "VT323" на Google Fonts для вау-эффекта)
-        sans: ['Inter', 'system-ui', 'sans-serif'], // Основной шрифт
-
+      fontFamily: {
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+      },
       colors: {
-        'ios-bg': '#F5F5F7',
-        'card': '#FFFFFF',
-        'retro': {
-          bg: '#000000',
-          surface: '#111111',
-          border: '#333333',
-          text: '#FFFFFF',
-          muted: '#888888',
-          accent: '#FF3B30',
-          success: '#00FF00',
-        }
+        // Tesla/Apple Palette
+        'bg-primary': '#F5F5F7', // Dirty Snow
+        'bg-card': '#FFFFFF',
+        'text-primary': '#1D1D1F',
+        'text-secondary': '#86868B',
+        'accent': '#007AFF', // Или твой фирменный цвет
+        'divider': '#E5E5EA',
       },
       borderRadius: {
-        none: '0', // Все квадратное
-        sm: '2px', // Микро-скругление для кнопок
-      },
-      borderWidth: {
-        '3': '3px', // Жирные рамки
+        '3xl': '24px',
+        '4xl': '32px',
       },
       boxShadow: {
-        'soft': '0 8px 30px rgb(0, 0, 0, 0.04)',
-        'retro': '4px 4px 0 0 #333333', 
-        'retro-accent': '4px 4px 0 0 #FF3B30',
-        'retro-inset': 'inset 2px 2px 0 0 #000000, inset -2px -2px 0 0 #333333',
+        'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
+        'float': '0 20px 40px -12px rgba(0, 0, 0, 0.12)',
+        'card': '0 2px 8px rgba(0, 0, 0, 0.04)',
       },
+      backgroundImage: {
+        'glass-gradient': 'linear-gradient(180deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.6) 100%)',
+      }
     },
   },
   plugins: [],

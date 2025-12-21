@@ -16,13 +16,13 @@ html {
 body {
   margin: 0;
   background-color: var(--app-bg);
-  color: #000000;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  color: #1D1D1F;
+  font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior: none;
 }
 
-/* Скрываем скроллбар */
+/* Убираем скроллбары для чистоты */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -31,29 +31,18 @@ body {
   scrollbar-width: none;
 }
 
-/* Анимация нажатия - жесткая */
+/* Новая анимация нажатия: Tesla Style (мягкое сжатие) */
 .active-press:active {
-  transform: translate(2px, 2px); /* Сдвиг вместо скейла */
-  box-shadow: none !important; /* Убираем тень при нажатии */
-  transition: all 0.05s ease;
+  transform: scale(0.96);
+  opacity: 0.8;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Терминальные утилиты */
-.terminal-border {
-  border: 2px solid #333333;
-}
-
-.terminal-card {
-  background-color: #111111;
-  border: 2px solid #333333;
-  box-shadow: 4px 4px 0 0 #333333;
-}
-
-/* Глобальные отступы */
+/* Глобальные утилиты для отступов */
 .safe-pb {
-  padding-bottom: calc(70px + var(--tg-safe-area-bottom)); /* Место под жесткое меню */
+  padding-bottom: calc(90px + var(--tg-safe-area-bottom));
 }
 
 .safe-pt {
-  padding-top: max(var(--tg-safe-area-top), 20px);
+  padding-top: max(var(--tg-safe-area-top), 16px);
 }

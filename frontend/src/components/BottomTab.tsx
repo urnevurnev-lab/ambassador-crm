@@ -1,36 +1,45 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Briefcase, BookOpen, User } from 'lucide-react';
+import { LayoutGrid, CheckSquare, BookOpen, User } from 'lucide-react';
 
 export const BottomTab: React.FC = () => {
   const navItems = [
-    { path: '/', icon: LayoutDashboard, label: 'MAIN' },
-    { path: '/work', icon: Briefcase, label: 'WORK' },
-    { path: '/knowledge', icon: BookOpen, label: 'BASE' },
-    { path: '/profile', icon: User, label: 'USER' },
+    { path: '/', icon: LayoutGrid, label: 'Главная' },
+    { path: '/work', icon: CheckSquare, label: 'Задачи' },
+    { path: '/knowledge', icon: BookOpen, label: 'База' },
+    { path: '/profile', icon: User, label: 'Профиль' },
   ];
 
   return (
-    <div className="fixed bottom-6 left-4 right-4 z-[50]">
-      <div className="flex items-center justify-around h-[72px] w-full max-w-md mx-auto bg-white/80 backdrop-blur-xl rounded-[32px] shadow-[0_20px_40px_rgba(0,0,0,0.1)] px-2">
+    // DOCKED BAR: Прибита к низу, фон размыт
+    <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#F5F5F7]/90 backdrop-blur-xl border-t border-gray-200 pb-[env(safe-area-inset-bottom)] transition-all duration-300">
+      
+      {/* Контейнер: высота 50px (компактнее) */}
+      <div className="flex items-center justify-around h-[50px] w-full max-w-md mx-auto px-2">
         {navItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             className={({ isActive }) => `
               relative flex flex-col items-center justify-center flex-1 h-full
-              transition-all duration-200
-              ${isActive ? 'text-black' : 'text-[#C7C7CC]'}
+              transition-all duration-200 active:scale-95
+              ${isActive ? 'text-black' : 'text-[#999999] hover:text-[#666666]'}
             `}
           >
-            <item.icon
-              size={24}
-              strokeWidth={2}
-              className="mb-1"
-            />
-            <span className="text-[10px] font-medium uppercase tracking-tight">
-              {item.label}
-            </span>
+            {({ isActive }) => (
+              <>
+                {/* Иконка */}
+                <item.icon
+                  size={26}
+                  strokeWidth={isActive ? 2.5 : 2} // Жирнее при активе
+                  className="transition-transform duration-200"
+                />
+                
+                {/* Если нужны подписи - раскомментируй. 
+                    Сейчас они убраны для чистого стиля "как на референсе" */}
+                {/* <span className="text-[10px] font-medium mt-1">{item.label}</span> */}
+              </>
+            )}
           </NavLink>
         ))}
       </div>

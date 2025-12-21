@@ -1,235 +1,181 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { StandardCard } from '../components/ui/StandardCard';
+import { PageHeader } from '../components/PageHeader';
 import { motion, AnimatePresence } from 'framer-motion';
+import { MapPin, Activity, ShoppingBag, Users, ArrowRight, AlertCircle } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 import apiClient from '../api/apiClient';
 
-interface Facility {
-  id: number;
-  name: string;
-  address: string;
-  city: string | null;
-  isVerified: boolean;
-  daysSinceLastVisit: number | null;
-  score: number;
-}
-
-interface Order {
-  id: number;
-  status: string;
-  facility: { name: string };
-  createdAt: string;
-}
+// Типы данных
+interface Facility { id: number; name: string; address: string; isVerified: boolean; daysSinceLastVisit: number | null; }
+interface Order { id: number; status: string; facility: { name: string }; }
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const user = WebApp.initDataUnsafe?.user;
 
-  const [forgottenVenues, setForgottenVenues] = useState<Facility[]>([]);
-  const [unverifiedVenues, setUnverifiedVenues] = useState<Facility[]>([]);
-  const [rejectedOrders, setRejectedOrders] = useState<Order[]>([]);
+  const [alerts, setAlerts] = useState<{ type: 'verify' | 'rejected', data: any }[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = async () => {
-    try {
-      await new Promise(r => setTimeout(r, 600));
-      const [facRes, orderRes] = await Promise.all([
-        apiClient.get('/api/facilities'),
-        apiClient.get('/api/orders/my-history')
-      ]);
-
-      const allFacs = facRes.data as Facility[];
-
-      setForgottenVenues(allFacs
-        .filter(f => f.isVerified && (f.daysSinceLastVisit === null || f.daysSinceLastVisit >= 7))
-        .slice(0, 3));
-
-      setUnverifiedVenues(allFacs.filter(f => !f.isVerified).slice(0, 2));
-      setRejectedOrders((orderRes.data as Order[]).filter(o => o.status === 'REJECTED').slice(0, 2));
-
-    } catch (error) {
-      console.error("Sys.Err:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Загрузка данных
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [facRes, orderRes] = await Promise.all([
+          apiClient.get('/api/facilities'),
+          apiClient.get('/api/orders/my-history')
+        ]);
+        
+        const facilities = facRes.data as Facility[];
+        const orders = orderRes.data as Order[];
+
+        // Собираем алерты
+        const newAlerts: any[] = [];
+        
+        // 1. Неподтвержденные точки
+        facilities.filter(f => !f.isVerified).slice(0, 2).forEach(f => {
+          newAlerts.push({ type: 'verify', data: f });
+        });
+
+        // 2. Отклоненные заказы
+        orders.filter(o => o.status === 'REJECTED').slice(0, 1).forEach(o => {
+          newAlerts.push({ type: 'rejected', data: o });
+        });
+
+        setAlerts(newAlerts);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchData();
   }, []);
 
   const handleVerify = async (id: number) => {
     try {
       await apiClient.patch(`/api/facilities/${id}`, { isVerified: true });
-      fetchData();
+      setAlerts(prev => prev.filter(a => a.data.id !== id));
       WebApp.HapticFeedback.notificationOccurred('success');
-    } catch (error) {
-      WebApp.HapticFeedback.notificationOccurred('error');
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-          className="w-10 h-10 border-4 border-[#F5F5F7] border-t-black rounded-full"
-        />
-        <p className="text-[13px] font-bold text-[#86868B] uppercase tracking-wide">Loading Dashboard...</p>
-      </div>
-    );
-  }
-
-  const getTimeGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 18) return 'Good Afternoon';
-    return 'Good Evening';
+    } catch (e) { console.error(e); }
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-700 pb-12">
-      {/* Header */}
-      <div className="flex justify-between items-center py-6 mt-4">
-        <div>
-          <h1 className="text-[32px] font-bold tracking-tight text-black leading-tight">
-            {getTimeGreeting()},<br />
-            {user?.first_name || 'Partner'}
-          </h1>
-          <p className="text-[15px] text-[#86868B] font-medium mt-1">
-            Here's what's happening today.
-          </p>
-        </div>
-
-        <motion.div
-          onClick={() => navigate('/profile')}
-          whileTap={{ scale: 0.95 }}
-          className="w-14 h-14 bg-white rounded-2xl shadow-soft flex items-center justify-center cursor-pointer overflow-hidden border border-white"
-        >
-          {user?.photo_url ? (
-            <img src={user.photo_url} alt="User" className="w-full h-full object-cover" />
-          ) : (
-            <span className="text-2xl text-[#86868B]">👤</span>
-          )}
-        </motion.div>
-      </div>
-
-      {/* Alerts - Dark Bento Style */}
-      <AnimatePresence>
-        {(forgottenVenues.length > 0 || rejectedOrders.length > 0 || unverifiedVenues.length > 0) && (
-          <div className="space-y-4">
-            {unverifiedVenues.map(venue => (
-              <StandardCard
-                key={`v-${venue.id}`}
-                variant="dark"
-                title="Action Required"
-                subtitle="Verify Location"
-              >
-                <p className="text-[14px] text-white/70 mb-6 font-medium leading-normal">
-                  {venue.name} — {venue.address}
-                </p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => handleVerify(venue.id)}
-                    className="flex-1 bg-white text-black text-[14px] font-bold py-3.5 rounded-2xl active:opacity-80 transition-opacity"
-                  >
-                    Confirm
-                  </button>
-                  <button className="flex-1 bg-white/10 text-white text-[14px] font-bold py-3.5 rounded-2xl active:opacity-80 transition-opacity">
-                    Later
-                  </button>
-                </div>
-              </StandardCard>
-            ))}
-
-            {rejectedOrders.map(order => (
-              <StandardCard
-                key={`o-${order.id}`}
-                variant="dark"
-                onClick={() => navigate('/my-orders')}
-                title="System Alert"
-                subtitle={`Order #${order.id} Rejected`}
-                className="cursor-pointer"
-              >
-                <p className="text-[14px] text-white/70 font-medium">{order.facility.name}</p>
-              </StandardCard>
-            ))}
+    <div className="pb-24">
+      {/* Приветствие */}
+      <PageHeader 
+        title="Обзор" 
+        subtitle={user ? `С возвращением, ${user.first_name}` : 'Твоя статистика'}
+        rightAction={
+          <div 
+            onClick={() => navigate('/profile')}
+            className="w-10 h-10 rounded-full bg-white shadow-soft flex items-center justify-center overflow-hidden border border-gray-100"
+          >
+            {user?.photo_url ? <img src={user.photo_url} className="w-full h-full" /> : <Users size={20} className="text-gray-400" />}
           </div>
-        )}
-      </AnimatePresence>
+        }
+      />
 
-      {/* Bento Grid */}
-      <div className="grid grid-cols-2 gap-4">
-        {/* Large Widget */}
-        <div className="col-span-2">
-          <StandardCard
-            title="Overview"
-            subtitle="Work Space"
-            onClick={() => navigate('/work')}
-            className="h-[200px] flex flex-col justify-end bg-gradient-to-br from-white to-[#F9F9FB]"
-          >
-            <div className="absolute top-6 right-6 text-5xl opacity-20">📍</div>
-            <p className="text-[15px] font-medium text-[#86868B]">Manage Facilities & Map</p>
-          </StandardCard>
-        </div>
-
-        {/* Small Widgets */}
-        <StandardCard
-          title="Analytics"
-          subtitle="KPI Stats"
-          onClick={() => navigate('/visits-history')}
-          className="h-[180px] flex flex-col justify-end"
-        >
-          <p className="text-[13px] font-medium text-[#86868B]">Performance tracking</p>
-        </StandardCard>
-
-        <StandardCard
-          title="Database"
-          subtitle="Order Logs"
-          onClick={() => navigate('/my-orders')}
-          className="h-[180px] flex flex-col justify-end"
-        >
-          <p className="text-[13px] font-medium text-[#86868B]">History & status</p>
-        </StandardCard>
-
-        <div className="col-span-2">
-          <StandardCard
-            title="Schedule"
-            subtitle="Team Calendar"
-            onClick={() => navigate('/calendar')}
-            className="flex items-center justify-between"
-          >
-            <p className="text-[15px] font-medium text-[#86868B]">View upcoming events</p>
-            <div className="w-10 h-10 bg-[#F5F5F7] rounded-full flex items-center justify-center text-xl">📅</div>
-          </StandardCard>
-        </div>
-      </div>
-
-      {/* Forgotten Venues as a separate section */}
-      {forgottenVenues.length > 0 && (
-        <div className="space-y-4 pt-2">
-          <h2 className="text-[13px] font-bold text-[#86868B] uppercase tracking-wide px-2">Needs Attention</h2>
-          {forgottenVenues.map(venue => (
-            <StandardCard
-              key={`f-${venue.id}`}
-              onClick={() => navigate(`/facility/${venue.id}`)}
-              className="py-4 px-6 flex justify-between items-center cursor-pointer"
+      <div className="flex flex-col gap-4">
+        
+        {/* Алерты (Темные карточки) */}
+        <AnimatePresence>
+          {alerts.map((alert, idx) => (
+            <motion.div
+              key={`${alert.type}-${alert.data.id}`}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
             >
-              <div>
-                <h3 className="text-[17px] font-bold text-black">{venue.name}</h3>
-                <p className="text-[14px] font-medium text-[#86868B] mt-0.5">
-                  Inactive: {venue.daysSinceLastVisit || '??'} Days
-                </p>
-              </div>
-              <div className="w-10 h-10 bg-[#F5F5F7] rounded-full flex items-center justify-center">
-                <span className="text-black font-bold">→</span>
+              {alert.type === 'verify' ? (
+                <StandardCard 
+                  variant="dark"
+                  title="Подтверждение"
+                  subtitle="Это ваше заведение?"
+                  className="bg-[#111]"
+                >
+                  <p className="text-white/70 text-sm mb-4">
+                    {alert.data.name} <br/> 
+                    <span className="opacity-50">{alert.data.address}</span>
+                  </p>
+                  <div className="flex gap-3">
+                    <button 
+                      onClick={() => handleVerify(alert.data.id)}
+                      className="flex-1 bg-white text-black py-3 rounded-2xl font-bold text-sm active:scale-95 transition-transform"
+                    >
+                      Да, моё
+                    </button>
+                    <button className="px-6 py-3 rounded-2xl bg-white/10 text-white font-bold text-sm">Нет</button>
+                  </div>
+                </StandardCard>
+              ) : (
+                <StandardCard 
+                  variant="dark" 
+                  className="bg-red-500 text-white" // Можно переопределить цвет для критичных ошибок
+                  title="Внимание"
+                  subtitle={`Заказ #${alert.data.id} отменен`}
+                  icon={AlertCircle}
+                  onClick={() => navigate('/my-orders')}
+                />
+              )}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+
+        {/* Bento Grid */}
+        <div className="grid grid-cols-2 gap-4">
+          
+          {/* Большая карточка "Работа" */}
+          <div className="col-span-2">
+            <StandardCard
+              title="Маршрут"
+              subtitle="Карта заведений"
+              icon={MapPin}
+              onClick={() => navigate('/work')}
+              showArrow
+              illustration={
+                 // Иллюстрацию можно заменить на 3D иконку
+                 <div className="w-24 h-24 bg-gradient-to-tr from-blue-400 to-blue-600 rounded-full blur-xl opacity-20" />
+              }
+            >
+              <div className="text-sm text-gray-500 font-medium mt-1">
+                Открыть список активных точек →
               </div>
             </StandardCard>
-          ))}
+          </div>
+
+          {/* KPI */}
+          <StandardCard
+            title="KPI"
+            subtitle="Визиты"
+            value="85%"
+            icon={Activity}
+            onClick={() => navigate('/visits-history')}
+          />
+
+          {/* Заказы */}
+          <StandardCard
+            title="Лог"
+            subtitle="Заказы"
+            value="12"
+            icon={ShoppingBag}
+            onClick={() => navigate('/my-orders')}
+          />
+
+          {/* Команда (Длинная карточка внизу) */}
+          <div className="col-span-2">
+            <StandardCard
+              title="Команда"
+              subtitle="Календарь событий"
+              icon={Users}
+              onClick={() => navigate('/calendar')}
+              className="flex items-center justify-between"
+            />
+          </div>
+
         </div>
-      )}
+      </div>
     </div>
   );
 };

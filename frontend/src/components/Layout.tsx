@@ -17,8 +17,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       WebApp.ready();
       WebApp.expand();
 
-      // Настройка цветов под терминал
-      const bgColor = '#000000';
+      // Tesla Style: Светлый чистый фон
+      const bgColor = '#F5F5F7'; 
       WebApp.setHeaderColor(bgColor);
       WebApp.setBackgroundColor(bgColor);
 
@@ -42,10 +42,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       WebApp.BackButton.show();
     }
     const handleBack = () => navigate(-1);
-
     WebApp.BackButton.onClick(handleBack);
-
-    // !!! ИСПРАВЛЕНИЕ ЗДЕСЬ: Обернули в скобки, чтобы вернуть void
     return () => {
       WebApp.BackButton.offClick(handleBack);
     };
@@ -56,32 +53,31 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   }, [location.pathname]);
 
   return (
-    <div className="flex flex-col min-h-screen w-full relative bg-[#F5F5F7] text-black font-sans overflow-hidden">
+    <div className="flex flex-col h-screen w-full relative bg-bg-primary text-text-primary font-sans overflow-hidden">
 
-      {/* Основной контейнер */}
+      {/* Основной скролл-контейнер */}
       <main
         id="main-scroll-container"
         className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar w-full relative z-0"
         style={{
           paddingTop: 'var(--tg-safe-area-top)',
-          paddingBottom: 'calc(100px + var(--tg-safe-area-bottom))'
+          paddingBottom: 'calc(100px + var(--tg-safe-area-bottom))' // Место под меню
         }}
       >
-        <div className="w-full max-w-md mx-auto px-4 relative">
+        <div className="w-full max-w-md mx-auto px-4 pt-4 relative space-y-4">
           {children}
         </div>
       </main>
 
-      {/* Уведомления (Toasts) - Стиль 8-bit */}
+      {/* Уведомления: Premium Style */}
       <Toaster
         position="top-center"
         toastOptions={{
-          className: '!bg-[#111] !text-white !border-2 !border-white !rounded-none !shadow-[4px_4px_0_0_#fff] !font-mono !text-xs !uppercase',
+          className: '!bg-white/90 !backdrop-blur-md !text-black !rounded-2xl !shadow-float !border !border-gray-100 !px-4 !py-3 !font-medium !text-sm',
           duration: 3000,
         }}
       />
 
-      {/* Навигация */}
       <BottomTab />
     </div>
   );
