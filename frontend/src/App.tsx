@@ -7,11 +7,13 @@ import SplashPage from './pages/SplashPage';
 // Страницы
 import Dashboard from './pages/Dashboard';
 import ProfilePage from './pages/ProfilePage';
+import MyDataPage from './pages/MyDataPage';
 import FacilityPage from './pages/FacilityPage';
 import VisitWizard from './pages/VisitWizard';
 import WorkHubPage from './pages/WorkHubPage';
 import AdminPage from './pages/AdminPage';
 import KnowledgeBasePage from './pages/KnowledgeBasePage';
+import FlavorRatingPage from './pages/FlavorRatingPage';
 import VisitsHistoryPage from './pages/VisitsHistoryPage';
 import MyOrdersPage from './pages/MyOrdersPage';
 import NewFacilityPage from './pages/NewFacilityPage';
@@ -49,9 +51,11 @@ function App() {
           {/* Основные разделы меню */}
           <Route path="/work" element={<WorkHubPage />} />
           <Route path="/knowledge" element={<KnowledgeBasePage />} />
+          <Route path="/knowledge/rating" element={<FlavorRatingPage />} />
           <Route path="/education" element={<EducationPage />} />
           <Route path="/calendar" element={<TeamCalendarPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/profile/data" element={<MyDataPage />} />
 
           {/* Работа с точками */}
           <Route path="/facilities" element={<Navigate to="/work" replace />} />

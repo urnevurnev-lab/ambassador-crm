@@ -45,18 +45,23 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    const isRoot = location.pathname === '/';
-    if (isRoot) {
-      WebApp.BackButton.hide();
-    } else {
-      WebApp.BackButton.show();
-    }
+    try {
+      const isRoot = location.pathname === '/';
+      if (isRoot) {
+        WebApp.BackButton?.hide?.();
+      } else {
+        WebApp.BackButton?.show?.();
+      }
 
-    const handleBack = () => navigate(-1);
-    WebApp.BackButton.onClick(handleBack);
-    return () => {
-      WebApp.BackButton.offClick(handleBack);
-    };
+      const handleBack = () => navigate(-1);
+      WebApp.BackButton?.onClick?.(handleBack);
+      return () => {
+        WebApp.BackButton?.offClick?.(handleBack);
+      };
+    } catch (e) {
+      console.warn('WebApp BackButton error', e);
+      return undefined;
+    }
   }, [location.pathname, navigate]);
 
   useEffect(() => {

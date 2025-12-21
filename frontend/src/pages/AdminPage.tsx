@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import {
   Users,
   Package,
+  FlaskConical,
   DollarSign,
   X,
   Trash2,
@@ -32,6 +33,7 @@ type AdminView =
   | 'facilities'
   | 'reports'
   | 'orders'
+  | 'samples'
   | 'posts'
   | 'distributors';
 
@@ -72,6 +74,14 @@ interface Order {
   status: string;
   facility?: { name: string } | null;
   user?: { fullName: string } | null;
+}
+
+interface SampleOrder {
+  id: number;
+  status: string;
+  createdAt: string;
+  user?: { fullName: string } | null;
+  items?: Array<{ quantity: number; product?: { line: string; flavor: string } | null }> | null;
 }
 
 interface Post {
@@ -767,6 +777,61 @@ const OrdersManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   );
 };
 
+const SamplesManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+  const [orders, setOrders] = useState<SampleOrder[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiClient
+      .get<SampleOrder[]>('/api/samples')
+      .then((res) => setOrders(res.data || []))
+      .catch(() => toast.error('Не удалось загрузить заявки'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const exportOrders = () => {
+    window.open('/api/samples/export', '_blank');
+  };
+
+  const getQty = (order: SampleOrder) => (order.items || []).reduce((sum, item) => sum + (item.quantity || 0), 0);
+
+  return (
+    <div className="space-y-6 pb-24">
+      <ManagerHeader title="Пробники" subtitle="Заявки сотрудников" onBack={onBack} />
+      <button
+        onClick={exportOrders}
+        className="w-full py-3 bg-black text-white rounded-3xl font-semibold flex items-center justify-center gap-2 shadow-md"
+      >
+        <Download size={18} strokeWidth={2} /> Экспорт в Excel
+      </button>
+
+      {loading ? (
+        <SkeletonList count={3} />
+      ) : orders.length === 0 ? (
+        <EmptyState text="Заявок нет" />
+      ) : (
+        <div className="space-y-3">
+          {orders.map((order) => (
+            <StandardCard
+              key={order.id}
+              title={`#${order.id} • ${order.status || 'PENDING'}`}
+              subtitle={order.user?.fullName || 'Сотрудник'}
+              icon={Package}
+            >
+              <div className="text-[12px] text-gray-500 mt-2">
+                Позиций: <span className="text-gray-700">{getQty(order)}</span>
+              </div>
+              <div className="text-[12px] text-gray-500 mt-1">
+                Дата: <span className="text-gray-700">{formatDate(order.createdAt)}</span>
+              </div>
+            </StandardCard>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const KnowledgeManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -846,6 +911,7 @@ const AdminMenu: React.FC<{ onSelect: (view: AdminView) => void }> = ({ onSelect
       <ManagerCard title="Объекты" subtitle="Подтверждения" icon={Building2} onClick={() => onSelect('facilities')} />
       <ManagerCard title="Цены" subtitle="Прайс" icon={DollarSign} onClick={() => onSelect('prices')} />
       <ManagerCard title="Заказы" subtitle="История" icon={ShoppingBag} onClick={() => onSelect('orders')} />
+      <ManagerCard title="Пробники" subtitle="Заявки" icon={FlaskConical} onClick={() => onSelect('samples')} />
       <ManagerCard title="Визиты" subtitle="Отчеты" icon={CheckCircle} onClick={() => onSelect('reports')} />
       <ManagerCard title="Контент" subtitle="База" icon={BookOpen} onClick={() => onSelect('posts')} />
       <ManagerCard title="Дистрибьюторы" subtitle="Чаты" icon={Truck} onClick={() => onSelect('distributors')} />
@@ -893,6 +959,7 @@ const AdminPage: React.FC = () => {
       {view === 'facilities' && <FacilityManager onBack={() => handleNavigate('menu')} />}
       {view === 'reports' && <ReportsManager onBack={() => handleNavigate('menu')} />}
       {view === 'orders' && <OrdersManager onBack={() => handleNavigate('menu')} />}
+      {view === 'samples' && <SamplesManager onBack={() => handleNavigate('menu')} />}
       {view === 'posts' && <KnowledgeManager onBack={() => handleNavigate('menu')} />}
       {view === 'distributors' && <DistributorManager onBack={() => handleNavigate('menu')} />}
     </div>

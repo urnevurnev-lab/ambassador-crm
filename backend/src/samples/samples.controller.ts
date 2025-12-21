@@ -40,6 +40,30 @@ export class SamplesController {
         return this.samplesService.getFlavorRating();
     }
 
+    @Get()
+    async getAllOrders() {
+        return this.prisma.sampleOrder.findMany({
+            include: { user: true, items: { include: { product: true } } },
+            orderBy: { createdAt: 'desc' }
+        });
+    }
+
+    @Get('my')
+    @UseGuards(TelegramAuthGuard)
+    async getMyOrders(@Req() req: any) {
+        const telegramId = req.user?.telegramId;
+        if (!telegramId) throw new Error('Unauthorized');
+
+        const user = await this.prisma.user.findUnique({ where: { telegramId } });
+        if (!user) throw new Error('User not found');
+
+        return this.prisma.sampleOrder.findMany({
+            where: { userId: user.id },
+            include: { items: { include: { product: true } } },
+            orderBy: { createdAt: 'desc' }
+        });
+    }
+
     @Get('export')
     async exportExcel(@Res() res: Response) {
         return this.samplesService.exportToExcel(res);

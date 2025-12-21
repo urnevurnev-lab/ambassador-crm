@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../components/PageHeader';
-import { CalendarDays, ChevronRight, ClipboardList, GraduationCap, ListChecks, Shield } from 'lucide-react';
+import { CalendarDays, ChevronRight, ClipboardList, GraduationCap, IdCard, ListChecks, Package, Shield } from 'lucide-react';
 import apiClient from '../api/apiClient';
 import toast from 'react-hot-toast';
+import SampleOrderWizard from '../components/SampleOrderWizard';
 
 interface UserProfile {
   id: number;
@@ -22,6 +23,12 @@ interface OrderStats {
 interface VisitEntry {
   id: number;
   user?: { telegramId: string } | null;
+  data?: any;
+}
+
+interface SampleOrderEntry {
+  id: number;
+  items?: Array<{ quantity: number }> | null;
 }
 
 const ProfilePage: React.FC = () => {
@@ -30,6 +37,9 @@ const ProfilePage: React.FC = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [orderStats, setOrderStats] = useState<OrderStats | null>(null);
   const [visitCount, setVisitCount] = useState(0);
+  const [sampleUnits, setSampleUnits] = useState(0);
+  const [sampleConsumedPortions, setSampleConsumedPortions] = useState(0);
+  const [isSampleWizardOpen, setSampleWizardOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -40,11 +50,12 @@ const ProfilePage: React.FC = () => {
         apiClient.get<UserProfile>('/api/users/me'),
         apiClient.get<OrderStats>('/api/orders/my-stats'),
         apiClient.get<VisitEntry[]>('/api/visits'),
+        apiClient.get<SampleOrderEntry[]>('/api/samples/my'),
       ]);
 
       if (!isMounted) return;
 
-      const [userRes, statsRes, visitsRes] = results;
+      const [userRes, statsRes, visitsRes, samplesRes] = results;
       if (userRes.status === 'fulfilled') {
         setUser(userRes.value.data);
       }
@@ -58,6 +69,29 @@ const ProfilePage: React.FC = () => {
           ? visits.filter((visit) => visit.user?.telegramId === telegramId).length
           : visits.length;
         setVisitCount(count);
+
+        if (telegramId) {
+	          const myVisits = visits.filter((visit) => visit.user?.telegramId === telegramId);
+	          const portions = myVisits.reduce((sum, visit) => {
+	            const usage = visit.data?.sampleUsage;
+	            if (!usage || typeof usage !== 'object') return sum;
+	            const values = Object.values(usage as Record<string, unknown>);
+	            const add = values.reduce<number>(
+	              (acc, value) => acc + (typeof value === 'number' ? value : Number(value) || 0),
+	              0
+	            );
+	            return sum + add;
+	          }, 0);
+	          setSampleConsumedPortions(portions);
+	        }
+      }
+      if (samplesRes.status === 'fulfilled') {
+        const orders = samplesRes.value.data || [];
+        const units = orders.reduce((sum, order) => {
+          const items = order.items || [];
+          return sum + items.reduce((acc, item) => acc + (item.quantity || 0), 0);
+        }, 0);
+        setSampleUnits(units);
       }
 
       if (results.some((r) => r.status === 'rejected')) {
@@ -92,7 +126,34 @@ const ProfilePage: React.FC = () => {
             <StatCard label="Отгрузки" value={`${orderStats?.shippedSum ?? 0} ₽`} />
           </div>
 
+          <div className="rounded-3xl bg-white/60 backdrop-blur-xl border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.10)] p-4 flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <div className="text-[11px] text-black/50 font-semibold uppercase tracking-[0.22em]">Баланс пробников</div>
+              <div className="mt-2 text-[18px] font-semibold text-black">
+                {Math.max(0, sampleUnits * 0.1 - sampleConsumedPortions * 0.025).toFixed(1)} кг
+              </div>
+              <div className="mt-1 text-[12px] text-black/50">
+                Заказано {(sampleUnits * 0.1).toFixed(1)} кг • Списано {(sampleConsumedPortions * 0.025).toFixed(1)} кг
+              </div>
+            </div>
+            <div className="px-3 py-2 rounded-2xl bg-black/5 border border-white/40 text-[12px] font-semibold text-black/60 shrink-0">
+              {sampleUnits} поз.
+            </div>
+          </div>
+
           <div className="space-y-3">
+            <SettingsRow
+              title="Заказать пробники"
+              subtitle="Заявка на ежемесячный набор"
+              icon={<Package size={18} strokeWidth={1.5} />}
+              onClick={() => setSampleWizardOpen(true)}
+            />
+            <SettingsRow
+              title="Мои данные"
+              subtitle="СДЭК и телефон"
+              icon={<IdCard size={18} strokeWidth={1.5} />}
+              onClick={() => navigate('/profile/data')}
+            />
             <SettingsRow
               title="История визитов"
               subtitle="Все отчеты"
@@ -126,6 +187,8 @@ const ProfilePage: React.FC = () => {
               />
             )}
           </div>
+
+          <SampleOrderWizard isOpen={isSampleWizardOpen} onClose={() => setSampleWizardOpen(false)} />
         </>
       )}
     </div>

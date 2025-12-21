@@ -43,13 +43,21 @@ const OrderPage: React.FC = () => {
   const totalWeightKg = (totalItems * 0.1).toFixed(1);
 
   useEffect(() => {
-    if (totalItems > 0) {
-      WebApp.enableClosingConfirmation();
-    } else {
-      WebApp.disableClosingConfirmation();
+    try {
+      if (totalItems > 0) {
+        WebApp.enableClosingConfirmation?.();
+      } else {
+        WebApp.disableClosingConfirmation?.();
+      }
+    } catch (e) {
+      console.warn('ClosingConfirmation unavailable:', e);
     }
     return () => {
-      WebApp.disableClosingConfirmation();
+      try {
+        WebApp.disableClosingConfirmation?.();
+      } catch (e) {
+        console.warn('ClosingConfirmation disable failed:', e);
+      }
     };
   }, [totalItems]);
 
@@ -127,11 +135,21 @@ const OrderPage: React.FC = () => {
 
   const handleCheckout = async () => {
     if (!contactName) {
-      WebApp.showAlert("Укажите контактное лицо");
+      try {
+        WebApp.showAlert?.("Укажите контактное лицо");
+      } catch (e) {
+        console.warn(e);
+        window.alert("Укажите контактное лицо");
+      }
       return;
     }
     if (!selectedDistributorId) {
-      WebApp.showAlert("Выберите дистрибьютора");
+      try {
+        WebApp.showAlert?.("Выберите дистрибьютора");
+      } catch (e) {
+        console.warn(e);
+        window.alert("Выберите дистрибьютора");
+      }
       return;
     }
 
@@ -150,12 +168,27 @@ const OrderPage: React.FC = () => {
       });
 
       WebApp.HapticFeedback?.notificationOccurred('success');
-      WebApp.disableClosingConfirmation();
-      WebApp.showAlert('Заказ отправлен дистрибьютору!');
+      try {
+        WebApp.disableClosingConfirmation?.();
+      } catch (e) {
+        console.warn(e);
+      }
+      try {
+        WebApp.showAlert?.('Заказ отправлен дистрибьютору!');
+      } catch (e) {
+        console.warn(e);
+        window.alert('Заказ отправлен дистрибьютору!');
+      }
       navigate(`/facility/${facilityId}`);
     } catch (e: any) {
       console.error(e);
-      WebApp.showAlert('Ошибка: ' + (e.response?.data?.message || 'Не удалось отправить заказ'));
+      const message = 'Ошибка: ' + (e.response?.data?.message || 'Не удалось отправить заказ');
+      try {
+        WebApp.showAlert?.(message);
+      } catch (err) {
+        console.warn(err);
+        window.alert(message);
+      }
     } finally {
       setIsOrdering(false);
     }
@@ -250,7 +283,7 @@ const OrderPage: React.FC = () => {
                 {categories.map(c => (
                   <button
                     key={c}
-                    onClick={() => { setActiveCategory(c); WebApp.HapticFeedback.impactOccurred('light'); }}
+                    onClick={() => { setActiveCategory(c); WebApp.HapticFeedback?.impactOccurred?.('light'); }}
                     className={`px-5 py-3 rounded-2xl text-[13px] font-black whitespace-nowrap transition-all border ${
                       activeCategory === c
                         ? 'bg-gray-900 text-white border-gray-900 shadow-xl shadow-gray-200'
@@ -319,7 +352,7 @@ const OrderPage: React.FC = () => {
                       <motion.button
                         key={d.id}
                         whileTap={{ scale: 0.98 }}
-                        onClick={() => { setSelectedDistributorId(d.id); WebApp.HapticFeedback.impactOccurred('medium'); }}
+                        onClick={() => { setSelectedDistributorId(d.id); WebApp.HapticFeedback?.impactOccurred?.('medium'); }}
                         className={`p-6 rounded-[28px] border-2 text-left transition-all ${selectedDistributorId === d.id ? 'bg-blue-600 text-white border-blue-500 shadow-xl shadow-blue-500/20' : 'bg-white text-gray-900 border-[#C6C6C8]/10 shadow-sm'}`}
                       >
                         <p className="font-black text-[16px]">{d.name}</p>

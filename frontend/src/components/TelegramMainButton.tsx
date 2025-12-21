@@ -21,31 +21,39 @@ export const TelegramMainButton = ({
   textColor = '#ffffff'
 }: MainButtonProps) => {
   useEffect(() => {
-    WebApp.MainButton.setText(text);
-    WebApp.MainButton.setParams({
-      color,
-      text_color: textColor,
-      is_active: isActive,
-      is_visible: isVisible,
-    });
+    const mainButton = (WebApp as any)?.MainButton;
+    if (!mainButton?.setText || !mainButton?.setParams) return;
 
-    if (isLoading) WebApp.MainButton.showProgress();
-    else WebApp.MainButton.hideProgress();
+    try {
+      mainButton.setText(text);
+      mainButton.setParams({
+        color,
+        text_color: textColor,
+        is_active: isActive,
+        is_visible: isVisible,
+      });
 
-    const handleClick = () => {
-      WebApp.HapticFeedback.impactOccurred('light');
-      onClick();
-    };
+      if (isLoading) mainButton.showProgress?.();
+      else mainButton.hideProgress?.();
 
-    WebApp.MainButton.onClick(handleClick);
+      const handleClick = () => {
+        WebApp.HapticFeedback?.impactOccurred?.('light');
+        onClick();
+      };
 
-    if (isVisible) WebApp.MainButton.show();
-    else WebApp.MainButton.hide();
+      mainButton.onClick?.(handleClick);
 
-    return () => {
-      WebApp.MainButton.offClick(handleClick);
-      WebApp.MainButton.hide();
-    };
+      if (isVisible) mainButton.show?.();
+      else mainButton.hide?.();
+
+      return () => {
+        mainButton.offClick?.(handleClick);
+        mainButton.hide?.();
+      };
+    } catch (e) {
+      console.warn('Telegram MainButton unavailable:', e);
+      return;
+    }
   }, [text, onClick, isVisible, isLoading, isActive, color, textColor]);
 
   return null;

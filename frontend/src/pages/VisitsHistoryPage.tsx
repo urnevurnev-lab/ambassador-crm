@@ -26,7 +26,7 @@ const VisitsHistoryPage: React.FC = () => {
 
     const filterOptions = [
         { id: 'all', label: 'Все' },
-        { id: 'transit', label: 'Транзит' },
+        { id: 'transit', label: 'Проезд' },
         { id: 'tasting', label: 'Дегустация' },
         { id: 'b2b', label: 'B2B' },
         { id: 'checkup', label: 'Смена' },
@@ -46,7 +46,7 @@ const VisitsHistoryPage: React.FC = () => {
                         <button
                             key={opt.id}
                             onClick={() => {
-                                WebApp.HapticFeedback.impactOccurred('light');
+                                WebApp.HapticFeedback?.impactOccurred?.('light');
                                 setActiveFilter(opt.id);
                             }}
                             className={`px-4 py-2 rounded-2xl text-xs font-black transition-all whitespace-nowrap border ${

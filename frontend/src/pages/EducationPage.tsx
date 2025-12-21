@@ -50,14 +50,14 @@ const EducationPage: React.FC = () => {
     const handleNext = () => {
         if (currentPage < PAGES.length - 1) {
             setCurrentPage(c => c + 1);
-            WebApp.HapticFeedback.impactOccurred('medium');
+            WebApp.HapticFeedback?.impactOccurred?.('medium');
         }
     };
 
     const handlePrev = () => {
         if (currentPage > 0) {
             setCurrentPage(c => c - 1);
-            WebApp.HapticFeedback.impactOccurred('medium');
+            WebApp.HapticFeedback?.impactOccurred?.('medium');
         }
     };
 

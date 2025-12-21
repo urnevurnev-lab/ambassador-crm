@@ -21,12 +21,14 @@ export const LockScreen: React.FC<LockScreenProps> = ({ onSuccess }) => {
 
     useEffect(() => {
         // Инициализация биометрии
-        if (WebApp.BiometricManager) {
-            WebApp.BiometricManager.init(() => {
-                if (WebApp.BiometricManager.isBiometricAvailable) {
+        try {
+            WebApp.BiometricManager?.init?.(() => {
+                if (WebApp.BiometricManager?.isBiometricAvailable) {
                     // Можно попробовать авто-запрос или просто показать кнопку
                 }
             });
+        } catch (e) {
+            console.warn('Biometric init failed:', e);
         }
     }, []);
 
@@ -34,10 +36,10 @@ export const LockScreen: React.FC<LockScreenProps> = ({ onSuccess }) => {
         if (WebApp.BiometricManager?.isBiometricAvailable) {
             WebApp.BiometricManager.authenticate({ reason: 'Вход в панель администратора' }, (success: boolean) => {
                 if (success) {
-                    WebApp.HapticFeedback.notificationOccurred('success');
+                    WebApp.HapticFeedback?.notificationOccurred?.('success');
                     onSuccess();
                 } else {
-                    WebApp.HapticFeedback.notificationOccurred('error');
+                    WebApp.HapticFeedback?.notificationOccurred?.('error');
                 }
             });
         }

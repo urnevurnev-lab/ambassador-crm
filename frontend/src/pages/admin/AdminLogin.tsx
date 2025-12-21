@@ -17,14 +17,19 @@ export const AdminLogin = () => {
                 const token = res.data?.token;
                 if (token) {
                     localStorage.setItem('adminToken', token);
-                    WebApp.HapticFeedback.notificationOccurred('success');
+                    WebApp.HapticFeedback?.notificationOccurred?.('success');
                     navigate('/admin');
                     return;
                 }
                 throw new Error('Token missing');
             } catch (e) {
-                WebApp.HapticFeedback.notificationOccurred('error');
-                WebApp.showAlert('Неверный код доступа');
+                WebApp.HapticFeedback?.notificationOccurred?.('error');
+                try {
+                    WebApp.showAlert?.('Неверный код доступа');
+                } catch (err) {
+                    console.warn(err);
+                    window.alert('Неверный код доступа');
+                }
                 setPin('');
             } finally {
                 setLoading(false);
@@ -36,13 +41,13 @@ export const AdminLogin = () => {
 
     const handlePress = (num: number) => {
         if (pin.length < 4) {
-            WebApp.HapticFeedback.impactOccurred('light');
+            WebApp.HapticFeedback?.impactOccurred?.('light');
             setPin(prev => prev + num);
         }
     };
 
     const handleDelete = () => {
-        WebApp.HapticFeedback.impactOccurred('light');
+        WebApp.HapticFeedback?.impactOccurred?.('light');
         setPin(prev => prev.slice(0, -1));
     };
 

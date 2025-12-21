@@ -151,7 +151,12 @@ ${itemsList}
 
             const cdek = user.cdekInfo as any;
             if (cdek) {
-                sheet.addRow([`СДЭК: ${cdek.city}, ${cdek.address}`]);
+                const cdekLine = [cdek.city, cdek.address].filter(Boolean).join(', ');
+                const code = cdek.code ? ` (ПВЗ: ${cdek.code})` : '';
+                sheet.addRow([`СДЭК: ${cdekLine || '—'}${code}`]);
+                if (cdek.phone) {
+                    sheet.addRow([`Телефон: ${cdek.phone}`]);
+                }
             } else {
                 sheet.addRow(['СДЭК: Не указан']);
             }

@@ -165,7 +165,12 @@ export const FastOrderWizard: React.FC<FastOrderWizardProps> = ({ isOpen, onClos
     const handleSubmit = async () => {
         if (!selectedDistributor) return;
         if (Object.keys(cart).length === 0) {
-            WebApp.showAlert('Корзина пуста');
+            try {
+                WebApp.showAlert?.('Корзина пуста');
+            } catch (e) {
+                console.warn(e);
+                window.alert('Корзина пуста');
+            }
             return;
         }
 
@@ -173,7 +178,12 @@ export const FastOrderWizard: React.FC<FastOrderWizardProps> = ({ isOpen, onClos
             .map((id) => Number(id))
             .filter((id) => !productById.get(id)?.sku && !items.find((i) => i.id === id)?.sku);
         if (unknown.length > 0) {
-            WebApp.showAlert('Не удалось определить SKU для некоторых позиций. Обновите каталог и попробуйте снова.');
+            try {
+                WebApp.showAlert?.('Не удалось определить SKU для некоторых позиций. Обновите каталог и попробуйте снова.');
+            } catch (e) {
+                console.warn(e);
+                window.alert('Не удалось определить SKU для некоторых позиций. Обновите каталог и попробуйте снова.');
+            }
             return;
         }
 
@@ -191,11 +201,21 @@ export const FastOrderWizard: React.FC<FastOrderWizardProps> = ({ isOpen, onClos
                     return { sku: sku as string, quantity };
                 })
             });
-            WebApp.showAlert('Заказ успешно отправлен!');
+            try {
+                WebApp.showAlert?.('Заказ успешно отправлен!');
+            } catch (e) {
+                console.warn(e);
+                window.alert('Заказ успешно отправлен!');
+            }
             onClose();
         } catch (e) {
             console.error(e);
-            WebApp.showAlert('Ошибка отправки.');
+            try {
+                WebApp.showAlert?.('Ошибка отправки.');
+            } catch (err) {
+                console.warn(err);
+                window.alert('Ошибка отправки.');
+            }
         } finally {
             setLoading(false);
         }
