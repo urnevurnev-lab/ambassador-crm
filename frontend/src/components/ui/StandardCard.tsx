@@ -1,21 +1,21 @@
 import React from 'react';
 import { motion, type HTMLMotionProps } from 'framer-motion';
+import { ChevronRight } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
-interface StandardCardProps extends HTMLMotionProps<'div'> {
-  title?: any;
-  subtitle?: any;
+interface StandardCardProps extends Omit<HTMLMotionProps<'div'>, 'title'> {
+  title?: React.ReactNode;
+  subtitle?: React.ReactNode;
   children?: React.ReactNode;
   className?: string;
   titleClassName?: string;
   subtitleClassName?: string;
   variant?: 'light' | 'dark';
-  // Backward compatibility props
   color?: string;
   floating?: boolean;
   icon?: React.ElementType;
   illustration?: React.ReactNode;
-  value?: string;
+  value?: React.ReactNode;
   action?: React.ReactNode;
   showArrow?: boolean;
 }
@@ -28,7 +28,6 @@ export const StandardCard: React.FC<StandardCardProps> = ({
   titleClassName,
   subtitleClassName,
   variant = 'light',
-  color,
   floating,
   icon: Icon,
   illustration,
@@ -37,72 +36,99 @@ export const StandardCard: React.FC<StandardCardProps> = ({
   showArrow,
   ...props
 }) => {
-
   const isDark = variant === 'dark';
+  const hasSubtitle = Boolean(subtitle);
+  const shadowClass = floating === false ? 'shadow-sm' : 'shadow-md';
 
   return (
     <motion.div
       whileTap={{ scale: 0.98 }}
       className={cn(
-        'w-full rounded-[32px] p-6 shadow-soft relative overflow-hidden transition-all duration-200',
-        isDark ? 'bg-[#111111] text-white' : 'bg-white text-black',
+        'w-full rounded-3xl border transition-all duration-200 relative overflow-hidden',
+        shadowClass,
+        isDark ? 'bg-[#111111] text-white border-[#1f1f1f]' : 'bg-white text-black border-gray-100',
         className
       )}
       {...props}
     >
-      {title && (
-        <span
-          className={cn(
-            'block text-[13px] font-bold tracking-wide uppercase mb-1',
-            isDark ? 'text-white/60' : 'text-[#86868B]',
-            titleClassName
-          )}
-        >
-          {title}
-        </span>
-      )}
-      <div className="flex justify-between items-start">
-        <div className="flex-1">
-          {subtitle && (
-            <h3
-              className={cn(
-                'text-[24px] font-bold leading-tight mb-4',
-                isDark ? 'text-white' : 'text-black',
-                subtitleClassName
+      <div className="p-5">
+        {(title || subtitle || Icon || showArrow) && (
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              {title && hasSubtitle && (
+                <div
+                  className={cn(
+                    'text-[11px] font-semibold uppercase tracking-widest mb-1',
+                    isDark ? 'text-white/60' : 'text-gray-500',
+                    titleClassName
+                  )}
+                >
+                  {title}
+                </div>
               )}
-            >
-              {subtitle}
-            </h3>
-          )}
-        </div>
-        {Icon && (
-          <div className={cn(
-            "p-2 rounded-xl",
-            isDark ? "bg-white/10 text-white" : "bg-[#F5F5F7] text-black"
-          )}>
-            <Icon size={20} />
+              {title && !hasSubtitle && (
+                <div
+                  className={cn(
+                    'text-[16px] font-semibold text-black',
+                    isDark && 'text-white',
+                    titleClassName
+                  )}
+                >
+                  {title}
+                </div>
+              )}
+              {subtitle && (
+                <div
+                  className={cn(
+                    'text-[18px] font-semibold leading-snug',
+                    isDark ? 'text-white' : 'text-black',
+                    subtitleClassName
+                  )}
+                >
+                  {subtitle}
+                </div>
+              )}
+            </div>
+            {(Icon || showArrow) && (
+              <div className="flex items-center gap-2">
+                {Icon && (
+                  <div
+                    className={cn(
+                      'p-2 rounded-2xl',
+                      isDark ? 'bg-white/10 text-white' : 'bg-[#F5F5F7] text-black'
+                    )}
+                  >
+                    <Icon size={18} strokeWidth={2} />
+                  </div>
+                )}
+                {showArrow && (
+                  <ChevronRight size={18} strokeWidth={2} className={isDark ? 'text-white/60' : 'text-gray-300'} />
+                )}
+              </div>
+            )}
           </div>
         )}
+
+        {value !== undefined && value !== null && (
+          <div className="mt-3 text-[22px] font-semibold">
+            {value}
+          </div>
+        )}
+
+        {children && <div className={title || subtitle || value ? 'mt-4' : ''}>{children}</div>}
       </div>
 
-      {value && (
-        <div className="text-[20px] font-bold mb-4">{value}</div>
-      )}
-
-      {children}
-
       {action && (
-        <div className="mt-6 pt-4 border-t border-[#F5F5F7] flex justify-end">
-          {action}
+        <div className={cn('px-5 pb-4 pt-4 border-t', isDark ? 'border-white/10' : 'border-gray-100')}>
+          <div className="flex justify-end">{action}</div>
         </div>
       )}
 
       {illustration && (
-        <div className="absolute top-4 right-4 pointer-events-none opacity-20">
+        <div className="absolute top-4 right-4 pointer-events-none opacity-10">
           {illustration}
         </div>
       )}
     </motion.div>
-
   );
 };

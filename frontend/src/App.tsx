@@ -6,7 +6,6 @@ import SplashPage from './pages/SplashPage';
 
 // Страницы
 import Dashboard from './pages/Dashboard';
-import FacilitiesListPage from './pages/FacilitiesListPage';
 import ProfilePage from './pages/ProfilePage';
 import FacilityPage from './pages/FacilityPage';
 import VisitWizard from './pages/VisitWizard';
@@ -29,7 +28,7 @@ function App() {
     try {
       WebApp.ready();
       WebApp.expand();
-      const bgColor = '#FFFFFF';
+      const bgColor = '#F5F5F7';
       WebApp.setHeaderColor(bgColor);
       WebApp.setBackgroundColor(bgColor);
     } catch (e) { console.warn(e); }
@@ -55,7 +54,7 @@ function App() {
           <Route path="/profile" element={<ProfilePage />} />
 
           {/* Работа с точками */}
-          <Route path="/facilities" element={<FacilitiesListPage />} />
+          <Route path="/facilities" element={<Navigate to="/work" replace />} />
           <Route path="/facilities/new" element={<NewFacilityPage />} />
           <Route path="/facilities/:id" element={<FacilityPage />} />
 

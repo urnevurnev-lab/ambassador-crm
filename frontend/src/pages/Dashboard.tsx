@@ -1,180 +1,199 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { StandardCard } from '../components/ui/StandardCard';
 import { PageHeader } from '../components/PageHeader';
-import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Activity, ShoppingBag, Users, ArrowRight, AlertCircle } from 'lucide-react';
-import WebApp from '@twa-dev/sdk';
 import apiClient from '../api/apiClient';
+import { ArrowUpRight, CalendarDays, Route, ShoppingBag } from 'lucide-react';
+import toast from 'react-hot-toast';
 
-// Типы данных
-interface Facility { id: number; name: string; address: string; isVerified: boolean; daysSinceLastVisit: number | null; }
-interface Order { id: number; status: string; facility: { name: string }; }
+interface FacilitySummary {
+  id: number;
+  name: string;
+  address: string;
+  isVerified: boolean;
+  daysSinceLastVisit: number | null;
+  score: number;
+}
+
+interface OrderStats {
+  shippedSum: number;
+  pendingCount: number;
+  rejectedSum: number;
+}
+
+interface OrderSummary {
+  id: number;
+  status: string;
+  createdAt: string;
+  facility?: { name: string } | null;
+}
+
+const orderStatusLabel = (status?: string) => {
+  switch (status) {
+    case 'APPROVED':
+      return 'Одобрен';
+    case 'SHIPPED':
+      return 'Отгружен';
+    case 'REJECTED':
+      return 'Отклонен';
+    case 'PENDING':
+    default:
+      return 'Ожидает';
+  }
+};
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const user = WebApp.initDataUnsafe?.user;
-
-  const [alerts, setAlerts] = useState<{ type: 'verify' | 'rejected', data: any }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userName, setUserName] = useState('Амбассадор');
+  const [facilities, setFacilities] = useState<FacilitySummary[]>([]);
+  const [orderStats, setOrderStats] = useState<OrderStats | null>(null);
+  const [recentOrder, setRecentOrder] = useState<OrderSummary | null>(null);
 
-  // Загрузка данных
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [facRes, orderRes] = await Promise.all([
-          apiClient.get('/api/facilities'),
-          apiClient.get('/api/orders/my-history')
-        ]);
-        
-        const facilities = facRes.data as Facility[];
-        const orders = orderRes.data as Order[];
+    let isMounted = true;
+    const load = async () => {
+      setLoading(true);
+      const results = await Promise.allSettled([
+        apiClient.get('/api/users/me'),
+        apiClient.get<FacilitySummary[]>('/api/facilities'),
+        apiClient.get<OrderStats>('/api/orders/my-stats'),
+        apiClient.get<OrderSummary[]>('/api/orders/my-history'),
+      ]);
 
-        // Собираем алерты
-        const newAlerts: any[] = [];
-        
-        // 1. Неподтвержденные точки
-        facilities.filter(f => !f.isVerified).slice(0, 2).forEach(f => {
-          newAlerts.push({ type: 'verify', data: f });
-        });
-
-        // 2. Отклоненные заказы
-        orders.filter(o => o.status === 'REJECTED').slice(0, 1).forEach(o => {
-          newAlerts.push({ type: 'rejected', data: o });
-        });
-
-        setAlerts(newAlerts);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
+      const failed = results.filter((r) => r.status === 'rejected');
+      if (failed.length) {
+        toast.error('Не удалось загрузить часть данных');
       }
+
+      if (!isMounted) return;
+
+      const [userRes, facilitiesRes, statsRes, historyRes] = results;
+      if (userRes.status === 'fulfilled') {
+        const fullName = userRes.value.data?.fullName || '';
+        if (fullName) setUserName(fullName.split(' ')[0]);
+      }
+      if (facilitiesRes.status === 'fulfilled') {
+        setFacilities(facilitiesRes.value.data || []);
+      }
+      if (statsRes.status === 'fulfilled') {
+        setOrderStats(statsRes.value.data);
+      }
+      if (historyRes.status === 'fulfilled') {
+        setRecentOrder(historyRes.value.data?.[0] ?? null);
+      }
+
+      setLoading(false);
     };
-    fetchData();
+
+    load();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  const handleVerify = async (id: number) => {
-    try {
-      await apiClient.patch(`/api/facilities/${id}`, { isVerified: true });
-      setAlerts(prev => prev.filter(a => a.data.id !== id));
-      WebApp.HapticFeedback.notificationOccurred('success');
-    } catch (e) { console.error(e); }
-  };
+  const todayLabel = useMemo(() => {
+    return new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+  }, []);
+
+  const mustVisit = useMemo(() => {
+    return facilities.find((f) => f.daysSinceLastVisit === null || f.daysSinceLastVisit >= 7);
+  }, [facilities]);
+
+  const coverage = useMemo(() => {
+    if (!facilities.length) return 0;
+    const total = facilities.reduce((sum, f) => sum + (f.score || 0), 0);
+    return Math.round(total / facilities.length);
+  }, [facilities]);
+
+  const hasActiveRoute = Boolean(mustVisit);
 
   return (
-    <div className="pb-24">
-      {/* Приветствие */}
-      <PageHeader 
-        title="Обзор" 
-        subtitle={user ? `С возвращением, ${user.first_name}` : 'Твоя статистика'}
-        rightAction={
-          <div 
-            onClick={() => navigate('/profile')}
-            className="w-10 h-10 rounded-full bg-white shadow-soft flex items-center justify-center overflow-hidden border border-gray-100"
-          >
-            {user?.photo_url ? <img src={user.photo_url} className="w-full h-full" /> : <Users size={20} className="text-gray-400" />}
-          </div>
-        }
-      />
+    <div className="pb-24 space-y-6">
+      <PageHeader title={`Привет, ${userName}`} subtitle={`Сегодня ${todayLabel}`} />
 
-      <div className="flex flex-col gap-4">
-        
-        {/* Алерты (Темные карточки) */}
-        <AnimatePresence>
-          {alerts.map((alert, idx) => (
-            <motion.div
-              key={`${alert.type}-${alert.data.id}`}
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-            >
-              {alert.type === 'verify' ? (
-                <StandardCard 
-                  variant="dark"
-                  title="Подтверждение"
-                  subtitle="Это ваше заведение?"
-                  className="bg-[#111]"
-                >
-                  <p className="text-white/70 text-sm mb-4">
-                    {alert.data.name} <br/> 
-                    <span className="opacity-50">{alert.data.address}</span>
-                  </p>
-                  <div className="flex gap-3">
-                    <button 
-                      onClick={() => handleVerify(alert.data.id)}
-                      className="flex-1 bg-white text-black py-3 rounded-2xl font-bold text-sm active:scale-95 transition-transform"
-                    >
-                      Да, моё
-                    </button>
-                    <button className="px-6 py-3 rounded-2xl bg-white/10 text-white font-bold text-sm">Нет</button>
-                  </div>
-                </StandardCard>
-              ) : (
-                <StandardCard 
-                  variant="dark" 
-                  className="bg-red-500 text-white" // Можно переопределить цвет для критичных ошибок
-                  title="Внимание"
-                  subtitle={`Заказ #${alert.data.id} отменен`}
-                  icon={AlertCircle}
-                  onClick={() => navigate('/my-orders')}
-                />
-              )}
-            </motion.div>
-          ))}
-        </AnimatePresence>
-
-        {/* Bento Grid */}
+      {loading ? (
+        <DashboardSkeleton />
+      ) : (
         <div className="grid grid-cols-2 gap-4">
-          
-          {/* Большая карточка "Работа" */}
-          <div className="col-span-2">
-            <StandardCard
-              title="Маршрут"
-              subtitle="Карта заведений"
-              icon={MapPin}
-              onClick={() => navigate('/work')}
-              showArrow
-              illustration={
-                 // Иллюстрацию можно заменить на 3D иконку
-                 <div className="w-24 h-24 bg-gradient-to-tr from-blue-400 to-blue-600 rounded-full blur-xl opacity-20" />
-              }
-            >
-              <div className="text-sm text-gray-500 font-medium mt-1">
-                Открыть список активных точек →
+          <div className="col-span-2 rounded-3xl bg-black/75 backdrop-blur-xl border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.25)] p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/60">Маршрут</p>
+                <h3 className="text-lg font-semibold text-white mt-2">
+                  {hasActiveRoute ? 'Активен' : 'Завершен'}
+                </h3>
+                <p className="text-sm text-white/60 mt-1">
+                  {hasActiveRoute ? mustVisit?.name : 'На сегодня задач нет'}
+                </p>
               </div>
-            </StandardCard>
+              <div className="w-10 h-10 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center text-white/80">
+                <Route size={18} strokeWidth={1.5} />
+              </div>
+            </div>
           </div>
 
-          {/* KPI */}
-          <StandardCard
-            title="KPI"
-            subtitle="Визиты"
-            value="85%"
-            icon={Activity}
-            onClick={() => navigate('/visits-history')}
-          />
-
-          {/* Заказы */}
-          <StandardCard
-            title="Лог"
-            subtitle="Заказы"
-            value="12"
-            icon={ShoppingBag}
-            onClick={() => navigate('/my-orders')}
-          />
-
-          {/* Команда (Длинная карточка внизу) */}
-          <div className="col-span-2">
-            <StandardCard
-              title="Команда"
-              subtitle="Календарь событий"
-              icon={Users}
-              onClick={() => navigate('/calendar')}
-              className="flex items-center justify-between"
-            />
+          <div className="rounded-3xl bg-white/60 backdrop-blur-xl border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.10)] p-5">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-black/50">KPI</p>
+              <div className="w-9 h-9 rounded-2xl bg-black/5 border border-white/40 flex items-center justify-center text-black/60">
+                <ArrowUpRight size={16} strokeWidth={1.5} />
+              </div>
+            </div>
+            <div className="mt-4 text-3xl font-semibold text-black">{coverage}%</div>
+            <p className="text-xs text-black/50 mt-1">Средняя заполненность</p>
           </div>
 
+          <div className="rounded-3xl bg-white/60 backdrop-blur-xl border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.10)] p-5">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-black/50">Заказы</p>
+              <div className="w-9 h-9 rounded-2xl bg-black/5 border border-white/40 flex items-center justify-center text-black/60">
+                <ShoppingBag size={16} strokeWidth={1.5} />
+              </div>
+            </div>
+            <div className="mt-4 text-lg font-semibold text-black">
+              {recentOrder ? `#${recentOrder.id}` : 'Нет заказов'}
+            </div>
+            <p className="text-xs text-black/50 mt-1">
+              {recentOrder ? orderStatusLabel(recentOrder.status) : `В ожидании: ${orderStats?.pendingCount ?? 0}`}
+            </p>
+          </div>
+
+          <button
+            onClick={() => navigate('/calendar')}
+            className="col-span-2 rounded-3xl bg-white/60 backdrop-blur-xl border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.10)] p-5 text-left active:scale-[0.99] transition-transform"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-black/50">Команда</p>
+                <h3 className="text-lg font-semibold text-black mt-2">Календарь и график</h3>
+                <p className="text-sm text-black/50 mt-1">План смен и события</p>
+              </div>
+              <div className="w-10 h-10 rounded-2xl bg-black/5 border border-white/40 flex items-center justify-center text-black/60">
+                <CalendarDays size={18} strokeWidth={1.5} />
+              </div>
+            </div>
+          </button>
+
+          {facilities.length === 0 && (
+            <div className="col-span-2 rounded-3xl bg-white/60 backdrop-blur-xl border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.08)] p-5 text-center text-sm text-black/50">
+              Пока нет точек в базе
+            </div>
+          )}
         </div>
+      )}
+    </div>
+  );
+};
+
+const DashboardSkeleton: React.FC = () => {
+  return (
+    <div className="space-y-4 animate-pulse">
+      <div className="h-6 w-40 rounded-2xl bg-white/60 border border-white/30" />
+      <div className="grid grid-cols-2 gap-4">
+        <div className="col-span-2 h-28 rounded-3xl bg-white/60 border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.06)]" />
+        <div className="h-24 rounded-3xl bg-white/60 border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.06)]" />
+        <div className="h-24 rounded-3xl bg-white/60 border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.06)]" />
+        <div className="col-span-2 h-24 rounded-3xl bg-white/60 border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.06)]" />
       </div>
     </div>
   );

@@ -5,21 +5,22 @@ interface PageHeaderProps {
   title: string;
   subtitle?: string;
   rightAction?: React.ReactNode;
+  back?: boolean;
 }
 
 export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, rightAction }) => {
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }}
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex items-end justify-between mb-6 pt-2 px-1"
+      className="flex items-end justify-between gap-4 mb-6 pt-3 px-1"
     >
       <div>
-        <h1 className="text-[34px] font-[800] text-black tracking-tight leading-none">
+        <h1 className="text-[28px] font-semibold text-black tracking-tight leading-tight">
           {title}
         </h1>
         {subtitle && (
-          <p className="text-[15px] text-[#86868B] font-medium mt-1">
+          <p className="text-[13px] text-black/50 font-medium mt-1">
             {subtitle}
           </p>
         )}

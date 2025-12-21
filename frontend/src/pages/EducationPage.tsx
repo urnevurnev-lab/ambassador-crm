@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, BookOpen, GraduationCap, X } from 'lucide-react';
-import { Layout } from '../components/Layout';
 import WebApp from '@twa-dev/sdk';
 
 interface PageContent {
@@ -63,10 +62,12 @@ const EducationPage: React.FC = () => {
     };
 
     return (
-        <Layout>
             <div className="fixed inset-0 bg-[#0F172A] z-50 flex flex-col overflow-hidden">
                 {/* Header */}
-                <div className="flex justify-between items-center p-6 pt-12">
+                <div
+                    className="flex justify-between items-center p-6"
+                    style={{ paddingTop: 'calc(var(--tg-safe-area-top) + 16px)' }}
+                >
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
                             <BookOpen size={20} className="text-white" />
@@ -169,7 +170,6 @@ const EducationPage: React.FC = () => {
                     </p>
                 </div>
             </div>
-        </Layout>
     );
 };
 

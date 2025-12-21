@@ -1,73 +1,39 @@
-# React + TypeScript + Vite
+# Frontend — Ambassador CRM (Telegram Mini App)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React-приложение (Vite) для Telegram Mini Apps: mobile-first UI, safe-area, glassmorphism, `HashRouter`.
 
-Currently, two official plugins are available:
+Полная документация и общий quick-start — в `README.md` в корне репозитория.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Команды
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Сборка:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run build
 ```
+
+Линтер:
+
+```bash
+npm run lint
+```
+
+## Dev-прокси API
+
+В dev-режиме запросы на `/api/*` проксируются на `http://localhost:3000` (см. `vite.config.ts`).
+
+## Навигация
+
+Используется `HashRouter` (`/#/route`) — это удобно для хостинга внутри Telegram.
+
+## UI заметки
+
+- Глобальная оболочка: `src/components/Layout.tsx` (safe-area + фон + toaster + таббар).
+- Визит: выбор активности в точке ведёт на `/visit?facilityId=ID&type=transit|checkup|tasting|b2b`.
+- Иконки: `lucide-react`.
+- Telegram SDK: `@twa-dev/sdk` (BackButton, HapticFeedback, ClosingConfirmation и т.д.).

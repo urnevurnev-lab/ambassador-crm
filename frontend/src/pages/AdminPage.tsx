@@ -1,672 +1,902 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '../components/PageHeader';
 import { StandardCard } from '../components/ui/StandardCard';
 import { LockScreen } from '../components/LockScreen';
 import apiClient from '../api/apiClient';
+import toast from 'react-hot-toast';
 import {
-    Users, Package, DollarSign,
-    X, Trash2, Plus, ChevronDown, ChevronUp,
-    Building2, CheckCircle, ShoppingBag, Download, BookOpen, Truck
+  Users,
+  Package,
+  DollarSign,
+  X,
+  Trash2,
+  Plus,
+  ChevronDown,
+  ChevronUp,
+  Building2,
+  CheckCircle,
+  ShoppingBag,
+  Download,
+  BookOpen,
+  Truck,
+  ShieldCheck,
+  ShieldOff,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import WebApp from '@twa-dev/sdk';
 
-// --- ТИПЫ ДАННЫХ ---
+type AdminView =
+  | 'menu'
+  | 'products'
+  | 'prices'
+  | 'users'
+  | 'facilities'
+  | 'reports'
+  | 'orders'
+  | 'posts'
+  | 'distributors';
+
+type UserRole = 'ADMIN' | 'AMBASSADOR';
+
 interface Product {
-    id: number;
-    line: string;
-    flavor: string;
-    price: number;
-    isTopFlavor: boolean;
+  id: number;
+  line: string;
+  flavor: string;
+  price: number;
+  isTopFlavor: boolean;
 }
 
 interface User {
-    id: number;
-    name: string;
-    telegramId: string;
-    chatId?: string;
-    role?: string;
+  id: number;
+  fullName: string;
+  telegramId: string;
+  role: UserRole;
 }
 
-// --- КОМПОНЕНТЫ УПРАВЛЕНИЯ ---
+interface Facility {
+  id: number;
+  name: string;
+  address: string;
+  isVerified: boolean;
+}
 
-// 1. МЕНЕДЖЕР ТОВАРОВ (Логика: Линейка -> Вкусы)
-const ProductManager = ({ onBack }: { onBack: () => void }) => {
-    const [products, setProducts] = useState<Product[]>([]);
-    const [loading, setLoading] = useState(true);
+interface Visit {
+  id: number;
+  date: string;
+  type: string;
+  facility?: { name: string } | null;
+  user?: { fullName: string } | null;
+}
 
-    // Состояние формы добавления
-    const [isCreating, setIsCreating] = useState(false);
-    const [newLine, setNewLine] = useState('');
-    const [selectedLine, setSelectedLine] = useState('');
-    const [newFlavor, setNewFlavor] = useState('');
-    const [newPrice, setNewPrice] = useState(2500);
+interface Order {
+  id: number;
+  status: string;
+  facility?: { name: string } | null;
+  user?: { fullName: string } | null;
+}
 
-    // Раскрытые линейки
-    const [expandedLines, setExpandedLines] = useState<Record<string, boolean>>({});
+interface Post {
+  id: number;
+  title: string;
+  category?: string | null;
+}
 
-    useEffect(() => { loadProducts(); }, []);
+interface Distributor {
+  id: number;
+  name: string;
+  telegramChatId: string;
+}
 
-    const loadProducts = () => {
-        setLoading(true);
-        apiClient.get('/api/products')
-            .then(res => setProducts(res.data || []))
-            .catch(err => console.error(err))
-            .finally(() => setLoading(false));
-    };
+const formatPrice = (value: number) => new Intl.NumberFormat('ru-RU').format(value);
 
-    // Группировка
-    const lines = useMemo(() => {
-        const groups: Record<string, Product[]> = {};
-        products.forEach(p => {
-            if (!groups[p.line]) groups[p.line] = [];
-            groups[p.line].push(p);
-        });
-        return groups;
-    }, [products]);
-
-    const handleAddProduct = async () => {
-        const lineToUse = selectedLine === 'NEW' ? newLine : selectedLine;
-        if (!lineToUse || !newFlavor) return alert("Заполните линейку и вкус");
-
-        try {
-            await apiClient.post('/api/products', {
-                line: lineToUse,
-                flavor: newFlavor,
-                price: Number(newPrice),
-                category: 'Tobacco',
-                isTopFlavor: false
-            });
-            setIsCreating(false);
-            setNewLine('');
-            setNewFlavor('');
-            loadProducts();
-        } catch (e) {
-            alert("Ошибка при создании");
-        }
-    };
-
-    const handleDelete = async (id: number) => {
-        if (window.confirm("Удалить этот вкус?")) {
-            await apiClient.delete(`/api/products/${id}`);
-            loadProducts();
-        }
-    };
-
-    const toggleLine = (line: string) => {
-        setExpandedLines(prev => ({ ...prev, [line]: !prev[line] }));
-    };
-
-    return (
-        <div className="pb-32 px-4 space-y-3 pt-2">
-            <PageHeader title="Товары" rightAction={<button onClick={onBack}>Закрыть</button>} />
-
-            <button
-                onClick={() => setIsCreating(true)}
-                className="w-full py-3 bg-black text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform"
-            >
-                <Plus size={20} /> Добавить вкус
-            </button>
-
-            {loading ? <div className="text-center py-10">Загрузка...</div> : Object.entries(lines).map(([line, items]) => (
-                <div key={line} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-                    <div
-                        onClick={() => toggleLine(line)}
-                        className="p-4 flex items-center justify-between bg-gray-50 cursor-pointer active:bg-gray-100"
-                    >
-                        <div className="font-bold text-lg">{line} <span className="text-gray-400 text-sm font-normal">({items.length})</span></div>
-                        {expandedLines[line] ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                    </div>
-
-                    {expandedLines[line] && (
-                        <div className="p-2 space-y-1">
-                            {items.map(p => (
-                                <div key={p.id} className="flex justify-between items-center p-3 bg-white border-b border-gray-100 last:border-0">
-                                    <div>
-                                        <div className="font-medium">{p.flavor}</div>
-                                        <div className="text-xs text-gray-400">{p.price} ₽</div>
-                                    </div>
-                                    <button
-                                        onClick={async () => {
-                                            await apiClient.patch(`/api/products/${p.id}`, { isTopFlavor: !p.isTopFlavor });
-                                            loadProducts();
-                                        }}
-                                        className={`px-2 py-1 rounded text-[10px] font-bold ${p.isTopFlavor ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-400'}`}
-                                    >
-                                        {p.isTopFlavor ? 'TOP' : 'SET TOP'}
-                                    </button>
-                                    <button onClick={() => handleDelete(p.id)} className="p-2 text-red-400 hover:text-red-600">
-                                        <Trash2 size={16} />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            ))}
-
-            {isCreating && (
-                <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-4">
-                    <div className="bg-white w-full max-w-md rounded-3xl p-6 space-y-4 animate-fade-in">
-                        <div className="flex justify-between items-center">
-                            <h3 className="text-xl font-bold">Новый продукт</h3>
-                            <button onClick={() => setIsCreating(false)}><X size={24} /></button>
-                        </div>
-                        <div>
-                            <label className="text-xs font-bold text-gray-400 ml-1">Линейка</label>
-                            <select
-                                value={selectedLine}
-                                onChange={e => setSelectedLine(e.target.value)}
-                                className="w-full bg-gray-50 p-3 rounded-xl mt-1 border border-gray-200"
-                            >
-                                <option value="" disabled>Выберите линейку</option>
-                                {Object.keys(lines).map(l => <option key={l} value={l}>{l}</option>)}
-                                <option value="NEW">+ Создать новую...</option>
-                            </select>
-                        </div>
-                        {selectedLine === 'NEW' && (
-                            <input
-                                placeholder="Название новой линейки"
-                                value={newLine}
-                                onChange={e => setNewLine(e.target.value)}
-                                className="w-full bg-white border-2 border-black p-3 rounded-xl font-bold"
-                            />
-                        )}
-                        <div>
-                            <label className="text-xs font-bold text-gray-400 ml-1">Вкус</label>
-                            <input
-                                placeholder="Например: Cherry Cola"
-                                value={newFlavor}
-                                onChange={e => setNewFlavor(e.target.value)}
-                                className="w-full bg-gray-50 p-3 rounded-xl mt-1 border border-gray-200"
-                            />
-                        </div>
-                        <div>
-                            <label className="text-xs font-bold text-gray-400 ml-1">Цена (₽)</label>
-                            <input
-                                type="number"
-                                value={newPrice}
-                                onChange={e => setNewPrice(Number(e.target.value))}
-                                className="w-full bg-gray-50 p-3 rounded-xl mt-1 border border-gray-200"
-                            />
-                        </div>
-                        <button onClick={handleAddProduct} className="w-full bg-black text-white py-4 rounded-xl font-bold text-lg">
-                            Сохранить
-                        </button>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
+const formatDate = (value: string) => {
+  return new Date(value).toLocaleDateString('ru-RU');
 };
 
-// 2. МЕНЕДЖЕР ЦЕН
-const PriceManager = ({ onBack }: { onBack: () => void }) => {
-    const [prices, setPrices] = useState<Record<string, number>>({});
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        apiClient.get('/api/products').then(res => {
-            const temp: Record<string, number> = {};
-            (res.data || []).forEach((p: Product) => {
-                if (!temp[p.line]) temp[p.line] = p.price;
-            });
-            setPrices(temp);
-            setLoading(false);
-        });
-    }, []);
-
-    const savePrice = async (line: string, price: number) => {
-        try {
-            await apiClient.post('/api/products/lines/update-price', { line, price });
-            alert(`Цена для ${line} обновлена!`);
-        } catch (e) {
-            alert("Ошибка сохранения");
-        }
-    };
-
-    return (
-        <div className="pb-32 px-4 space-y-3 pt-2">
-            <PageHeader title="Цены (по линейкам)" rightAction={<button onClick={onBack}>Закрыть</button>} />
-            {loading ? <div className="text-center">Загрузка...</div> : Object.entries(prices).map(([line, price]) => (
-                <StandardCard key={line} title={line} icon={DollarSign}>
-                    <div className="flex gap-2 mt-2">
-                        <input
-                            type="number"
-                            defaultValue={price}
-                            onBlur={(e) => savePrice(line, Number(e.target.value))}
-                            className="flex-1 bg-gray-50 border border-gray-200 rounded-xl p-2 font-bold text-center"
-                        />
-                        <div className="flex items-center justify-center bg-gray-100 rounded-xl w-10 text-gray-500">
-                            ₽
-                        </div>
-                    </div>
-                </StandardCard>
-            ))}
-        </div>
-    );
+const buildSku = (line: string, flavor: string) => {
+  return `${line}-${flavor}`
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
 };
 
-// 3. МЕНЕДЖЕР СОТРУДНИКОВ
-const UserManager = ({ onBack }: { onBack: () => void }) => {
-    const [users, setUsers] = useState<User[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [isCreating, setIsCreating] = useState(false);
-    const [newUser, setNewUser] = useState<Partial<User>>({});
+const ManagerHeader: React.FC<{ title: string; subtitle?: string; onBack: () => void }> = ({
+  title,
+  subtitle,
+  onBack,
+}) => (
+  <PageHeader
+    title={title}
+    subtitle={subtitle}
+    rightAction={
+      <button onClick={onBack} className="text-sm font-semibold text-gray-500">
+        Закрыть
+      </button>
+    }
+  />
+);
 
-    useEffect(() => { loadUsers(); }, []);
+const EmptyState: React.FC<{ text: string }> = ({ text }) => (
+  <div className="text-center text-gray-500 py-8">{text}</div>
+);
 
-    const loadUsers = async () => {
-        setLoading(true);
-        try {
-            const res = await apiClient.get('/api/users');
-            setUsers(res.data || []);
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setLoading(false);
-        }
-    };
+const SkeletonList: React.FC<{ count?: number }> = ({ count = 3 }) => (
+  <div className="space-y-3 animate-pulse">
+    {Array.from({ length: count }).map((_, index) => (
+      <div key={index} className="h-20 rounded-3xl bg-white border border-gray-100 shadow-sm" />
+    ))}
+  </div>
+);
 
-    const handleSave = async () => {
-        if (!newUser.name || !newUser.telegramId) return alert("Имя и ID обязательны");
-        try {
-            await apiClient.post('/api/users', {
-                fullName: newUser.name,
-                telegramId: String(newUser.telegramId),
-                role: newUser.role || 'AMBASSADOR'
-            });
-            setIsCreating(false);
-            setNewUser({});
-            loadUsers();
-        } catch (e) {
-            alert("Ошибка сохранения");
-        }
-    };
+const Modal: React.FC<{
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  action?: React.ReactNode;
+}> = ({ title, onClose, children, action }) => (
+  <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+    <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-md">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-black">{title}</h3>
+        <button onClick={onClose} className="text-gray-400">
+          <X size={20} strokeWidth={2} />
+        </button>
+      </div>
+      <div className="space-y-4">{children}</div>
+      {action && <div className="mt-6">{action}</div>}
+    </div>
+  </div>
+);
 
-    const handleDelete = async (id: number) => {
-        if (!window.confirm("Удалить сотрудника?")) return;
-        try {
-            await apiClient.delete(`/api/users/${id}`);
-            loadUsers();
-        } catch (e) {
-            alert("Ошибка удаления");
-        }
-    };
+const ProductManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
+  const [newLine, setNewLine] = useState('');
+  const [selectedLine, setSelectedLine] = useState('');
+  const [newFlavor, setNewFlavor] = useState('');
+  const [newPrice, setNewPrice] = useState(2500);
+  const [expandedLines, setExpandedLines] = useState<Record<string, boolean>>({});
 
-    return (
-        <div className="pb-32 px-4 space-y-3 pt-2">
-            <PageHeader title="Команда" rightAction={<button onClick={onBack}>Закрыть</button>} />
-            <button
-                onClick={() => setIsCreating(true)}
-                className="w-full py-4 bg-black text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg mb-4 active:scale-95 transition-transform"
-            >
-                <Plus size={20} /> Добавить сотрудника
-            </button>
-            {loading ? <div className="text-center py-10 text-gray-400">Загрузка...</div> : (
-                <div className="space-y-3">
-                    {users.map(u => (
-                        <StandardCard
-                            key={u.id}
-                            title={u.name || (u as any).fullName}
-                            subtitle={u.role || 'Сотрудник'}
-                            icon={Users}
-                            action={
-                                <button onClick={() => handleDelete(u.id)} className="p-2 text-red-400">
-                                    <Trash2 size={16} />
-                                </button>
-                            }
-                        >
-                            <div className="text-[11px] font-mono text-gray-400 mt-2 bg-gray-50 p-2 rounded-lg border border-gray-100">
-                                <div className="flex justify-between"><span>TG ID:</span> <span>{u.telegramId}</span></div>
-                                <div className="flex justify-between"><span>XP:</span> <span>{(u as any).xp || 0}</span></div>
-                            </div>
-                        </StandardCard>
-                    ))}
-                </div>
-            )}
-            {isCreating && (
-                <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm">
-                    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white w-full max-w-md rounded-3xl p-6 space-y-4">
-                        <div className="flex justify-between items-center">
-                            <h3 className="font-bold text-xl">Новый сотрудник</h3>
-                            <button onClick={() => setIsCreating(false)}><X size={24} /></button>
-                        </div>
-                        <div className="space-y-3">
-                            <input placeholder="Полное имя" className="w-full bg-gray-50 p-3.5 rounded-xl border border-gray-100 font-medium outline-none focus:ring-2 focus:ring-blue-500/20"
-                                onChange={e => setNewUser({ ...newUser, name: e.target.value })} />
-                            <input placeholder="Telegram ID" className="w-full bg-gray-50 p-3.5 rounded-xl border border-gray-100 font-medium outline-none focus:ring-2 focus:ring-blue-500/20"
-                                onChange={e => setNewUser({ ...newUser, telegramId: e.target.value })} />
-                            <select className="w-full bg-gray-50 p-3.5 rounded-xl border border-gray-100 font-medium outline-none focus:ring-2 focus:ring-blue-500/20"
-                                onChange={e => setNewUser({ ...newUser, role: e.target.value })}>
-                                <option value="AMBASSADOR">Амбассадор</option>
-                                <option value="ADMIN">Админ</option>
-                            </select>
-                        </div>
-                        <button onClick={handleSave} className="w-full bg-black text-white py-4 rounded-xl font-bold text-lg shadow-lg">
-                            Сохранить
-                        </button>
-                    </motion.div>
-                </div>
-            )}
-        </div>
-    );
-};
+  const loadProducts = async () => {
+    setLoading(true);
+    try {
+      const res = await apiClient.get<Product[]>('/api/products');
+      setProducts(res.data || []);
+    } catch (e) {
+      toast.error('Не удалось загрузить товары');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-// 4. МЕНЕДЖЕР ОБЪЕКТОВ
-const FacilityManager = ({ onBack }: { onBack: () => void }) => {
-    const [facilities, setFacilities] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    loadProducts();
+  }, []);
 
-    useEffect(() => { loadFacilities(); }, []);
+  const lines = useMemo(() => {
+    const groups: Record<string, Product[]> = {};
+    products.forEach((product) => {
+      if (!groups[product.line]) groups[product.line] = [];
+      groups[product.line].push(product);
+    });
+    return groups;
+  }, [products]);
 
-    const loadFacilities = async () => {
-        setLoading(true);
-        try {
-            const res = await apiClient.get('/api/facilities');
-            setFacilities(res.data || []);
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleDelete = async (id: number) => {
-        if (!window.confirm("Удалить объект?")) return;
-        try {
-            await apiClient.delete(`/api/facilities/${id}`);
-            loadFacilities();
-        } catch (e) {
-            alert("Ошибка удаления");
-        }
-    };
-
-    return (
-        <div className="pb-32 px-4 space-y-3 pt-2">
-            <PageHeader title="Объекты" rightAction={<button onClick={onBack}>Закрыть</button>} />
-            {loading ? <div className="text-center py-10">Загрузка...</div> : facilities.map(f => (
-                <StandardCard key={f.id} title={f.name} subtitle={f.address} icon={Building2}
-                    action={
-                        <button onClick={() => handleDelete(f.id)} className="p-2 text-red-400">
-                            <Trash2 size={16} />
-                        </button>
-                    }
-                />
-            ))}
-        </div>
-    );
-};
-
-// 5. ЖУРНАЛ ОТЧЕТОВ
-const ReportsManager = ({ onBack }: { onBack: () => void }) => {
-    const [visits, setVisits] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        apiClient.get('/api/visits')
-            .then(res => setVisits(res.data || []))
-            .finally(() => setLoading(false));
-    }, []);
-
-    const exportActivity = () => {
-        window.open(`${apiClient.defaults.baseURL}/api/reports/visits`, '_blank');
-    };
-
-    return (
-        <div className="pb-32 px-4 space-y-3 pt-2">
-            <PageHeader title="Журнал визитов" rightAction={<button onClick={onBack}>Закрыть</button>} />
-            <button
-                onClick={exportActivity}
-                className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg mb-4 active:scale-95 transition-transform"
-            >
-                <Download size={20} /> Выгрузить Excel
-            </button>
-            {loading ? <div className="text-center py-10">Загрузка...</div> : visits.map(v => (
-                <StandardCard
-                    key={v.id}
-                    title={v.facility?.name || 'Объект'}
-                    subtitle={`${new Date(v.date).toLocaleDateString()} • ${v.type}`}
-                    icon={CheckCircle}
-                >
-                    <div className="text-[11px] text-gray-400 mt-2">
-                        Амбассадор: <b>{v.user?.fullName || '—'}</b>
-                    </div>
-                </StandardCard>
-            ))}
-        </div>
-    );
-};
-
-// 6. УПРАВЛЕНИЕ ЗАКАЗАМИ
-const SampleOrdersManager = ({ onBack }: { onBack: () => void }) => {
-    const [orders, setOrders] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        apiClient.get('/api/orders')
-            .then(res => setOrders(res.data || []))
-            .finally(() => setLoading(false));
-    }, []);
-
-    const exportSamples = () => {
-        window.open(`${apiClient.defaults.baseURL}/api/samples/export`, '_blank');
-    };
-
-    return (
-        <div className="pb-32 px-4 space-y-3 pt-2">
-            <PageHeader title="Заказы" rightAction={<button onClick={onBack}>Закрыть</button>} />
-            <button
-                onClick={exportSamples}
-                className="w-full py-4 bg-green-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg mb-4 active:scale-95 transition-transform"
-            >
-                <Download size={20} /> Экспорт в Excel
-            </button>
-            {loading ? <div className="text-center py-10">Загрузка...</div> : orders.map(o => (
-                <StandardCard
-                    key={o.id}
-                    title={`Заказ #${o.id}`}
-                    subtitle={o.facility?.name || 'Заказ'}
-                    icon={ShoppingBag}
-                >
-                    <div className="text-[11px] text-gray-400 mt-2">
-                        Амбассадор: <b>{o.user?.fullName || '—'}</b>
-                    </div>
-                </StandardCard>
-            ))}
-        </div>
-    );
-};
-
-// 7. МЕНЕДЖЕР БАЗЫ ЗНАНИЙ
-const KnowledgeManager = ({ onBack }: { onBack: () => void }) => {
-    const [posts, setPosts] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        apiClient.get('/api/posts')
-            .then(res => setPosts(res.data || []))
-            .finally(() => setLoading(false));
-    }, []);
-
-    return (
-        <div className="pb-32 px-4 space-y-3 pt-2">
-            <PageHeader title="Контент" rightAction={<button onClick={onBack}>Закрыть</button>} />
-            {loading ? <div className="text-center py-10">Загрузка...</div> : posts.map(p => (
-                <StandardCard
-                    key={p.id}
-                    title={p.title}
-                    subtitle={p.category || 'Общее'}
-                    icon={BookOpen}
-                />
-            ))}
-        </div>
-    );
-};
-
-// 8. МЕНЕДЖЕР ДИСТРИБЬЮТОРОВ
-const DistributorManager = ({ onBack }: { onBack: () => void }) => {
-    const [distributors, setDistributors] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        apiClient.get('/api/distributors')
-            .then(res => setDistributors(res.data || []))
-            .finally(() => setLoading(false));
-    }, []);
-
-    return (
-        <div className="pb-32 px-4 space-y-3 pt-2">
-            <PageHeader title="Дистрибьюторы" rightAction={<button onClick={onBack}>Закрыть</button>} />
-            {loading ? <div className="text-center py-10">Загрузка...</div> : distributors.map(d => (
-                <StandardCard
-                    key={d.id}
-                    title={d.name}
-                    subtitle={d.address || 'Адрес не указан'}
-                    icon={Truck}
-                />
-            ))}
-        </div>
-    );
-};
-
-// --- ГЛАВНЫЙ ЭКРАН АДМИНКИ ---
-
-const AdminPage: React.FC = () => {
-    const [view, setView] = useState<'menu' | 'products' | 'prices' | 'users' | 'facilities' | 'reports' | 'orders' | 'posts' | 'distributors'>('menu');
-    const [isUnlocked, setIsUnlocked] = useState(false);
-
-    const handleNavigate = (newView: typeof view) => {
-        setView(newView);
-        WebApp.HapticFeedback.impactOccurred('medium');
-    };
-
-    if (!isUnlocked) {
-        return <LockScreen onSuccess={() => setIsUnlocked(true)} />;
+  const handleAddProduct = async () => {
+    const lineToUse = selectedLine === 'NEW' ? newLine.trim() : selectedLine.trim();
+    if (!lineToUse || !newFlavor.trim()) {
+      toast.error('Заполните линейку и вкус');
+      return;
     }
 
-    return (
-        <div className="min-h-screen bg-[#F8F9FB] pb-32">
-            <AnimatePresence mode="wait">
-                {view === 'menu' ? (
-                    <motion.div
-                        key="menu"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        className="px-5 pt-8 space-y-8"
-                    >
-                        <div className="pt-4">
-                            <h1 className="text-[34px] font-[900] text-[#000000] tracking-tight leading-none">Панель управления</h1>
-                            <p className="text-[14px] text-[#8E8E93] font-bold mt-2 uppercase tracking-tight opacity-70">Настройка системы</p>
-                        </div>
+    const sku = buildSku(lineToUse, newFlavor.trim());
 
-                        {/* SECTION: DIRECTORY */}
-                        <div className="space-y-4">
-                            <h2 className="text-[13px] font-black text-blue-500 uppercase tracking-widest px-1">Справочники</h2>
-                            <div className="grid grid-cols-1 gap-3">
-                                <StandardCard
-                                    title="Амбассадоры"
-                                    subtitle="Команда и роли"
-                                    icon={Users}
-                                    onClick={() => handleNavigate('users')}
-                                    showArrow
-                                    color="white"
-                                />
-                                <StandardCard
-                                    title="Заведения"
-                                    subtitle="Объекты и адреса"
-                                    icon={Building2}
-                                    onClick={() => handleNavigate('facilities')}
-                                    showArrow
-                                    color="white"
-                                />
-                            </div>
-                        </div>
+    try {
+      await apiClient.post('/api/products', {
+        line: lineToUse,
+        flavor: newFlavor.trim(),
+        price: Number(newPrice),
+        category: 'Tobacco',
+        sku,
+        isTopFlavor: false,
+      });
+      toast.success('Продукт создан');
+      setIsCreating(false);
+      setNewLine('');
+      setSelectedLine('');
+      setNewFlavor('');
+      setNewPrice(2500);
+      loadProducts();
+    } catch (e) {
+      toast.error('Ошибка при создании');
+    }
+  };
 
-                        {/* SECTION: LOGISTICS */}
-                        <div className="space-y-4">
-                            <h2 className="text-[13px] font-black text-orange-500 uppercase tracking-widest px-1">Логистика и продажи</h2>
-                            <div className="grid grid-cols-1 gap-3">
-                                <StandardCard
-                                    title="Заказы"
-                                    subtitle="История и статусы"
-                                    icon={ShoppingBag}
-                                    onClick={() => handleNavigate('orders')}
-                                    showArrow
-                                    color="white"
-                                />
-                                <StandardCard
-                                    title="Дистрибьюторы"
-                                    subtitle="Чаты и контакты"
-                                    icon={Truck}
-                                    onClick={() => handleNavigate('distributors')}
-                                    showArrow
-                                    color="white"
-                                />
-                                <StandardCard
-                                    title="Визиты"
-                                    subtitle="Журнал отчетов"
-                                    icon={CheckCircle}
-                                    onClick={() => handleNavigate('reports')}
-                                    showArrow
-                                    color="white"
-                                />
-                            </div>
-                        </div>
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('Удалить этот вкус?')) return;
+    try {
+      await apiClient.delete(`/api/products/${id}`);
+      toast.success('Вкус удален');
+      loadProducts();
+    } catch (e) {
+      toast.error('Ошибка удаления');
+    }
+  };
 
-                        {/* SECTION: SYSTEM */}
-                        <div className="space-y-4">
-                            <h2 className="text-[13px] font-black text-purple-500 uppercase tracking-widest px-1">Система и контент</h2>
-                            <div className="grid grid-cols-1 gap-3">
-                                <StandardCard
-                                    title="Товары"
-                                    subtitle="Вкусы и остатки"
-                                    icon={Package}
-                                    onClick={() => handleNavigate('products')}
-                                    showArrow
-                                    color="white"
-                                />
-                                <StandardCard
-                                    title="Цены"
-                                    subtitle="Управление прайсом"
-                                    icon={DollarSign}
-                                    onClick={() => handleNavigate('prices')}
-                                    showArrow
-                                    color="white"
-                                />
-                                <StandardCard
-                                    title="Обучение"
-                                    subtitle="Digital Book контент"
-                                    icon={BookOpen}
-                                    onClick={() => handleNavigate('posts')}
-                                    showArrow
-                                    color="white"
-                                />
-                            </div>
-                        </div>
-                    </motion.div>
-                ) : (
-                    <motion.div
-                        key="view"
-                        initial={{ opacity: 0, x: 50 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -50 }}
-                        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                    >
-                        {view === 'products' && <ProductManager onBack={() => handleNavigate('menu')} />}
-                        {view === 'prices' && <PriceManager onBack={() => handleNavigate('menu')} />}
-                        {view === 'users' && <UserManager onBack={() => handleNavigate('menu')} />}
-                        {view === 'facilities' && <FacilityManager onBack={() => handleNavigate('menu')} />}
-                        {view === 'reports' && <ReportsManager onBack={() => handleNavigate('menu')} />}
-                        {view === 'orders' && <SampleOrdersManager onBack={() => handleNavigate('menu')} />}
-                        {view === 'posts' && <KnowledgeManager onBack={() => handleNavigate('menu')} />}
-                        {view === 'distributors' && <DistributorManager onBack={() => handleNavigate('menu')} />}
-                    </motion.div>
-                )}
-            </AnimatePresence>
+  const toggleLine = (line: string) => {
+    setExpandedLines((prev) => ({ ...prev, [line]: !prev[line] }));
+  };
+
+  const handleToggleTop = async (product: Product) => {
+    try {
+      await apiClient.patch(`/api/products/${product.id}`, { isTopFlavor: !product.isTopFlavor });
+      loadProducts();
+    } catch (e) {
+      toast.error('Не удалось обновить статус');
+    }
+  };
+
+  return (
+    <div className="space-y-6 pb-24">
+      <ManagerHeader title="Товары" subtitle="Линейки и вкусы" onBack={onBack} />
+
+      <button
+        onClick={() => setIsCreating(true)}
+        className="w-full py-3 bg-black text-white rounded-3xl font-semibold flex items-center justify-center gap-2 shadow-md active:scale-95 transition-transform"
+      >
+        <Plus size={18} strokeWidth={2} /> Добавить вкус
+      </button>
+
+      {loading ? (
+        <SkeletonList count={3} />
+      ) : Object.keys(lines).length === 0 ? (
+        <EmptyState text="Товары отсутствуют" />
+      ) : (
+        Object.entries(lines).map(([line, items]) => (
+          <div key={line} className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+            <button
+              onClick={() => toggleLine(line)}
+              className="w-full px-5 py-4 flex items-center justify-between text-left"
+            >
+              <div>
+                <div className="text-[14px] font-semibold text-black">{line}</div>
+                <div className="text-[11px] text-gray-500">{items.length} вкусов</div>
+              </div>
+              {expandedLines[line] ? (
+                <ChevronUp size={18} strokeWidth={2} className="text-gray-400" />
+              ) : (
+                <ChevronDown size={18} strokeWidth={2} className="text-gray-400" />
+              )}
+            </button>
+
+            {expandedLines[line] && (
+              <div className="px-5 pb-5 space-y-2">
+                {items.map((product) => (
+                  <div
+                    key={product.id}
+                    className="flex items-center justify-between rounded-2xl border border-gray-100 bg-[#F5F5F7] px-4 py-3"
+                  >
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">{product.flavor}</div>
+                      <div className="text-xs text-gray-500">{formatPrice(product.price)} ₽</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleToggleTop(product)}
+                        className={`px-3 py-1 rounded-xl text-[10px] font-semibold border ${
+                          product.isTopFlavor
+                            ? 'bg-black text-white border-black'
+                            : 'bg-white text-gray-600 border-gray-200'
+                        }`}
+                      >
+                        TOP
+                      </button>
+                      <button
+                        onClick={() => handleDelete(product.id)}
+                        className="p-2 text-gray-400 hover:text-gray-600"
+                      >
+                        <Trash2 size={16} strokeWidth={2} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))
+      )}
+
+      {isCreating && (
+        <Modal
+          title="Новый продукт"
+          onClose={() => setIsCreating(false)}
+          action={
+            <button
+              onClick={handleAddProduct}
+              className="w-full bg-black text-white py-3 rounded-2xl font-semibold"
+            >
+              Сохранить
+            </button>
+          }
+        >
+          <div>
+            <label className="text-xs font-semibold text-gray-500 ml-1">Линейка</label>
+            <select
+              value={selectedLine}
+              onChange={(e) => setSelectedLine(e.target.value)}
+              className="w-full bg-[#F5F5F7] p-3 rounded-2xl mt-2 border border-gray-100"
+            >
+              <option value="" disabled>
+                Выберите линейку
+              </option>
+              {Object.keys(lines).map((line) => (
+                <option key={line} value={line}>
+                  {line}
+                </option>
+              ))}
+              <option value="NEW">+ Создать новую...</option>
+            </select>
+          </div>
+          {selectedLine === 'NEW' && (
+            <input
+              placeholder="Название новой линейки"
+              value={newLine}
+              onChange={(e) => setNewLine(e.target.value)}
+              className="w-full bg-white border border-gray-200 p-3 rounded-2xl font-medium"
+            />
+          )}
+          <div>
+            <label className="text-xs font-semibold text-gray-500 ml-1">Вкус</label>
+            <input
+              placeholder="Например: Cherry Cola"
+              value={newFlavor}
+              onChange={(e) => setNewFlavor(e.target.value)}
+              className="w-full bg-[#F5F5F7] p-3 rounded-2xl mt-2 border border-gray-100"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 ml-1">Цена (₽)</label>
+            <input
+              type="number"
+              value={newPrice}
+              onChange={(e) => setNewPrice(Number(e.target.value))}
+              className="w-full bg-[#F5F5F7] p-3 rounded-2xl mt-2 border border-gray-100"
+            />
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+};
+
+const PriceManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+  const [prices, setPrices] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await apiClient.get<Product[]>('/api/products');
+        const temp: Record<string, number> = {};
+        (res.data || []).forEach((product) => {
+          if (!temp[product.line]) temp[product.line] = product.price;
+        });
+        setPrices(temp);
+      } catch (e) {
+        toast.error('Не удалось загрузить цены');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  const savePrice = async (line: string, price: number) => {
+    try {
+      await apiClient.post('/api/products/lines/update-price', { line, price });
+      toast.success(`Цена для ${line} обновлена`);
+    } catch (e) {
+      toast.error('Ошибка сохранения');
+    }
+  };
+
+  const updatePrice = (line: string, value: number) => {
+    setPrices((prev) => ({ ...prev, [line]: value }));
+  };
+
+  return (
+    <div className="space-y-6 pb-24">
+      <ManagerHeader title="Цены" subtitle="По линейкам" onBack={onBack} />
+
+      {loading ? (
+        <SkeletonList count={3} />
+      ) : Object.keys(prices).length === 0 ? (
+        <EmptyState text="Нет данных" />
+      ) : (
+        <div className="space-y-3">
+          {Object.entries(prices).map(([line, price]) => (
+            <div key={line} className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5">
+              <div className="text-[14px] font-semibold text-black">{line}</div>
+              <div className="flex items-center gap-2 mt-3">
+                <input
+                  type="number"
+                  value={price}
+                  onChange={(e) => updatePrice(line, Number(e.target.value))}
+                  onBlur={(e) => savePrice(line, Number(e.target.value))}
+                  className="flex-1 bg-[#F5F5F7] border border-gray-100 rounded-2xl p-2 font-medium text-center"
+                />
+                <div className="flex items-center justify-center bg-[#F5F5F7] rounded-2xl w-10 text-gray-500">₽</div>
+              </div>
+            </div>
+          ))}
         </div>
-    );
+      )}
+    </div>
+  );
+};
+
+const UserManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
+  const [fullName, setFullName] = useState('');
+  const [telegramId, setTelegramId] = useState('');
+  const [role, setRole] = useState<UserRole>('AMBASSADOR');
+
+  const loadUsers = async () => {
+    setLoading(true);
+    try {
+      const res = await apiClient.get<User[]>('/api/users');
+      setUsers(res.data || []);
+    } catch (e) {
+      toast.error('Не удалось загрузить сотрудников');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const handleSave = async () => {
+    if (!fullName.trim() || !telegramId.trim()) {
+      toast.error('Имя и ID обязательны');
+      return;
+    }
+    try {
+      await apiClient.post('/api/users', {
+        fullName: fullName.trim(),
+        telegramId: telegramId.trim(),
+        role,
+      });
+      toast.success('Сотрудник добавлен');
+      setIsCreating(false);
+      setFullName('');
+      setTelegramId('');
+      setRole('AMBASSADOR');
+      loadUsers();
+    } catch (e) {
+      toast.error('Ошибка сохранения');
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('Удалить сотрудника?')) return;
+    try {
+      await apiClient.delete(`/api/users/${id}`);
+      toast.success('Сотрудник удален');
+      loadUsers();
+    } catch (e) {
+      toast.error('Ошибка удаления');
+    }
+  };
+
+  return (
+    <div className="space-y-6 pb-24">
+      <ManagerHeader title="Команда" subtitle="Амбассадоры" onBack={onBack} />
+
+      <button
+        onClick={() => setIsCreating(true)}
+        className="w-full py-3 bg-black text-white rounded-3xl font-semibold flex items-center justify-center gap-2 shadow-md"
+      >
+        <Plus size={18} strokeWidth={2} /> Добавить сотрудника
+      </button>
+
+      {loading ? (
+        <SkeletonList count={3} />
+      ) : users.length === 0 ? (
+        <EmptyState text="Сотрудники отсутствуют" />
+      ) : (
+        <div className="space-y-3">
+          {users.map((user) => (
+            <StandardCard
+              key={user.id}
+              title={user.role === 'ADMIN' ? 'Администратор' : 'Амбассадор'}
+              subtitle={user.fullName}
+              action={
+                <button
+                  onClick={() => handleDelete(user.id)}
+                  className="p-2 text-gray-400 hover:text-gray-600"
+                >
+                  <Trash2 size={16} strokeWidth={2} />
+                </button>
+              }
+            >
+              <div className="text-[12px] text-gray-500 mt-2 bg-[#F5F5F7] p-3 rounded-2xl border border-gray-100">
+                TG ID: <span className="font-mono text-gray-700">{user.telegramId}</span>
+              </div>
+            </StandardCard>
+          ))}
+        </div>
+      )}
+
+      {isCreating && (
+        <Modal
+          title="Новый сотрудник"
+          onClose={() => setIsCreating(false)}
+          action={
+            <button
+              onClick={handleSave}
+              className="w-full bg-black text-white py-3 rounded-2xl font-semibold"
+            >
+              Сохранить
+            </button>
+          }
+        >
+          <input
+            placeholder="Полное имя"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            className="w-full bg-[#F5F5F7] p-3 rounded-2xl border border-gray-100 font-medium"
+          />
+          <input
+            placeholder="Telegram ID"
+            value={telegramId}
+            onChange={(e) => setTelegramId(e.target.value)}
+            className="w-full bg-[#F5F5F7] p-3 rounded-2xl border border-gray-100 font-medium"
+          />
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value as UserRole)}
+            className="w-full bg-[#F5F5F7] p-3 rounded-2xl border border-gray-100 font-medium"
+          >
+            <option value="AMBASSADOR">Амбассадор</option>
+            <option value="ADMIN">Админ</option>
+          </select>
+        </Modal>
+      )}
+    </div>
+  );
+};
+
+const FacilityManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+  const [facilities, setFacilities] = useState<Facility[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadFacilities = async () => {
+    setLoading(true);
+    try {
+      const res = await apiClient.get<Facility[]>('/api/facilities');
+      setFacilities(res.data || []);
+    } catch (e) {
+      toast.error('Не удалось загрузить объекты');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadFacilities();
+  }, []);
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('Удалить объект?')) return;
+    try {
+      await apiClient.delete(`/api/facilities/${id}`);
+      toast.success('Объект удален');
+      loadFacilities();
+    } catch (e) {
+      toast.error('Ошибка удаления');
+    }
+  };
+
+  const toggleVerify = async (facility: Facility) => {
+    try {
+      await apiClient.patch(`/api/facilities/${facility.id}`, { isVerified: !facility.isVerified });
+      toast.success(facility.isVerified ? 'Статус снят' : 'Точка подтверждена');
+      loadFacilities();
+    } catch (e) {
+      toast.error('Ошибка обновления');
+    }
+  };
+
+  return (
+    <div className="space-y-6 pb-24">
+      <ManagerHeader title="Объекты" subtitle="Подтверждение точек" onBack={onBack} />
+
+      {loading ? (
+        <SkeletonList count={3} />
+      ) : facilities.length === 0 ? (
+        <EmptyState text="Объекты отсутствуют" />
+      ) : (
+        <div className="space-y-3">
+          {facilities.map((facility) => (
+            <StandardCard
+              key={facility.id}
+              title={facility.isVerified ? 'Подтверждено' : 'На проверке'}
+              subtitle={facility.name}
+              action={
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => toggleVerify(facility)}
+                    className="px-3 py-2 rounded-2xl border border-gray-200 text-xs font-semibold text-gray-600"
+                  >
+                    {facility.isVerified ? (
+                      <span className="inline-flex items-center gap-1">
+                        <ShieldOff size={14} strokeWidth={2} /> Снять
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1">
+                        <ShieldCheck size={14} strokeWidth={2} /> Подтвердить
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => handleDelete(facility.id)}
+                    className="p-2 text-gray-400 hover:text-gray-600"
+                  >
+                    <Trash2 size={16} strokeWidth={2} />
+                  </button>
+                </div>
+              }
+            >
+              <div className="text-[12px] text-gray-500">{facility.address}</div>
+            </StandardCard>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const ReportsManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+  const [visits, setVisits] = useState<Visit[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiClient
+      .get<Visit[]>('/api/visits')
+      .then((res) => setVisits(res.data || []))
+      .catch(() => toast.error('Не удалось загрузить визиты'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const exportActivity = () => {
+    window.open('/api/reports/visits', '_blank');
+  };
+
+  return (
+    <div className="space-y-6 pb-24">
+      <ManagerHeader title="Журнал визитов" subtitle="Отчеты" onBack={onBack} />
+      <button
+        onClick={exportActivity}
+        className="w-full py-3 bg-black text-white rounded-3xl font-semibold flex items-center justify-center gap-2 shadow-md"
+      >
+        <Download size={18} strokeWidth={2} /> Выгрузить Excel
+      </button>
+
+      {loading ? (
+        <SkeletonList count={3} />
+      ) : visits.length === 0 ? (
+        <EmptyState text="Отчеты отсутствуют" />
+      ) : (
+        <div className="space-y-3">
+          {visits.map((visit) => (
+            <StandardCard
+              key={visit.id}
+              title={formatDate(visit.date)}
+              subtitle={visit.facility?.name || 'Объект'}
+              icon={CheckCircle}
+            >
+              <div className="text-[12px] text-gray-500 mt-2">
+                Тип: <span className="text-gray-700">{visit.type}</span>
+              </div>
+              <div className="text-[12px] text-gray-500 mt-1">
+                Амбассадор: <span className="text-gray-700">{visit.user?.fullName || '—'}</span>
+              </div>
+            </StandardCard>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const OrdersManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiClient
+      .get<Order[]>('/api/orders')
+      .then((res) => setOrders(res.data || []))
+      .catch(() => toast.error('Не удалось загрузить заказы'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const exportOrders = () => {
+    window.open('/api/samples/export', '_blank');
+  };
+
+  return (
+    <div className="space-y-6 pb-24">
+      <ManagerHeader title="Заказы" subtitle="История" onBack={onBack} />
+      <button
+        onClick={exportOrders}
+        className="w-full py-3 bg-black text-white rounded-3xl font-semibold flex items-center justify-center gap-2 shadow-md"
+      >
+        <Download size={18} strokeWidth={2} /> Экспорт в Excel
+      </button>
+
+      {loading ? (
+        <SkeletonList count={3} />
+      ) : orders.length === 0 ? (
+        <EmptyState text="Заказы отсутствуют" />
+      ) : (
+        <div className="space-y-3">
+          {orders.map((order) => (
+            <StandardCard
+              key={order.id}
+              title={order.status}
+              subtitle={`Заказ #${order.id}`}
+              icon={ShoppingBag}
+            >
+              <div className="text-[12px] text-gray-500 mt-2">
+                Объект: <span className="text-gray-700">{order.facility?.name || '—'}</span>
+              </div>
+              <div className="text-[12px] text-gray-500 mt-1">
+                Амбассадор: <span className="text-gray-700">{order.user?.fullName || '—'}</span>
+              </div>
+            </StandardCard>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const KnowledgeManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiClient
+      .get<Post[]>('/api/posts')
+      .then((res) => setPosts(res.data || []))
+      .catch(() => toast.error('Не удалось загрузить контент'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <div className="space-y-6 pb-24">
+      <ManagerHeader title="Контент" subtitle="База знаний" onBack={onBack} />
+      {loading ? (
+        <SkeletonList count={3} />
+      ) : posts.length === 0 ? (
+        <EmptyState text="Материалы отсутствуют" />
+      ) : (
+        <div className="space-y-3">
+          {posts.map((post) => (
+            <StandardCard
+              key={post.id}
+              title={post.category || 'Материал'}
+              subtitle={post.title}
+              icon={BookOpen}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const DistributorManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+  const [distributors, setDistributors] = useState<Distributor[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiClient
+      .get<Distributor[]>('/api/distributors')
+      .then((res) => setDistributors(res.data || []))
+      .catch(() => toast.error('Не удалось загрузить дистрибьюторов'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <div className="space-y-6 pb-24">
+      <ManagerHeader title="Дистрибьюторы" subtitle="Контакты" onBack={onBack} />
+      {loading ? (
+        <SkeletonList count={3} />
+      ) : distributors.length === 0 ? (
+        <EmptyState text="Данные отсутствуют" />
+      ) : (
+        <div className="space-y-3">
+          {distributors.map((dist) => (
+            <StandardCard key={dist.id} title="Дистрибьютор" subtitle={dist.name} icon={Truck}>
+              <div className="text-[12px] text-gray-500 mt-2">
+                Chat ID: <span className="text-gray-700">{dist.telegramChatId || '—'}</span>
+              </div>
+            </StandardCard>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const AdminMenu: React.FC<{ onSelect: (view: AdminView) => void }> = ({ onSelect }) => (
+  <div className="space-y-6 pb-24">
+    <PageHeader title="Админ" subtitle="Панель управления" />
+
+    <div className="grid grid-cols-2 gap-4">
+      <ManagerCard title="Товары" subtitle="Линейки" icon={Package} onClick={() => onSelect('products')} />
+      <ManagerCard title="Команда" subtitle="Амбассадоры" icon={Users} onClick={() => onSelect('users')} />
+      <ManagerCard title="Объекты" subtitle="Подтверждения" icon={Building2} onClick={() => onSelect('facilities')} />
+      <ManagerCard title="Цены" subtitle="Прайс" icon={DollarSign} onClick={() => onSelect('prices')} />
+      <ManagerCard title="Заказы" subtitle="История" icon={ShoppingBag} onClick={() => onSelect('orders')} />
+      <ManagerCard title="Визиты" subtitle="Отчеты" icon={CheckCircle} onClick={() => onSelect('reports')} />
+      <ManagerCard title="Контент" subtitle="База" icon={BookOpen} onClick={() => onSelect('posts')} />
+      <ManagerCard title="Дистрибьюторы" subtitle="Чаты" icon={Truck} onClick={() => onSelect('distributors')} />
+    </div>
+  </div>
+);
+
+const ManagerCard: React.FC<{
+  title: string;
+  subtitle: string;
+  icon: React.ElementType;
+  onClick: () => void;
+}> = ({ title, subtitle, icon: Icon, onClick }) => (
+  <button
+    onClick={onClick}
+    className="w-full bg-white rounded-3xl border border-gray-100 shadow-sm p-4 text-left active:scale-[0.99] transition-transform"
+  >
+    <div className="w-10 h-10 rounded-2xl bg-[#F5F5F7] flex items-center justify-center text-gray-600 mb-3">
+      <Icon size={18} strokeWidth={1.5} />
+    </div>
+    <div className="text-[14px] font-semibold text-black">{title}</div>
+    <div className="text-[11px] text-gray-500 mt-1">{subtitle}</div>
+  </button>
+);
+
+const AdminPage: React.FC = () => {
+  const [view, setView] = useState<AdminView>('menu');
+  const [isUnlocked, setIsUnlocked] = useState(false);
+
+  const handleNavigate = (nextView: AdminView) => {
+    setView(nextView);
+    WebApp.HapticFeedback?.impactOccurred('light');
+  };
+
+  if (!isUnlocked) {
+    return <LockScreen onSuccess={() => setIsUnlocked(true)} />;
+  }
+
+  return (
+    <div className="min-h-screen">
+      {view === 'menu' && <AdminMenu onSelect={handleNavigate} />}
+      {view === 'products' && <ProductManager onBack={() => handleNavigate('menu')} />}
+      {view === 'prices' && <PriceManager onBack={() => handleNavigate('menu')} />}
+      {view === 'users' && <UserManager onBack={() => handleNavigate('menu')} />}
+      {view === 'facilities' && <FacilityManager onBack={() => handleNavigate('menu')} />}
+      {view === 'reports' && <ReportsManager onBack={() => handleNavigate('menu')} />}
+      {view === 'orders' && <OrdersManager onBack={() => handleNavigate('menu')} />}
+      {view === 'posts' && <KnowledgeManager onBack={() => handleNavigate('menu')} />}
+      {view === 'distributors' && <DistributorManager onBack={() => handleNavigate('menu')} />}
+    </div>
+  );
 };
 
 export default AdminPage;

@@ -1,64 +1,30 @@
 import React from 'react';
-import {
-  Clock,
-  CheckCircle2,
-  Truck
-} from 'lucide-react';
-import { StandardCard } from '../components/ui/StandardCard';
+import { useNavigate } from 'react-router-dom';
+import { ShoppingBag } from 'lucide-react';
+import { PageHeader } from '../components/PageHeader';
 
 const MyOrdersPage: React.FC = () => {
+  const navigate = useNavigate();
+
   return (
-    <div className="space-y-5 pb-24">
+    <div className="pb-24 space-y-6">
+      <PageHeader title="Заказы" subtitle="История и статусы" />
 
-      <div className="pt-2 px-1">
-        <h1 className="text-3xl font-extrabold text-gray-900">Мои Заказы</h1>
-        <p className="text-gray-400 font-medium">История операций</p>
+      <div className="rounded-3xl bg-white/60 backdrop-blur-xl border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.10)] p-6 text-center">
+        <div className="mx-auto w-12 h-12 rounded-2xl bg-black/5 border border-white/40 flex items-center justify-center text-black/60">
+          <ShoppingBag size={20} strokeWidth={1.5} />
+        </div>
+        <h3 className="mt-4 text-lg font-semibold text-black">История скоро появится</h3>
+        <p className="mt-2 text-sm text-black/50">
+          Сейчас заказ можно оформить из карточки точки.
+        </p>
+        <button
+          onClick={() => navigate('/work')}
+          className="mt-6 w-full rounded-3xl bg-black text-white py-4 font-semibold shadow-[0_20px_50px_rgba(0,0,0,0.22)] active:scale-[0.99] transition-transform"
+        >
+          Перейти к точкам
+        </button>
       </div>
-
-      {/* АКТИВНЫЙ ЗАКАЗ (Самый яркий - Оранжевый) */}
-      <StandardCard
-        title="Заказ #12390"
-        subtitle="В пути • Ожидается завтра"
-        value="В работе"
-        color="coral"
-        illustration={<Truck size={120} className="text-white opacity-20 translate-x-4" />}
-      />
-
-      {/* ИСТОРИЯ (Список белых карточек) */}
-      <div className="space-y-3">
-        <h3 className="text-lg font-bold text-gray-900 px-2 mt-2">История</h3>
-
-        <StandardCard
-          title="Заказ #12385"
-          subtitle="15 Декабря • Доставлен"
-          value="4 500 ₽"
-          color="white"
-          icon={CheckCircle2}
-          showArrow
-          floating={false}
-        />
-
-        <StandardCard
-          title="Заказ #12340"
-          subtitle="10 Декабря • Доставлен"
-          value="12 200 ₽"
-          color="white"
-          icon={CheckCircle2}
-          showArrow
-          floating={false}
-        />
-
-        <StandardCard
-          title="Заказ #12300"
-          subtitle="1 Декабря • Отменен"
-          value="0 ₽"
-          color="white"
-          icon={Clock}
-          showArrow
-          floating={false}
-        />
-      </div>
-
     </div>
   );
 };

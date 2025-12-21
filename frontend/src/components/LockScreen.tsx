@@ -67,7 +67,10 @@ export const LockScreen: React.FC<LockScreenProps> = ({ onSuccess }) => {
     }, [input, onSuccess]);
 
     return (
-        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl flex flex-col items-center justify-center text-white pb-10">
+        <div
+            className="fixed inset-0 z-50 bg-black/85 backdrop-blur-2xl flex flex-col items-center justify-center text-white"
+            style={{ paddingBottom: 'calc(24px + var(--tg-safe-area-bottom))', paddingTop: 'var(--tg-safe-area-top)' }}
+        >
             <div className="mb-8 flex flex-col items-center">
                 <div className="mb-4">
                     <Lock size={32} />
@@ -117,10 +120,6 @@ export const LockScreen: React.FC<LockScreenProps> = ({ onSuccess }) => {
                         </button>
                     )}
                 </div>
-            </div>
-
-            <div className="mt-12 text-center">
-                <button className="text-sm font-medium text-white/40">Забыли код?</button>
             </div>
         </div>
     );

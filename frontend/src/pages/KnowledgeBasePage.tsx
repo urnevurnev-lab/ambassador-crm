@@ -1,100 +1,50 @@
-import React, { useState, useEffect } from 'react';
-import {
-  BookOpen,
-  Search,
-  GraduationCap,
-  HelpCircle,
-  ChevronRight
-} from 'lucide-react';
-import { StandardCard } from '../components/ui/StandardCard';
-import { motion } from 'framer-motion';
-import apiClient from '../api/apiClient';
-
-interface Post {
-  id: number;
-  title: string;
-  content: string;
-  category: string;
-}
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { PageHeader } from '../components/PageHeader';
+import { BookOpen, GraduationCap, ScrollText } from 'lucide-react';
 
 const KnowledgeBasePage: React.FC = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    apiClient.get('/api/posts')
-      .then(res => setPosts(res.data || []))
-      .catch(err => console.error(err))
-      .finally(() => setLoading(false));
-  }, []);
-
-  const filteredPosts = posts.filter(p =>
-    p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const navigate = useNavigate();
 
   return (
-    <div className="space-y-6 pb-32 pt-4 px-4">
-      {/* ЗАГОЛОВОК */}
-      <div className="px-1">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <p className="text-gray-400 text-[10px] font-bold uppercase tracking-[0.2em] mb-1">Центр обучения</p>
-          <h1 className="text-3xl font-black text-gray-900 leading-none">База Знаний</h1>
-        </motion.div>
+    <div className="pb-24 space-y-6">
+      <PageHeader title="Знания" subtitle="Стандарты, скрипты и обучение" />
+
+      <button
+        onClick={() => navigate('/education')}
+        className="w-full rounded-3xl bg-black/75 backdrop-blur-xl border border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.22)] p-6 text-left active:scale-[0.99] transition-transform"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/60">Education</p>
+            <h3 className="mt-2 text-xl font-semibold text-white">Быстрый курс</h3>
+            <p className="mt-1 text-sm text-white/60">Основы продукта и мерчендайзинга</p>
+          </div>
+          <div className="w-11 h-11 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center text-white/80">
+            <GraduationCap size={18} strokeWidth={1.5} />
+          </div>
+        </div>
+      </button>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="rounded-3xl bg-white/60 backdrop-blur-xl border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.10)] p-5">
+          <div className="w-10 h-10 rounded-2xl bg-black/5 border border-white/40 flex items-center justify-center text-black/60">
+            <ScrollText size={18} strokeWidth={1.5} />
+          </div>
+          <div className="mt-4 text-[15px] font-semibold text-black">Стандарты</div>
+          <div className="mt-1 text-xs text-black/50">Чек-листы и правила</div>
+        </div>
+        <div className="rounded-3xl bg-white/60 backdrop-blur-xl border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.10)] p-5">
+          <div className="w-10 h-10 rounded-2xl bg-black/5 border border-white/40 flex items-center justify-center text-black/60">
+            <BookOpen size={18} strokeWidth={1.5} />
+          </div>
+          <div className="mt-4 text-[15px] font-semibold text-black">Скрипты</div>
+          <div className="mt-1 text-xs text-black/50">Ответы на возражения</div>
+        </div>
       </div>
 
-      {/* ПОИСК */}
-      <div className="relative">
-        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-          <Search size={20} />
-        </div>
-        <input
-          type="text"
-          placeholder="Найти скрипт..."
-          className="w-full bg-white h-14 pl-12 pr-4 rounded-[24px] border border-gray-100 text-base outline-none shadow-sm"
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-        />
-      </div>
-
-      {/* КАТЕГОРИИ */}
-      {!searchTerm && (
-        <div className="grid grid-cols-2 gap-3">
-          <div className="col-span-2">
-            <StandardCard
-              title="Академия"
-              subtitle="Курсы"
-              color="purple"
-              className="min-h-[100px]"
-              illustration={<GraduationCap size={80} className="text-white opacity-10 absolute -right-2 -bottom-2" />}
-            />
-          </div>
-          <StandardCard title="Скрипты" subtitle="Продажи" color="teal" className="h-28" />
-          <StandardCard title="Видео" subtitle="Ворки" color="coral" className="h-28" />
-        </div>
-      )}
-
-      {/* ПУБЛИКАЦИИ */}
-      <div className="space-y-3">
-        {loading ? (
-          <div className="flex justify-center py-10">
-            <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : filteredPosts.map(p => (
-          <StandardCard
-            key={p.id}
-            title={p.title}
-            subtitle={p.category}
-            color="white"
-            floating={false}
-            icon={p.category === 'FAQ' ? HelpCircle : BookOpen}
-            action={<ChevronRight size={18} className="text-gray-300" />}
-          />
-        ))}
+      <div className="rounded-3xl bg-white/45 backdrop-blur-xl border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.08)] p-6 text-center">
+        <p className="text-sm text-black/50">Контент готовится</p>
       </div>
     </div>
   );

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Cake, ChevronLeft, User } from 'lucide-react';
-import { Layout } from '../components/Layout';
 import apiClient from '../api/apiClient';
 
 interface UserData {
@@ -45,24 +44,23 @@ const TeamCalendarPage: React.FC = () => {
     const upcoming = getUpcomingBirthdays();
 
     return (
-        <Layout>
-            <div className="px-5 pb-32 pt-12 space-y-8 bg-[#F8F9FB] min-h-screen">
+            <div className="pb-24 pt-2 space-y-8">
                 <div className="flex items-center gap-4">
                     <motion.button
                         whileTap={{ scale: 0.9 }}
                         onClick={() => navigate(-1)}
-                        className="w-12 h-12 bg-white rounded-2xl border border-[#C6C6C8]/10 shadow-[0_8px_20px_rgba(0,0,0,0.05)] flex items-center justify-center text-gray-400"
+                        className="w-12 h-12 bg-white/60 backdrop-blur-xl rounded-2xl border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.10)] flex items-center justify-center text-black/50"
                     >
-                        <ChevronLeft size={24} />
+                        <ChevronLeft size={22} />
                     </motion.button>
-                    <h1 className="text-[28px] font-[900] text-[#000000] tracking-tight leading-none">
+                    <h1 className="text-[28px] font-[900] text-black tracking-tight leading-none">
                         Календарь Команды
                     </h1>
                 </div>
 
                 {loading ? (
                     <div className="flex justify-center py-20">
-                        <div className="w-10 h-10 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+                        <div className="w-10 h-10 border-4 border-black/10 border-t-black/40 rounded-full animate-spin" />
                     </div>
                 ) : upcoming.length > 0 ? (
                     <div className="space-y-6">
@@ -87,25 +85,25 @@ const TeamCalendarPage: React.FC = () => {
                         </div>
 
                         <div className="space-y-4">
-                            <h3 className="text-[12px] font-black text-[#8E8E93] uppercase tracking-widest px-1">Грядущие события</h3>
+                            <h3 className="text-[11px] font-semibold text-black/50 uppercase tracking-[0.28em] px-1">Грядущие события</h3>
                             {upcoming.map((user, idx) => (
                                 <motion.div
                                     key={user.id}
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: idx * 0.1 }}
-                                    className="bg-white p-5 rounded-[28px] border border-[#C6C6C8]/10 shadow-[0_10px_30px_rgba(0,0,0,0.03)] flex items-center gap-4"
+                                    className="bg-white/60 backdrop-blur-xl p-5 rounded-[28px] border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.10)] flex items-center gap-4"
                                 >
                                     <div className="w-12 h-12 bg-[#F2F2F7]/50 rounded-2xl flex items-center justify-center text-blue-500">
                                         <User size={20} />
                                     </div>
                                     <div className="flex-1">
                                         <h4 className="font-black text-[15px] text-gray-900">{user.fullName}</h4>
-                                        <p className="text-[12px] text-gray-400 font-bold mt-1">
+                                        <p className="text-[12px] text-black/50 font-bold mt-1">
                                             {user.nextBirthday.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}
                                         </p>
                                     </div>
-                                    <div className="w-12 h-12 bg-pink-50 rounded-2xl flex items-center justify-center text-pink-500 shadow-sm">
+                                    <div className="w-12 h-12 bg-pink-500/10 rounded-2xl flex items-center justify-center text-pink-600 shadow-sm border border-white/30">
                                         <Cake size={20} />
                                     </div>
                                 </motion.div>
@@ -113,14 +111,15 @@ const TeamCalendarPage: React.FC = () => {
                         </div>
                     </div>
                 ) : (
-                    <div className="text-center py-20 bg-white rounded-[40px] border border-[#C6C6C8]/10 shadow-sm px-8">
-                        <div className="w-20 h-20 bg-[#F2F2F7] rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6">🎂</div>
-                        <h3 className="text-gray-900 font-black text-xl">Календарь пуст</h3>
-                        <p className="text-gray-400 font-bold mt-2">Похоже, никто еще не указал свой день рождения в профиле.</p>
+                    <div className="text-center py-16 bg-white/60 backdrop-blur-xl rounded-[40px] border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.10)] px-8">
+                        <div className="w-20 h-20 bg-black/5 border border-white/40 rounded-3xl flex items-center justify-center mx-auto mb-6 text-black/60">
+                            <Cake size={28} strokeWidth={1.5} />
+                        </div>
+                        <h3 className="text-black font-semibold text-xl">Календарь пуст</h3>
+                        <p className="text-black/50 font-medium mt-2">Похоже, никто еще не указал день рождения в профиле.</p>
                     </div>
                 )}
             </div>
-        </Layout>
     );
 };
 

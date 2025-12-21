@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Minus, Search, ShoppingBag, Send, X, ChevronRight } from 'lucide-react';
 import apiClient from '../api/apiClient';
-import { Layout } from '../components/Layout';
 import { motion, AnimatePresence } from 'framer-motion';
 import WebApp from '@twa-dev/sdk';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -162,31 +161,30 @@ const OrderPage: React.FC = () => {
     }
   };
 
-  if (loading) return (
-    <Layout>
+  if (loading) {
+    return (
       <div className="flex flex-col items-center justify-center h-[60dvh] gap-4">
         <div className="w-10 h-10 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
-        <p className="text-gray-400 font-bold tracking-tight">Загрузка каталога...</p>
+        <p className="text-black/50 font-semibold tracking-tight">Загрузка каталога...</p>
       </div>
-    </Layout>
-  );
+    );
+  }
 
   return (
-    <Layout>
-      <div className="min-h-screen px-5 pb-40 pt-6 space-y-8">
+      <div className="pb-40 pt-2 space-y-8">
         <div className="flex items-center gap-4">
           <motion.button
             whileTap={{ scale: 0.9 }}
             onClick={() => navigate(-1)}
-            className="w-12 h-12 bg-white rounded-2xl border border-[#C6C6C8]/10 shadow-[0_8px_20px_rgba(0,0,0,0.05)] flex items-center justify-center"
+            className="w-12 h-12 bg-white/60 backdrop-blur-xl rounded-2xl border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.10)] flex items-center justify-center"
           >
-            <X size={24} className="text-gray-400" />
+            <X size={22} className="text-black/50" />
           </motion.button>
           <div>
             <h1 className="text-[28px] font-[900] text-gray-900 leading-none tracking-tight">
               {step === 1 ? "Маст-лист" : step === 2 ? "Каталог" : "Детали"}
             </h1>
-            <p className="text-[12px] text-[#8E8E93] font-bold mt-1 uppercase tracking-wider opacity-70">Шаг {step} из 3</p>
+            <p className="text-[12px] text-black/40 font-bold mt-1 uppercase tracking-wider opacity-80">Шаг {step} из 3</p>
           </div>
         </div>
 
@@ -199,11 +197,11 @@ const OrderPage: React.FC = () => {
         <AnimatePresence mode="wait">
           {step === 1 && (
             <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-              <div className="p-6 bg-blue-50 rounded-[32px] border border-blue-100/50 shadow-[0_10px_30px_rgba(59,130,246,0.05)]">
-                <h3 className="text-blue-700 text-[17px] font-black flex items-center gap-2">
+              <div className="p-6 bg-white/60 backdrop-blur-xl rounded-[32px] border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.10)]">
+                <h3 className="text-black text-[17px] font-black flex items-center gap-2">
                   <ShoppingBag size={20} /> Топ-вкусы
                 </h3>
-                <p className="text-blue-600/70 text-[13px] mt-2 font-bold leading-relaxed">
+                <p className="text-black/50 text-[13px] mt-2 font-bold leading-relaxed">
                   Этих позиций не было при последнем визите. Рекомендуем добавить.
                 </p>
               </div>
@@ -221,14 +219,14 @@ const OrderPage: React.FC = () => {
                     </div>
                     <button
                       onClick={() => handleIncrement(p.id)}
-                      className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-lg ${cart[p.id] ? 'bg-blue-600 text-white shadow-blue-500/20' : 'bg-[#F2F2F7] text-gray-400 border border-transparent active:border-blue-500/20'}`}
+                      className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-lg ${cart[p.id] ? 'bg-blue-600 text-white shadow-blue-500/20' : 'bg-white/70 backdrop-blur-xl text-black/50 border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.08)]'}`}
                     >
                       {cart[p.id] ? <span className="text-sm font-black">{cart[p.id]}</span> : <Plus size={24} />}
                     </button>
                   </motion.div>
                 )) : (
-                  <div className="text-center py-20 bg-[#F8F9FB] rounded-[40px] border-2 border-dashed border-gray-200">
-                    <p className="text-gray-400 font-black uppercase tracking-widest text-[13px]">Все вкусы в наличии!</p>
+                  <div className="text-center py-16 rounded-[40px] bg-white/40 backdrop-blur-xl border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.06)]">
+                    <p className="text-black/45 font-black uppercase tracking-widest text-[13px]">Все вкусы в наличии</p>
                   </div>
                 )}
               </div>
@@ -238,11 +236,11 @@ const OrderPage: React.FC = () => {
           {step === 2 && (
             <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
               <div className="relative">
-                <Search className="absolute left-5 top-4.5 text-gray-400" size={20} />
+                <Search className="absolute left-5 top-4.5 text-black/30" size={20} />
                 <input
                   type="text"
                   placeholder="Поиск по вкусу..."
-                  className="w-full pl-14 pr-6 h-14 bg-white rounded-[24px] border border-[#C6C6C8]/10 shadow-[0_8px_20px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-blue-500/10 font-bold text-[15px] transition-all"
+                  className="w-full pl-14 pr-6 h-14 bg-white/60 backdrop-blur-xl rounded-[24px] border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.10)] outline-none focus:ring-4 focus:ring-blue-500/10 font-bold text-[15px] transition-all placeholder:text-black/30"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                 />
@@ -250,7 +248,15 @@ const OrderPage: React.FC = () => {
 
               <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1 -mx-5 px-5">
                 {categories.map(c => (
-                  <button key={c} onClick={() => { setActiveCategory(c); WebApp.HapticFeedback.impactOccurred('light'); }} className={`px-5 py-3 rounded-2xl text-[13px] font-black whitespace-nowrap transition-all border ${activeCategory === c ? 'bg-gray-900 text-white border-gray-900 shadow-xl shadow-gray-200' : 'bg-white text-gray-400 border-transparent shadow-sm'}`}>
+                  <button
+                    key={c}
+                    onClick={() => { setActiveCategory(c); WebApp.HapticFeedback.impactOccurred('light'); }}
+                    className={`px-5 py-3 rounded-2xl text-[13px] font-black whitespace-nowrap transition-all border ${
+                      activeCategory === c
+                        ? 'bg-gray-900 text-white border-gray-900 shadow-xl shadow-gray-200'
+                        : 'bg-white/60 backdrop-blur-xl text-black/40 border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.08)]'
+                    }`}
+                  >
                     {c}
                   </button>
                 ))}
@@ -268,8 +274,8 @@ const OrderPage: React.FC = () => {
                       </div>
                       <div className="flex items-center">
                         {count > 0 ? (
-                          <div className="flex items-center bg-[#F2F2F7] p-1.5 rounded-2xl border border-transparent shadow-inner">
-                            <motion.button whileTap={{ scale: 0.8 }} onClick={() => handleDecrement(p.id)} className="w-9 h-9 flex items-center justify-center bg-white rounded-xl shadow-sm"><Minus size={18} className="text-gray-400" /></motion.button>
+                          <div className="flex items-center bg-white/60 backdrop-blur-xl p-1.5 rounded-2xl border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.08)]">
+                            <motion.button whileTap={{ scale: 0.8 }} onClick={() => handleDecrement(p.id)} className="w-9 h-9 flex items-center justify-center bg-white/80 rounded-xl border border-white/40 shadow-sm"><Minus size={18} className="text-black/40" /></motion.button>
                             <span className="w-10 text-center text-[15px] font-black text-gray-900">{count}</span>
                             <motion.button whileTap={{ scale: 0.8 }} onClick={() => handleIncrement(p.id)} className="w-9 h-9 flex items-center justify-center bg-blue-600 rounded-xl shadow-lg shadow-blue-500/20 text-white"><Plus size={18} /></motion.button>
                           </div>
@@ -277,7 +283,7 @@ const OrderPage: React.FC = () => {
                           <motion.button
                             whileTap={{ scale: 0.95 }}
                             onClick={() => handleIncrement(p.id)}
-                            className="px-6 py-3 bg-gray-900 text-white text-[12px] font-black rounded-2xl shadow-lg shadow-gray-200 active:bg-blue-600 transition-colors"
+                            className="px-6 py-3 bg-gray-900 text-white text-[12px] font-black rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.15)] active:bg-blue-600 transition-colors"
                           >
                             В корзину
                           </motion.button>
@@ -360,13 +366,18 @@ const OrderPage: React.FC = () => {
           )}
         </AnimatePresence>
 
-        <div className="fixed bottom-10 left-5 right-5 z-40">
-          <div className="flex gap-4">
+        <div
+          className="fixed left-0 right-0 z-40 px-4"
+          style={{ bottom: 'calc(12px + var(--tg-safe-area-bottom))' }}
+        >
+          <div className="mx-auto max-w-md">
+            <div className="rounded-[34px] bg-white/70 backdrop-blur-xl border border-white/30 shadow-[0_20px_60px_rgba(0,0,0,0.16)] p-2">
+              <div className="flex gap-4">
             {step > 1 && (
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={() => { setStep(step - 1); WebApp.HapticFeedback?.impactOccurred('medium'); }}
-                className="flex-1 py-6 bg-white border border-[#C6C6C8]/20 text-[#8E8E93] font-black rounded-[30px] shadow-sm active:scale-95 transition-all text-[15px] uppercase tracking-wider"
+                className="flex-1 py-5 bg-white/70 border border-white/40 text-black/40 font-black rounded-[30px] shadow-sm active:scale-95 transition-all text-[15px] uppercase tracking-wider"
               >
                 Назад
               </motion.button>
@@ -376,7 +387,7 @@ const OrderPage: React.FC = () => {
                 disabled={totalItems === 0}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => { setStep(step + 1); WebApp.HapticFeedback?.impactOccurred('medium'); }}
-                className="flex-[2] py-6 bg-gray-900 text-white font-[900] rounded-[30px] shadow-[0_20px_40px_rgba(0,0,0,0.15)] active:scale-95 transition-all flex items-center justify-center gap-3 text-[15px] uppercase tracking-widest disabled:opacity-30"
+                className="flex-[2] py-5 bg-gray-900 text-white font-[900] rounded-[30px] shadow-[0_20px_40px_rgba(0,0,0,0.15)] active:scale-95 transition-all flex items-center justify-center gap-3 text-[15px] uppercase tracking-widest disabled:opacity-30"
               >
                 Далее <ChevronRight size={18} strokeWidth={4} />
               </motion.button>
@@ -385,15 +396,16 @@ const OrderPage: React.FC = () => {
                 whileTap={{ scale: 0.95 }}
                 onClick={handleCheckout}
                 disabled={isOrdering || !contactName || !selectedDistributorId || totalItems === 0}
-                className="flex-[3] py-6 bg-blue-600 text-white font-[900] rounded-[30px] shadow-[0_20px_40px_rgba(37,99,235,0.3)] active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-30 text-[15px] uppercase tracking-widest"
+                className="flex-[3] py-5 bg-blue-600 text-white font-[900] rounded-[30px] shadow-[0_20px_40px_rgba(37,99,235,0.3)] active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-30 text-[15px] uppercase tracking-widest"
               >
                 {isOrdering ? <div className="w-5 h-5 border-3 border-white/20 border-t-white rounded-full animate-spin" /> : <><Send size={20} strokeWidth={3} /> <span>Оформить</span></>}
               </motion.button>
             )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </Layout>
   );
 };
 
