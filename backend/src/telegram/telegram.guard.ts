@@ -15,12 +15,15 @@ export class TelegramAuthGuard implements CanActivate {
         }
 
         const initData = authHeader.split(' ')[1];
+        console.log('[AuthGuard] initData received');
 
         if (!this.validateInitData(initData)) {
+            console.warn('[AuthGuard] Validation failed for initData');
             throw new UnauthorizedException('Подпись Telegram недействительна');
         }
 
         const telegramUser = parseTelegramUserFromAuthHeader(authHeader);
+        console.log('[AuthGuard] Authenticated user:', telegramUser?.telegramId);
         if (telegramUser) {
             request.user = telegramUser;
             request.telegramUser = telegramUser;

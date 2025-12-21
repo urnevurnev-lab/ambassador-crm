@@ -1,108 +1,138 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ListItem } from '../components/ui/ListItem';
-import { Building2, Search, Plus } from 'lucide-react';
-import apiClient from '../api/apiClient';
 import { motion } from 'framer-motion';
-import WebApp from '@twa-dev/sdk';
+import { MapPin, List, Search, Plus } from 'lucide-react';
+import apiClient from '../api/apiClient';
+
+interface Facility {
+  id: number;
+  name: string;
+  address: string;
+  city: string | null;
+  score: number;
+  isVerified: boolean;
+  daysSinceLastVisit: number | null;
+}
+
 
 const WorkHubPage: React.FC = () => {
-    const navigate = useNavigate();
-    const [facilities, setFacilities] = useState<any[]>([]);
-    const [search, setSearch] = useState('');
-    const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const [facilities, setFacilities] = useState<Facility[]>([]);
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
 
-    const handleNavigate = (path: string) => {
-        WebApp.HapticFeedback.impactOccurred('light');
-        navigate(path);
+  useEffect(() => {
+    const fetchFacilities = async () => {
+      try {
+        const res = await apiClient.get('/api/facilities');
+        setFacilities(res.data);
+      } catch (err) {
+        console.error("Link_Err:", err);
+      } finally {
+        setLoading(false);
+      }
     };
+    fetchFacilities();
+  }, []);
 
-    useEffect(() => {
-        apiClient.get('/api/facilities')
-            .then(res => setFacilities(res.data || []))
-            .catch(err => console.error(err))
-            .finally(() => setLoading(false));
-    }, []);
+  const filtered = facilities.filter(f =>
+    f.name.toLowerCase().includes(search.toLowerCase()) ||
+    f.address.toLowerCase().includes(search.toLowerCase())
+  );
 
-    const filtered = useMemo(() => {
-        if (!search) return facilities.slice(0, 50); // Show top 50 initially for performance
-        const term = search.toLowerCase();
-        return facilities.filter(f =>
-            f.name.toLowerCase().includes(term) ||
-            (f.address && f.address.toLowerCase().includes(term))
-        ).slice(0, 50); // Limit search results too
-    }, [facilities, search]);
-
-    return (
-        <div className="safe-p-top pb-32 space-y-6 px-4">
-            {/* Header */}
-            <div className="flex justify-between items-center py-2">
-                <div>
-                    <h1 className="text-[28px] font-extrabold text-[#000000] tracking-tight">Где сегодня?</h1>
-                    <p className="text-[14px] text-[#8E8E93] font-medium">Выберите точку для начала смены</p>
-                </div>
-                <motion.button
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => handleNavigate('/facilities/new')}
-                    className="w-12 h-12 bg-white rounded-full border border-[#C6C6C8]/30 flex items-center justify-center text-[#007AFF] shadow-ios"
-                >
-                    <Plus size={24} />
-                </motion.button>
-            </div>
-
-            {/* Search Bar */}
-            <div className="relative">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8E8E93]">
-                    <Search size={20} />
-                </div>
-                <input
-                    type="text"
-                    placeholder="Найти заведение..."
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    className="w-full pl-12 pr-4 h-12 bg-white rounded-2xl border border-[#C6C6C8]/30 text-[17px] outline-none shadow-ios focus:ring-2 focus:ring-[#007AFF]/10 transition-all font-medium"
-                />
-            </div>
-
-            {/* Venues List */}
-            <div className="space-y-2">
-                {loading ? (
-                    <div className="flex flex-col items-center justify-center py-20 gap-4">
-                        <div className="w-8 h-8 border-[3px] border-[#007AFF] border-t-transparent rounded-full animate-spin" />
-                        <p className="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-wider">Загрузка базы...</p>
-                    </div>
-                ) : (
-                    <div className="space-y-2">
-                        {filtered.length > 0 ? (
-                            filtered.map((f) => (
-                                <ListItem
-                                    key={f.id}
-                                    title={f.name}
-                                    subtitle={f.address || 'Адрес не указан'}
-                                    icon={Building2}
-                                    onClick={() => handleNavigate(`/facilities/${f.id}`)}
-                                />
-                            ))
-                        ) : (
-                            <div className="flex flex-col items-center justify-center py-20 text-center">
-                                <div className="w-16 h-16 bg-[#F2F2F7] rounded-full flex items-center justify-center mb-4">
-                                    <Search size={28} className="text-[#C6C6C8]" />
-                                </div>
-                                <h3 className="font-bold text-[#000000]">Ничего не найдено</h3>
-                                <p className="text-[14px] text-[#8E8E93] mt-1 px-10">Проверьте правильность написания или добавьте новую точку</p>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
-
-            {facilities.length > 50 && !search && (
-                <p className="text-center text-[12px] text-[#8E8E93] pt-2">
-                    Показано 50 из {facilities.length} точек. Используйте поиск.
-                </p>
-            )}
+  return (
+    <div className="pb-24 animate-in fade-in duration-700">
+      <div className="flex justify-between items-center py-6">
+        <div>
+          <h1 className="text-[28px] font-bold tracking-tight text-black">Work Hub</h1>
+          <p className="text-[15px] text-[#86868B] font-medium">Facility management</p>
         </div>
-    );
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={() => navigate('/facility/new')}
+          className="w-12 h-12 bg-black text-white rounded-2xl flex items-center justify-center shadow-lg active:opacity-90"
+        >
+          <Plus size={24} />
+        </motion.button>
+      </div>
+
+      {/* SEARCH BAR SOFT STYLE */}
+      <div className="relative mb-6">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#86868B]" size={20} />
+        <input
+          type="text"
+          placeholder="Search location..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full bg-white rounded-[24px] h-[54px] pl-12 pr-4 shadow-soft text-[16px] outline-none border-2 border-transparent focus:border-black/5 transition-all"
+        />
+      </div>
+
+      {/* VIEW SELECTOR */}
+      <div className="grid grid-cols-2 gap-3 mb-8">
+        <button className="bg-black text-white h-[44px] rounded-full text-[14px] font-bold flex items-center justify-center gap-2">
+          <List size={18} /> List View
+        </button>
+        <button className="bg-white text-black h-[44px] rounded-full text-[14px] font-bold flex items-center justify-center gap-2 shadow-soft opacity-60">
+          <MapPin size={18} /> Map View
+        </button>
+      </div>
+
+      {/* FACILITY LIST */}
+      <div className="space-y-4">
+        {loading ? (
+          <div className="text-center py-10">
+            <div className="w-8 h-8 border-4 border-white border-t-black rounded-full animate-spin mx-auto mb-2" />
+            <span className="text-[13px] font-bold text-[#86868B] uppercase tracking-wide">Syncing...</span>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-20 bg-white rounded-[32px] shadow-soft">
+            <p className="text-[15px] font-medium text-[#86868B]">No matches found</p>
+          </div>
+        ) : (
+          filtered.map((facility) => (
+            <motion.div
+              key={facility.id}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => navigate(`/facility/${facility.id}`)}
+              className="bg-white rounded-[32px] p-6 shadow-soft cursor-pointer border border-transparent hover:border-black/5 transition-all"
+            >
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="text-[18px] font-bold text-black leading-tight">
+                  {facility.name}
+                </h3>
+                <div className={`text-[11px] font-bold px-3 py-1 rounded-full ${facility.isVerified ? 'bg-[#F5F5F7] text-black' : 'bg-black text-white'}`}>
+                  {facility.isVerified ? 'VERIFIED' : 'PENDING'}
+                </div>
+              </div>
+
+              <p className="text-[14px] font-medium text-[#86868B] mb-5 line-clamp-1">
+                {facility.address}
+              </p>
+
+              <div className="flex justify-between items-center pt-4 border-t border-[#F5F5F7]">
+                <div className="flex flex-col">
+                  <span className="text-[11px] font-bold text-[#86868B] uppercase tracking-wide">Last Visit</span>
+                  <span className="text-[15px] text-black font-bold">
+                    {facility.daysSinceLastVisit !== null ? `${facility.daysSinceLastVisit}d ago` : 'None'}
+                  </span>
+                </div>
+                <div className="flex flex-col items-end">
+                  <span className="text-[11px] font-bold text-[#86868B] uppercase tracking-wide">Score</span>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-black" />
+                    <span className="text-[15px] text-black font-bold">
+                      {facility.score}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          ))
+        )}
+      </div>
+    </div>
+  );
 };
 
 export default WorkHubPage;

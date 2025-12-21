@@ -6,27 +6,35 @@ export default {
   ],
   theme: {
     extend: {
-      fontFamily: {
-        sans: ['SF Pro Display', '-apple-system', 'BlinkMacSystemFont', 'Inter', 'sans-serif'],
-      },
+      // Пиксельный / Терминальный шрифт (найди потом "Press Start 2P" или "VT323" на Google Fonts для вау-эффекта)
+        sans: ['Inter', 'system-ui', 'sans-serif'], // Основной шрифт
+
       colors: {
-        ios: {
-          bg: '#F2F2F7',     // System Gray 6 (Base background)
-          card: '#FFFFFF',   // Pure White
-          text: '#000000',
-          subtext: '#8E8E93', // System Gray
-          blue: '#007AFF',    // System Blue
-          divider: '#C6C6C8',
+        'ios-bg': '#F5F5F7',
+        'card': '#FFFFFF',
+        'retro': {
+          bg: '#000000',
+          surface: '#111111',
+          border: '#333333',
+          text: '#FFFFFF',
+          muted: '#888888',
+          accent: '#FF3B30',
+          success: '#00FF00',
         }
       },
       borderRadius: {
-        'xl': '16px',
-        '2xl': '24px', // Standard iOS Widget radius
+        none: '0', // Все квадратное
+        sm: '2px', // Микро-скругление для кнопок
+      },
+      borderWidth: {
+        '3': '3px', // Жирные рамки
       },
       boxShadow: {
-        'ios': '0 2px 8px rgba(0, 0, 0, 0.04)', // Very subtle, clean shadow
-        'ios-hover': '0 4px 12px rgba(0, 0, 0, 0.08)',
-      }
+        'soft': '0 8px 30px rgb(0, 0, 0, 0.04)',
+        'retro': '4px 4px 0 0 #333333', 
+        'retro-accent': '4px 4px 0 0 #FF3B30',
+        'retro-inset': 'inset 2px 2px 0 0 #000000, inset -2px -2px 0 0 #333333',
+      },
     },
   },
   plugins: [],
