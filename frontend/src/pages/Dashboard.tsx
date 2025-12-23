@@ -132,16 +132,20 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="rounded-3xl bg-white/60 backdrop-blur-xl border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.10)] p-5">
+          <button
+            onClick={() => navigate('/work?filter=must')}
+            className="rounded-3xl bg-white/60 backdrop-blur-xl border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.10)] p-5 text-left active:scale-[0.99] transition-transform"
+          >
             <div className="flex items-center justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-black/50">KPI</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-black/50">KPI • Must-лист</p>
               <div className="w-9 h-9 rounded-2xl bg-black/5 border border-white/40 flex items-center justify-center text-black/60">
                 <ArrowUpRight size={16} strokeWidth={1.5} />
               </div>
             </div>
             <div className="mt-4 text-3xl font-semibold text-black">{coverage}%</div>
-            <p className="text-xs text-black/50 mt-1">Средняя заполненность</p>
-          </div>
+            <p className="text-xs text-black/50 mt-1">Средняя заполненность по must-листу</p>
+            <p className="text-[11px] text-black/40 mt-2 font-semibold">Тапни, чтобы увидеть точки с недостачами</p>
+          </button>
 
           <div className="rounded-3xl bg-white/60 backdrop-blur-xl border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.10)] p-5">
             <div className="flex items-center justify-between">

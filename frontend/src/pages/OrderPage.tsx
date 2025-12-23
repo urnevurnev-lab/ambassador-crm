@@ -28,6 +28,7 @@ const OrderPage: React.FC = () => {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [distributors, setDistributors] = useState<Distributor[]>([]);
+  const [allowedDistributorIds, setAllowedDistributorIds] = useState<number[] | null>(null);
   const [facilityData, setFacilityData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState(1);
@@ -37,6 +38,7 @@ const OrderPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isOrdering, setIsOrdering] = useState(false);
   const [contactName, setContactName] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
   const [selectedDistributorId, setSelectedDistributorId] = useState<number | null>(null);
 
   const totalItems = Object.values(cart).reduce((a, b) => a + b, 0);
@@ -67,7 +69,8 @@ const OrderPage: React.FC = () => {
         const [prodRes, distRes, facRes] = await Promise.all([
           apiClient.get('/api/products'),
           apiClient.get('/api/distributors'),
-          facilityId ? apiClient.get(`/api/facilities/${facilityId}`) : Promise.resolve({ data: null })
+          facilityId ? apiClient.get(`/api/facilities/${facilityId}`) : Promise.resolve({ data: null }),
+          apiClient.get('/api/users/me'),
         ]);
 
         const mappedProducts = (prodRes.data || []).map((p: any) => ({
@@ -80,9 +83,19 @@ const OrderPage: React.FC = () => {
         setDistributors(distRes.data || []);
         setFacilityData(facRes.data);
 
-        if (distRes.data && distRes.data.length === 1) {
-          setSelectedDistributorId(distRes.data[0].id);
+        const me = (arguments as any)[0]?.[3]?.data || (await apiClient.get('/api/users/me')).data;
+        const allowed = me?.allowedDistributors || [];
+        if (Array.isArray(allowed) && allowed.length > 0) {
+          const ids = allowed.map((d: any) => d.id);
+          setAllowedDistributorIds(ids);
+          const allowedList = (distRes.data || []).filter((d: Distributor) => ids.includes(d.id));
+          setDistributors(allowedList);
+          if (allowedList.length > 0) setSelectedDistributorId(allowedList[0].id);
+        } else {
+          setAllowedDistributorIds(null);
+          if (distRes.data && distRes.data.length > 0) setSelectedDistributorId(distRes.data[0].id);
         }
+
       } catch (e) {
         console.error(e);
       } finally {
@@ -93,10 +106,12 @@ const OrderPage: React.FC = () => {
   }, [facilityId]);
 
   const recommendedGaps = useMemo(() => {
-    if (!facilityData || !products.length) return [];
-    const lastInventory = (facilityData.mustList as Record<string, boolean>) || {};
-    return products.filter(p => p.isTopFlavor && !lastInventory[p.id]);
-  }, [facilityData, products]);
+    if (!facilityData) return [];
+    if (facilityData.missingRecommendations && Array.isArray(facilityData.missingRecommendations)) {
+      return facilityData.missingRecommendations;
+    }
+    return [];
+  }, [facilityData]);
 
   const categories = useMemo(() => {
     const cats = new Set(products.map(p => p.line || "Другое"));
@@ -110,6 +125,17 @@ const OrderPage: React.FC = () => {
       return matchCategory && matchSearch;
     });
   }, [products, activeCategory, searchQuery]);
+
+  const toggleGap = (id: number) => {
+    setCart((prev) => {
+      if (prev[id]) {
+        const { [id]: _, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [id]: 1 };
+    });
+    WebApp.HapticFeedback?.impactOccurred('light');
+  };
 
   const handleIncrement = (id: number) => {
     setCart(prev => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
@@ -134,15 +160,6 @@ const OrderPage: React.FC = () => {
   }, 0);
 
   const handleCheckout = async () => {
-    if (!contactName) {
-      try {
-        WebApp.showAlert?.("Укажите контактное лицо");
-      } catch (e) {
-        console.warn(e);
-        window.alert("Укажите контактное лицо");
-      }
-      return;
-    }
     if (!selectedDistributorId) {
       try {
         WebApp.showAlert?.("Выберите дистрибьютора");
@@ -160,10 +177,14 @@ const OrderPage: React.FC = () => {
         return { sku: p?.sku || '', quantity };
       });
 
+      const safeContact = contactName && contactName.trim().length > 0 ? contactName.trim() : 'Контакт не указан';
+      const safePhone = contactPhone && contactPhone.trim().length > 0 ? contactPhone.trim() : null;
+
       await apiClient.post('/api/orders', {
         facilityId: Number(facilityId),
         distributorId: Number(selectedDistributorId),
-        contactName,
+        contactName: safeContact,
+        contactPhone: safePhone,
         items
       });
 
@@ -230,31 +251,25 @@ const OrderPage: React.FC = () => {
         <AnimatePresence mode="wait">
           {step === 1 && (
             <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-              <div className="p-6 bg-white/60 backdrop-blur-xl rounded-[32px] border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.10)]">
-                <h3 className="text-black text-[17px] font-black flex items-center gap-2">
-                  <ShoppingBag size={20} /> Топ-вкусы
-                </h3>
-                <p className="text-black/50 text-[13px] mt-2 font-bold leading-relaxed">
-                  Этих позиций не было при последнем визите. Рекомендуем добавить.
-                </p>
-              </div>
-
               <div className="space-y-3">
                 {recommendedGaps.length > 0 ? recommendedGaps.map(p => (
                   <motion.div
                     key={p.id}
                     className="bg-white p-5 rounded-[28px] border border-[#C6C6C8]/10 shadow-[0_10px_30px_rgba(0,0,0,0.03)] flex items-center gap-4"
                   >
-                    <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-500 text-2xl">🧊</div>
                     <div className="flex-1">
                       <h3 className="text-[15px] font-black text-gray-900 leading-none">{p.flavor}</h3>
                       <p className="text-[12px] text-gray-400 font-bold mt-1.5">{p.line}</p>
                     </div>
                     <button
-                      onClick={() => handleIncrement(p.id)}
-                      className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-lg ${cart[p.id] ? 'bg-blue-600 text-white shadow-blue-500/20' : 'bg-white/70 backdrop-blur-xl text-black/50 border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.08)]'}`}
+                      onClick={() => toggleGap(p.id)}
+                      className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-lg ${
+                        cart[p.id]
+                          ? 'bg-emerald-500 text-white shadow-emerald-400/30'
+                          : 'bg-white/70 backdrop-blur-xl text-black/50 border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.08)]'
+                      }`}
                     >
-                      {cart[p.id] ? <span className="text-sm font-black">{cart[p.id]}</span> : <Plus size={24} />}
+                      {cart[p.id] ? '✓' : '+'}
                     </button>
                   </motion.div>
                 )) : (
@@ -300,7 +315,6 @@ const OrderPage: React.FC = () => {
                   const count = cart[p.id] || 0;
                   return (
                     <div key={p.id} className="bg-white p-5 rounded-[28px] border border-[#C6C6C8]/10 shadow-[0_10px_30px_rgba(0,0,0,0.03)] flex items-center gap-4">
-                      <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-2xl">⚡️</div>
                       <div className="flex-1">
                         <h3 className="text-[15px] font-black text-gray-900 leading-none">{p.flavor}</h3>
                         <p className="text-[12px] text-gray-400 font-bold mt-1.5">{p.line} • {p.price} ₽</p>
@@ -342,6 +356,13 @@ const OrderPage: React.FC = () => {
                       value={contactName}
                       onChange={e => setContactName(e.target.value)}
                     />
+                    <input
+                      type="tel"
+                      placeholder="Телефон ЛПР"
+                      className="w-full mt-3 p-5 bg-[#F2F2F7]/50 rounded-[22px] outline-none font-black text-[15px] border-2 border-transparent focus:border-blue-500/20 focus:bg-white transition-all"
+                      value={contactPhone}
+                      onChange={e => setContactPhone(e.target.value)}
+                    />
                   </div>
                 </div>
 
@@ -370,18 +391,28 @@ const OrderPage: React.FC = () => {
                 </div>
 
                 <div className="space-y-3 max-h-[200px] overflow-y-auto no-scrollbar pr-1">
-                  {Object.entries(cart).map(([id, qty]) => {
-                    const p = products.find(prod => prod.id === Number(id));
-                    return (
-                      <div key={id} className="flex justify-between items-center text-[15px]">
-                        <span className="text-white/80 font-bold truncate flex-1">{p?.flavor}</span>
-                        <div className="flex items-center gap-3">
-                          <span className="text-white/30 font-black text-[12px]">{qty} x 100г</span>
-                          <span className="font-black text-white ml-2 whitespace-nowrap">x{qty}</span>
-                        </div>
+                  {Object.entries(
+                    Object.entries(cart).reduce<Record<string, { items: { name: string; qty: number }[] }>>((acc, [id, qty]) => {
+                      const p = products.find(prod => prod.id === Number(id));
+                      if (!p) return acc;
+                      const line = p.line || 'Другое';
+                      if (!acc[line]) acc[line] = { items: [] };
+                      acc[line].items.push({ name: p.flavor || p.name, qty });
+                      return acc;
+                    }, {})
+                  ).map(([line, data]) => (
+                    <div key={line} className="space-y-2">
+                      <div className="text-[12px] font-bold uppercase tracking-widest text-white/60">{line}</div>
+                      <div className="space-y-1.5">
+                        {data.items.map((item, idx) => (
+                          <div key={`${line}-${idx}`} className="flex justify-between items-center text-[15px]">
+                            <span className="text-white/80 font-bold truncate flex-1">{item.name}</span>
+                            <span className="text-white font-black whitespace-nowrap">x{item.qty}</span>
+                          </div>
+                        ))}
                       </div>
-                    )
-                  })}
+                    </div>
+                  ))}
                 </div>
 
                 <div className="mt-8 pt-8 border-t border-white/5 space-y-4">
@@ -417,7 +448,7 @@ const OrderPage: React.FC = () => {
             )}
             {step < 3 ? (
               <motion.button
-                disabled={totalItems === 0}
+                disabled={false}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => { setStep(step + 1); WebApp.HapticFeedback?.impactOccurred('medium'); }}
                 className="flex-[2] py-5 bg-gray-900 text-white font-[900] rounded-[30px] shadow-[0_20px_40px_rgba(0,0,0,0.15)] active:scale-95 transition-all flex items-center justify-center gap-3 text-[15px] uppercase tracking-widest disabled:opacity-30"
@@ -428,7 +459,7 @@ const OrderPage: React.FC = () => {
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={handleCheckout}
-                disabled={isOrdering || !contactName || !selectedDistributorId || totalItems === 0}
+                disabled={isOrdering || !selectedDistributorId || totalItems === 0}
                 className="flex-[3] py-5 bg-blue-600 text-white font-[900] rounded-[30px] shadow-[0_20px_40px_rgba(37,99,235,0.3)] active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-30 text-[15px] uppercase tracking-widest"
               >
                 {isOrdering ? <div className="w-5 h-5 border-3 border-white/20 border-t-white rounded-full animate-spin" /> : <><Send size={20} strokeWidth={3} /> <span>Оформить</span></>}

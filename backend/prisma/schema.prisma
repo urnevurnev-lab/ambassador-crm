@@ -18,34 +18,28 @@ enum VisitType {
   CHECKUP
 }
 
-// ... (User)
 model User {
-  id          Int      @id @default(autoincrement())
-  telegramId  String   @unique
-  fullName    String
-  role        Role     @default(AMBASSADOR)
-  
-  // Profile Fields
-  birthDate   DateTime?
-  tshirtSize  String?
-  cdekInfo    Json?    // { city: string, address: string, code?: string }
-
-  visits      Visit[]
-  orders      Order[]
-  sampleOrders SampleOrder[]
-  allowedDistributors Distributor[] @relation("UserDistributors")
-  createdAt   DateTime @default(now())
+  id                   Int            @id @default(autoincrement())
+  telegramId           String         @unique
+  fullName             String
+  role                 Role           @default(AMBASSADOR)
+  birthDate            DateTime?
+  tshirtSize           String?
+  cdekInfo             Json?
+  visits               Visit[]
+  orders               Order[]
+  sampleOrders         SampleOrder[]
+  allowedDistributors  Distributor[]  @relation("UserDistributors")
+  createdAt            DateTime       @default(now())
 }
 
-// ...
-
 model SampleOrder {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id])
-  status    String   @default("PENDING")
-  items     SampleOrderItem[]
-  createdAt DateTime @default(now())
+  id            Int               @id @default(autoincrement())
+  userId        Int
+  user          User              @relation(fields: [userId], references: [id])
+  status        String            @default("PENDING")
+  items         SampleOrderItem[]
+  createdAt     DateTime          @default(now())
 }
 
 model SampleOrderItem {
@@ -57,53 +51,51 @@ model SampleOrderItem {
   quantity      Int
 }
 
-// Ensure Product has relation to SampleOrderItem
 model Product {
-  id        Int      @id @default(autoincrement())
-  line      String
-  flavor    String
-  sku       String   @unique
-  category  String   @default("UNKNOWN")
-  price     Int      @default(0)
-  isTopFlavor Boolean @default(false)
-  createdAt DateTime @default(now())
-  productsAvailableIn Visit[] @relation("VisitProducts")
-  productsTastedIn    Visit[] @relation("VisitTasted")
-  orderItems OrderItem[]
-  sampleOrderItems SampleOrderItem[]
+  id                   Int                @id @default(autoincrement())
+  line                 String
+  flavor               String
+  sku                  String             @unique
+  category             String             @default("UNKNOWN")
+  price                Int                @default(0)
+  isTopFlavor          Boolean            @default(false)
+  createdAt            DateTime           @default(now())
+  productsAvailableIn  Visit[]            @relation("VisitProducts")
+  productsTastedIn     Visit[]            @relation("VisitTasted")
+  orderItems           OrderItem[]
+  sampleOrderItems     SampleOrderItem[]
 }
 
-// Other models ...
 model Facility {
-  id          Int      @id @default(autoincrement())
-  name        String
-  address     String
-  city        String?  @default("")
-  isVerified  Boolean  @default(true)
-  mustList    Json?    
-  requiredProducts Int[] @default([])
-  visits      Visit[]
-  orders      Order[]
+  id               Int       @id @default(autoincrement())
+  name             String
+  address          String
+  city             String?   @default("")
+  isVerified       Boolean   @default(true)
+  mustList         Json?
+  requiredProducts Int[]     @default([])
+  visits           Visit[]
+  orders           Order[]
 }
 
 model Visit {
-  id          Int      @id @default(autoincrement())
-  userId      Int
-  user        User     @relation(fields: [userId], references: [id])
-  facilityId  Int
-  facility    Facility @relation(fields: [facilityId], references: [id])
-  activityId  Int?
-  activity    Activity? @relation(fields: [activityId], references: [id])
-  type        String   @default("UNKNOWN")
-  date        DateTime @default(now())
-  data        Json?
-  productsAvailable Product[] @relation("VisitProducts")
-  productsTasted    Product[] @relation("VisitTasted")
-  comment     String?
-  contactName String?
-  endedAt     DateTime?
-  status      String   @default("COMPLETED") // STARTED, COMPLETED
-  createdAt   DateTime @default(now())
+  id                Int        @id @default(autoincrement())
+  userId            Int
+  user              User       @relation(fields: [userId], references: [id])
+  facilityId        Int
+  facility          Facility   @relation(fields: [facilityId], references: [id])
+  activityId        Int?
+  activity          Activity?  @relation(fields: [activityId], references: [id])
+  type              String     @default("UNKNOWN")
+  date              DateTime   @default(now())
+  data              Json?
+  productsAvailable Product[]  @relation("VisitProducts")
+  productsTasted    Product[]  @relation("VisitTasted")
+  comment           String?
+  contactName       String?
+  endedAt           DateTime?
+  status            String     @default("COMPLETED")
+  createdAt         DateTime   @default(now())
 }
 
 model Activity {
@@ -116,35 +108,35 @@ model Activity {
 }
 
 model Order {
-  id            Int      @id @default(autoincrement())
+  id            Int           @id @default(autoincrement())
   userId        Int?
-  user          User?     @relation(fields: [userId], references: [id])
+  user          User?         @relation(fields: [userId], references: [id])
   facilityId    Int?
-  facility      Facility? @relation(fields: [facilityId], references: [id])
+  facility      Facility?     @relation(fields: [facilityId], references: [id])
   distributorId Int?
-  distributor   Distributor? @relation(fields: [distributorId], references: [id])
-  status        String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  distributor   Distributor?  @relation(fields: [distributorId], references: [id])
+  status        String        @default("PENDING")
   processedBy   String?
-  total         Float    @default(0)
+  total         Float         @default(0)
   items         OrderItem[]
-  createdAt     DateTime @default(now())
+  createdAt     DateTime      @default(now())
 }
 
 model OrderItem {
-  id        Int      @id @default(autoincrement())
+  id        Int     @id @default(autoincrement())
   orderId   Int
-  order     Order    @relation(fields: [orderId], references: [id])
+  order     Order   @relation(fields: [orderId], references: [id])
   productId Int
-  product   Product  @relation(fields: [productId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
   quantity  Int
 }
 
 model Distributor {
-  id             Int      @id @default(autoincrement())
+  id             Int     @id @default(autoincrement())
   name           String
   telegramChatId String
   orders         Order[]
-  users          User[]   @relation("UserDistributors")
+  users          User[]  @relation("UserDistributors")
 }
 
 model Post {
@@ -152,7 +144,7 @@ model Post {
   title      String
   content    String
   imageUrl   String?
-  category   String   @default("NEWS") // NEWS, KNOWLEDGE
+  category   String   @default("NEWS")
   readTime   String?
   importance Int      @default(0)
   createdAt  DateTime @default(now())

@@ -1,174 +1,195 @@
 // @ts-nocheck
 import { PrismaClient } from '@prisma/client';
-
-const fs = require('fs');
-const path = require('path');
-const csv = require('csv-parser');
+import * as fs from 'fs';
+import * as path from 'path';
+// csv-parser экспортируется как CommonJS, поэтому используем require
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const csvParser = require('csv-parser');
 
 const prisma = new PrismaClient();
 
-const ACTIVITY_MAP = {
+const ACTIVITY_MAP: Record<string, string> = {
   'Проезд': 'transit',
   'B2B': 'b2b',
   'Дегустация': 'tasting',
   'Открытая смена': 'checkup',
-  'Смена': 'checkup'
+  'Смена': 'checkup',
+};
+
+const COLUMNS = {
+  date: 'Отметка времени',
+  ambassador: 'Амбассадор',
+  activity: 'Выбери активность',
+  facility: 'Название заведения с Яндекс карты',
+  address: 'Адрес с Яндекс карты',
+  bliss: 'Bliss ( что стоит в работе )',
+  white: 'WHITE LINE  ( что стоит в работе )',
+  black: 'BLACK LINE  ( что стоит в работе )',
+  cigar: 'CIGAR LINE  ( что стоит в работе )',
 };
 
 async function main() {
-  const results = [];
-  const filePath = path.join(__dirname, 'activity.csv');
+  const results: any[] = [];
+  const filePath = path.join(__dirname, 'import.csv');
 
-  console.log('🚀 Начинаем чтение CSV...');
-  console.log(`📂 Путь к файлу: ${filePath}`);
+  console.log('🚀 Чтение CSV с точеками и остатками...');
+  console.log(`📂 Файл: ${filePath}`);
 
   if (!fs.existsSync(filePath)) {
-      console.error(`❌ Файл не найден по пути: ${filePath}`);
-      process.exit(1);
+    console.error(`❌ Файл не найден: ${filePath}`);
+    process.exit(1);
   }
 
-  fs.createReadStream(filePath)
-    .pipe(csv())
-    .on('data', (data) => results.push(data))
-    .on('end', async () => {
-      console.log(`✅ Прочитано ${results.length} строк. Начинаем запись в базу...`);
-      
-      let newUsers = 0;
-      let newFacilities = 0;
-      let newProducts = 0;
-      let newVisits = 0;
+  await prisma.orderItem.deleteMany({});
+  await prisma.order.deleteMany({});
+  await prisma.sampleOrderItem.deleteMany({});
+  await prisma.sampleOrder.deleteMany({});
+  await prisma.visit.deleteMany({});
+  await prisma.activity.deleteMany({});
+  await prisma.facility.deleteMany({});
+  await prisma.user.deleteMany({});
+  await prisma.product.deleteMany({});
 
-      for (const row of results) {
-        try {
-          // --- 1. АМБАССАДОР ---
-          const userName = row['Амбассадор']?.trim();
-          if (!userName) continue;
+  console.log('🧹 База очищена. Загружаем данные...');
 
-          let user = await prisma.user.findFirst({ where: { fullName: userName } });
-          
-          if (!user) {
-            const randomId = Math.floor(100000 + Math.random() * 900000).toString();
-            user = await prisma.user.create({
-              data: {
-                fullName: userName,
-                telegramId: randomId, 
-                role: 'AMBASSADOR'
-              }
-            });
-            newUsers++;
-          }
+  await new Promise<void>((resolve, reject) => {
+    fs.createReadStream(filePath)
+      .pipe(csvParser({ separator: ';', skipLines: 0, mapHeaders: ({ header }) => header.trim() }))
+      .on('data', (data) => results.push(data))
+      .on('end', () => resolve())
+      .on('error', reject);
+  });
 
-          // --- 2. ЗАВЕДЕНИЕ ---
-          const facilityName = row['Название заведения с Яндекс карты']?.trim();
-          const address = row['Адрес с Яндекс карты']?.trim();
-          
-          if (!facilityName) continue;
+  console.log(`✅ Прочитано строк: ${results.length}`);
 
-          let facility = await prisma.facility.findFirst({
-            where: { name: facilityName, address: address }
+  let newUsers = 0;
+  let newFacilities = 0;
+  let newProducts = 0;
+  let newVisits = 0;
+
+  for (const row of results) {
+    try {
+      const userName = (row[COLUMNS.ambassador] || '').trim();
+      if (!userName) continue;
+
+      const telegramId = `import_${slugify(userName)}`;
+      let user = await prisma.user.findUnique({ where: { telegramId } });
+      if (!user) {
+        user = await prisma.user.create({
+          data: { telegramId, fullName: userName, role: 'AMBASSADOR' },
+        });
+        newUsers++;
+      }
+
+      const facilityName = (row[COLUMNS.facility] || '').trim();
+      const address = (row[COLUMNS.address] || '').trim();
+      if (!facilityName) continue;
+
+      let facility = await prisma.facility.findFirst({
+        where: { name: facilityName, address },
+      });
+      if (!facility) {
+        facility = await prisma.facility.create({
+          data: { name: facilityName, address: address || 'Адрес не указан', isVerified: true },
+        });
+        newFacilities++;
+      }
+
+      const lineColumns = [
+        { col: COLUMNS.bliss, lineName: 'Bliss' },
+        { col: COLUMNS.white, lineName: 'White Line' },
+        { col: COLUMNS.black, lineName: 'Black Line' },
+        { col: COLUMNS.cigar, lineName: 'Cigar Line' },
+      ];
+
+      const productsToConnect: number[] = [];
+
+      for (const item of lineColumns) {
+        const raw = row[item.col] as string | undefined;
+        if (!raw) continue;
+        const flavors = raw
+          .split(',')
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0);
+
+        for (const flavor of flavors) {
+          const sku = `${item.lineName}_${flavor}`.toUpperCase().replace(/\s+/g, '_');
+          const product = await prisma.product.upsert({
+            where: { sku },
+            update: {},
+            create: {
+              sku,
+              flavor,
+              line: item.lineName,
+              category: 'Tobacco',
+              price: 2500,
+            },
           });
-
-          if (!facility) {
-            const category = row['Категория заведения '] || row['Категория заведения'] || 'C';
-            facility = await prisma.facility.create({
-              data: {
-                name: facilityName,
-                address: address || 'Адрес не указан',
-                tier: category.trim() 
-              }
-            });
-            newFacilities++;
-          }
-
-          // --- 3. ТОВАРЫ ---
-          const linesToParse = [
-            { col: 'Bliss ( что стоит в работе )', lineName: 'Bliss' },
-            { col: 'WHITE LINE  ( что стоит в работе )', lineName: 'White Line' },
-            { col: 'BLACK LINE  ( что стоит в работе )', lineName: 'Black Line' },
-            { col: 'CIGAR LINE  ( что стоит в работе )', lineName: 'Cigar Line' }
-          ];
-
-          for (const lineObj of linesToParse) {
-            const rawString = row[lineObj.col];
-            if (rawString) {
-                const flavors = rawString.split(',').map((s) => s.trim()).filter((s) => s.length > 0);
-                
-                for (const flavor of flavors) {
-                    const sku = `${lineObj.lineName}_${flavor}`.toUpperCase().replace(/\s+/g, '_');
-                    
-                    let product = await prisma.product.findFirst({
-                        where: { flavor: flavor, line: lineObj.lineName }
-                    });
-
-                    if (!product) {
-                        product = await prisma.product.create({
-                            data: {
-                                flavor: flavor,
-                                line: lineObj.lineName,
-                                category: 'Tobacco',
-                                sku: sku,
-                                price: 2500
-                            }
-                        });
-                        newProducts++;
-                    }
-                }
-            }
-          }
-
-          // --- 4. ВИЗИТ ---
-          const dateStr = row['Отметка времени'];
-          const visitDate = new Date(dateStr); 
-          if (isNaN(visitDate.getTime())) continue;
-
-          const activityType = ACTIVITY_MAP[row['Выбери активность']] || 'CHECKUP';
-          const comment = [
-              row['Что было сделано на проезде'], 
-              row['Что говорят? '], 
-              row['Что говорят?']
-          ].filter(Boolean).join('. ');
-
-          const distributor = row['У кого закупают? ( Даже если не у дистра то у кого ) '] || '';
-
-          const existingVisit = await prisma.visit.findFirst({
-              where: { userId: user.id, facilityId: facility.id, date: visitDate }
-          });
-
-          if (!existingVisit) {
-            await prisma.visit.create({
-                data: {
-                    date: visitDate,
-                    userId: user.id,
-                    facilityId: facility.id,
-                    type: 'CHECKUP',
-                    status: 'COMPLETED',
-                    comment: comment,
-                    data: { distributor }
-                }
-            });
-            newVisits++;
-          }
-
-        } catch (e) {
-           // ignore errors
+          productsToConnect.push(product.id);
+          newProducts++;
         }
       }
-      
-      console.log('------------------------------------------------');
-      console.log('🎉 ИМПОРТ ЗАВЕРШЕН УСПЕШНО!');
-      console.log('------------------------------------------------');
-      console.log(`👤 Сотрудников добавлено: ${newUsers}`);
-      console.log(`🏢 Заведений добавлено:   ${newFacilities}`);
-      console.log(`📦 Вкусов найдено:        ${newProducts}`);
-      console.log(`📝 Визитов загружено:     ${newVisits}`);
-      console.log('------------------------------------------------');
-    });
+
+      const dateRaw = (row[COLUMNS.date] || '').trim();
+      const visitDate = parseDate(dateRaw);
+      if (!visitDate) continue;
+
+      const mappedType = (ACTIVITY_MAP[row[COLUMNS.activity]] || 'CHECKUP').toUpperCase();
+
+      const existingVisit = await prisma.visit.findFirst({
+        where: { userId: user.id, facilityId: facility.id, date: visitDate },
+      });
+
+      if (!existingVisit) {
+        await prisma.visit.create({
+          data: {
+            userId: user.id,
+            facilityId: facility.id,
+            date: visitDate,
+            status: 'COMPLETED',
+            type: mappedType,
+            productsAvailable: {
+              connect: productsToConnect.map((id) => ({ id })),
+            },
+            data: {
+              imported: true,
+              source: 'import.csv',
+            },
+          },
+        });
+        newVisits++;
+      }
+    } catch (e) {
+      console.error('⚠️ Ошибка строки, пропускаем:', e);
+    }
+  }
+
+  console.log('------------------------------------------------');
+  console.log('🎉 Импорт завершён');
+  console.log('👤 Пользователей добавлено:', newUsers);
+  console.log('🏢 Заведений добавлено:', newFacilities);
+  console.log('📦 Вкусов создано/подключено:', newProducts);
+  console.log('📝 Визитов загружено:', newVisits);
+  console.log('------------------------------------------------');
 }
 
-function transliterate(word) {
-    if (!word) return 'user';
-    const a = {"Ё":"YO","Й":"I","Ц":"TS","У":"U","К":"K","Е":"E","Н":"N","Г":"G","Ш":"SH","Щ":"SCH","З":"Z","Х":"H","Ъ":"'","ё":"yo","й":"i","ц":"ts","у":"u","к":"k","е":"e","н":"n","г":"g","ш":"sh","щ":"sch","з":"z","х":"h","ъ":"'","Ф":"F","Ы":"I","В":"V","А":"A","П":"P","Р":"R","О":"O","Л":"L","Д":"D","Ж":"ZH","Э":"E","ф":"f","ы":"i","в":"v","а":"a","п":"p","р":"r","о":"o","л":"l","д":"d","ж":"zh","э":"e","Я":"Ya","Ч":"CH","С":"S","М":"M","И":"I","Т":"T","Ь":"'","Б":"B","Ю":"YU","я":"ya","ч":"ch","с":"s","м":"m","и":"i","т":"t","ь":"'","б":"b","ю":"yu"};
-    return word.split('').map((char) => a[char] || char).join("");
+function parseDate(raw: string): Date | null {
+  if (!raw) return null;
+  const parts = raw.split('.');
+  if (parts.length === 3) {
+    const [d, m, y] = parts;
+    const dt = new Date(`${y}-${m}-${d}T12:00:00Z`);
+    if (!isNaN(dt.getTime())) return dt;
+  }
+  const dt = new Date(raw);
+  return isNaN(dt.getTime()) ? null : dt;
+}
+
+function slugify(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9а-яё]+/gi, '_');
 }
 
 main()

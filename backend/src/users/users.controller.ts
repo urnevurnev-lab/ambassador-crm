@@ -2,6 +2,14 @@ import { Controller, Post, Body, Get, Param, HttpException, HttpStatus, UseGuard
 import { TelegramAuthGuard } from '../telegram/telegram.guard';
 import { PrismaService } from '../prisma.service';
 
+// Пользователи, которым автоматически даём доступ и роль ADMIN
+const OWNER_TELEGRAM_IDS = ['762823091'];
+
+const resolveRole = (telegramId: string, existingRole?: 'ADMIN' | 'AMBASSADOR') => {
+    if (OWNER_TELEGRAM_IDS.includes(telegramId)) return 'ADMIN';
+    return existingRole || 'AMBASSADOR';
+};
+
 @Controller('users')
 export class UsersController {
     constructor(private readonly prisma: PrismaService) { }
@@ -9,12 +17,23 @@ export class UsersController {
     // Метод 1: Проверка регистрации при входе (ТОЛЬКО ДЛЯ ТЕХ КТО В АДМИНКЕ)
     @Post('auth')
     async authUser(@Body() data: { telegramId: string; fullName: string }) {
-        const user = await this.prisma.user.findUnique({
+        let user = await this.prisma.user.findUnique({
             where: { telegramId: data.telegramId },
             include: { allowedDistributors: true }
         });
         if (!user) {
-            throw new HttpException('Доступ запрещен. Обратитесь к администратору для регистрации.', HttpStatus.FORBIDDEN);
+            if (OWNER_TELEGRAM_IDS.includes(data.telegramId)) {
+                user = await this.prisma.user.create({
+                    data: {
+                        telegramId: data.telegramId,
+                        fullName: data.fullName || `User ${data.telegramId}`,
+                        role: 'ADMIN',
+                    },
+                    include: { allowedDistributors: true }
+                });
+            } else {
+                throw new HttpException('Доступ запрещен. Обратитесь к администратору для регистрации.', HttpStatus.FORBIDDEN);
+            }
         }
         return user;
     }
@@ -70,8 +89,30 @@ export class UsersController {
     @UseGuards(TelegramAuthGuard)
     async getMe(@Req() req: any) {
         const telegramId = req.user.telegramId;
-        const user = await this.prisma.user.findUnique({ where: { telegramId } });
-        if (!user) throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+        let user = await this.prisma.user.findUnique({
+            where: { telegramId },
+            include: { allowedDistributors: true }
+        });
+
+        if (!user) {
+            // Авто-добавление, если пришёл новый пользователь (особенно для OWNER_TELEGRAM_IDS)
+            user = await this.prisma.user.create({
+                data: {
+                    telegramId,
+                    fullName: req.user.fullName || `User ${telegramId}`,
+                    role: resolveRole(telegramId),
+                },
+                include: { allowedDistributors: true }
+            });
+        } else if (user.role !== 'ADMIN' && OWNER_TELEGRAM_IDS.includes(telegramId)) {
+            // Поднимаем роль, если она должна быть ADMIN
+            user = await this.prisma.user.update({
+                where: { telegramId },
+                data: { role: 'ADMIN' },
+                include: { allowedDistributors: true }
+            });
+        }
+
         return user;
     }
 

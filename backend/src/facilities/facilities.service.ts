@@ -129,7 +129,7 @@ export class FacilitiesService {
         if (!facility) return null;
 
         const lastVisit = facility.visits[0] || null;
-        // Сортировка по линейке
+        // Сортировка по линейке (берем актуальные продукты из последнего визита)
         const currentStock = (lastVisit?.productsAvailable || []).sort((a, b) => a.line.localeCompare(b.line));
 
         // Анализ топов (Global Top)

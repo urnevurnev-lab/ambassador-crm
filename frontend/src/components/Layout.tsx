@@ -53,6 +53,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         WebApp.BackButton?.show?.();
       }
 
+      // Для админки переопределяем обработчик внутри AdminPage, поэтому общий navigate(-1) не вешаем
+      if (location.pathname.startsWith('/admin')) {
+        return;
+      }
+
       const handleBack = () => navigate(-1);
       WebApp.BackButton?.onClick?.(handleBack);
       return () => {

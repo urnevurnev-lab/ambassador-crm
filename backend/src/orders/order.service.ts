@@ -60,6 +60,7 @@ function formatOrderMessage(params: {
     address: string;
     contactName?: string | null;
     contactPhone?: string | null;
+    createdAt?: Date | string | null;
     items: {
         quantity: number;
         product?: { line?: string | null; flavor?: string | null; sku?: string | null; price?: number | null } | null;
@@ -67,6 +68,17 @@ function formatOrderMessage(params: {
     ambassadorName?: string | null;
 }) {
     const cleanedAddress = cleanAddress(params.address);
+    const createdAt = params.createdAt ? new Date(params.createdAt) : new Date();
+
+    const lineEmoji = (line: string) => {
+        const key = line.toLowerCase();
+        if (key.includes('bliss')) return '🔵 Bliss';
+        if (key.includes('white')) return '⚪️ White Line';
+        if (key.includes('black')) return '⚫️ Black Line';
+        if (key.includes('cigar')) return '🟤 Cigar Line';
+        return `◽️ ${toLineTitle(line)}`;
+    };
+
     const grouped: Record<string, { name: string; qty: number; price: number }[]> = {};
     let total = 0;
 
@@ -94,27 +106,33 @@ function formatOrderMessage(params: {
     const parts: string[] = [
         `<b>⚡️ Заказ #${escapeHtml(String(params.orderId))}</b>`,
         '',
-        '<b>Куда:</b>',
-        `▫️ ${escapeHtml(params.facilityName)}`,
-        `▫️ ${escapeHtml(cleanedAddress || params.address)}`,
+        '<b>📍 Куда:</b>',
+        `- ${escapeHtml(params.facilityName)}`,
+        `- ${escapeHtml(cleanedAddress || params.address)}`,
         '',
-        '<b>Контакты:</b>',
-        `▫️ ${escapeHtml(params.contactName || 'Не указано')}`,
-        `▫️ <code>${escapeHtml(params.contactPhone || '—')}</code>`,
+        '<b>👤 Амбассадор:</b>',
+        `- ${escapeHtml(params.ambassadorName || 'Система')}`,
         '',
-        '<b>Состав заказа:</b>',
+        '<b>📞 Контакты:</b>',
+        `- ${escapeHtml(params.contactName || 'Не указано')}`,
+        `- <code>${escapeHtml(params.contactPhone || '—')}</code>`,
+        '',
+        '<b>📦 Состав заказа:</b>',
     ];
 
     for (const line of lineKeys) {
-        parts.push(`<b>${escapeHtml(line)}:</b>`);
+        parts.push(`<b>${escapeHtml(lineEmoji(line))}:</b>`);
         for (const entry of grouped[line]) {
             const displayName = entry.name.toUpperCase();
-            parts.push(`▫️ ${escapeHtml(displayName)} (${entry.qty} шт)`);
+            parts.push(`- ${escapeHtml(displayName)} (${entry.qty} шт)`);
         }
     }
 
-    parts.push('', `💰 <b>Итого: ${formatCurrency(total)} ₽</b>`);
-    parts.push('', `Амбассадор: ${escapeHtml(params.ambassadorName || 'Система')}`);
+    parts.push(
+        '',
+        `💰 <b>Итого: ${formatCurrency(total)} ₽</b>`,
+        `${escapeHtml(createdAt.toLocaleDateString('ru-RU'))}`
+    );
     return parts.join('\n');
 }
 
@@ -206,6 +224,7 @@ export class OrderService {
             address: facility.address,
             contactName,
             contactPhone,
+            createdAt: newOrder.createdAt,
             items: newOrder.items ?? [],
             ambassadorName: ambassadorUser ? ambassadorUser.fullName : 'Система',
         });

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../components/PageHeader';
-import { CalendarDays, ChevronRight, ClipboardList, GraduationCap, IdCard, ListChecks, Package, Shield } from 'lucide-react';
+import { CalendarDays, ChevronRight, ClipboardList, GraduationCap, IdCard, ListChecks, Package, Shield, TrendingUp } from 'lucide-react';
 import apiClient from '../api/apiClient';
 import toast from 'react-hot-toast';
 import SampleOrderWizard from '../components/SampleOrderWizard';
@@ -31,6 +31,8 @@ interface SampleOrderEntry {
   items?: Array<{ quantity: number }> | null;
 }
 
+type FlavorRatingResponse = Record<string, { id: number; flavor: string; score: number }[]>;
+
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -40,6 +42,7 @@ const ProfilePage: React.FC = () => {
   const [sampleUnits, setSampleUnits] = useState(0);
   const [sampleConsumedPortions, setSampleConsumedPortions] = useState(0);
   const [isSampleWizardOpen, setSampleWizardOpen] = useState(false);
+  const [rating, setRating] = useState<FlavorRatingResponse | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -51,11 +54,12 @@ const ProfilePage: React.FC = () => {
         apiClient.get<OrderStats>('/api/orders/my-stats'),
         apiClient.get<VisitEntry[]>('/api/visits'),
         apiClient.get<SampleOrderEntry[]>('/api/samples/my'),
+        apiClient.get<FlavorRatingResponse>('/api/samples/analytics'),
       ]);
 
       if (!isMounted) return;
 
-      const [userRes, statsRes, visitsRes, samplesRes] = results;
+      const [userRes, statsRes, visitsRes, samplesRes, ratingRes] = results;
       if (userRes.status === 'fulfilled') {
         setUser(userRes.value.data);
       }
@@ -93,6 +97,9 @@ const ProfilePage: React.FC = () => {
         }, 0);
         setSampleUnits(units);
       }
+      if (ratingRes.status === 'fulfilled') {
+        setRating(ratingRes.value.data || null);
+      }
 
       if (results.some((r) => r.status === 'rejected')) {
         toast.error('Не удалось загрузить профиль');
@@ -111,6 +118,19 @@ const ProfilePage: React.FC = () => {
     if (!user?.fullName) return 'Профиль';
     return user.fullName;
   }, [user]);
+
+  const ratingSummary = useMemo(() => {
+    if (!rating) return 'ABC-анализ по посещениям';
+    const parts = Object.entries(rating)
+      .slice(0, 3)
+      .map(([line, items]) => {
+        const top = [...items].sort((a, b) => b.score - a.score)[0];
+        if (!top) return null;
+        return `${line}: ${top.flavor}`;
+      })
+      .filter(Boolean);
+    return parts.length ? parts.join(' • ') : 'ABC-анализ по посещениям';
+  }, [rating]);
 
   return (
     <div className="pb-24 space-y-6">
@@ -177,6 +197,12 @@ const ProfilePage: React.FC = () => {
               subtitle="Материалы и инструкции"
               icon={<GraduationCap size={18} strokeWidth={1.5} />}
               onClick={() => navigate('/education')}
+            />
+            <SettingsRow
+              title="ABC-анализ"
+              subtitle={ratingSummary}
+              icon={<TrendingUp size={18} strokeWidth={1.5} />}
+              onClick={() => navigate('/knowledge/rating')}
             />
             {user?.role === 'ADMIN' && (
               <SettingsRow

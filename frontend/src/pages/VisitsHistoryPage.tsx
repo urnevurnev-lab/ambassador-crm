@@ -1,28 +1,39 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import apiClient from '../api/apiClient';
 import { PageHeader } from '../components/PageHeader';
 import { StandardCard } from '../components/ui/StandardCard';
 import { MapPin, Calendar, Clock, Search } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
+import { useSearchParams } from 'react-router-dom';
+
+const VISIT_TYPE_LABEL: Record<string, string> = {
+  transit: 'Проезд',
+  checkup: 'Смена',
+  tasting: 'Дегустация',
+  b2b: 'B2B',
+};
 
 const VisitsHistoryPage: React.FC = () => {
     const [visits, setVisits] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeFilter, setActiveFilter] = useState('all');
+    const [searchParams] = useSearchParams();
     const telegramUser = WebApp.initDataUnsafe?.user;
+    const facilityId = searchParams.get('facilityId');
 
     useEffect(() => {
         apiClient.get('/api/visits')
             .then(res => {
                 const all = res.data || [];
-                const myVisits = all.filter((v: any) =>
-                    v.user?.telegramId === String(telegramUser?.id) || v.userId === telegramUser?.id
-                );
-                setVisits(myVisits);
+                if (facilityId) {
+                    setVisits(all.filter((v: any) => String(v.facilityId) === String(facilityId)));
+                } else {
+                    setVisits(all);
+                }
             })
             .catch(console.error)
             .finally(() => setLoading(false));
-    }, [telegramUser]);
+    }, [telegramUser, facilityId]);
 
     const filterOptions = [
         { id: 'all', label: 'Все' },
@@ -32,9 +43,11 @@ const VisitsHistoryPage: React.FC = () => {
         { id: 'checkup', label: 'Смена' },
     ];
 
-    const filteredVisits = activeFilter === 'all'
-        ? visits
-        : visits.filter(v => v.type?.toLowerCase().includes(activeFilter) || v.activityType?.toLowerCase().includes(activeFilter));
+    const filteredVisits = useMemo(() => {
+        const base = visits;
+        if (activeFilter === 'all') return base;
+        return base.filter(v => v.type?.toLowerCase().includes(activeFilter) || v.activityType?.toLowerCase().includes(activeFilter));
+    }, [visits, activeFilter]);
 
     return (
             <div className="pb-24 space-y-6">
@@ -71,20 +84,25 @@ const VisitsHistoryPage: React.FC = () => {
                             <StandardCard
                                 key={visit.id}
                                 title={visit.facility?.name || "Неизвестная точка"}
-                                subtitle={visit.type || "Визит"}
+                                subtitle={VISIT_TYPE_LABEL[visit.type as keyof typeof VISIT_TYPE_LABEL] || visit.type || "Визит"}
                                 color="white"
                                 floating={false}
                                 icon={MapPin}
                                 className="bg-white/60 backdrop-blur-xl border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.10)]"
                             >
-                                <div className="flex items-center justify-between mt-4 text-[11px] font-bold text-black/50 bg-black/5 border border-white/40 p-2.5 rounded-2xl">
-                                    <div className="flex items-center gap-2">
-                                        <Calendar size={14} className="text-black/50" />
-                                        {new Date(visit.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}
+                                <div className="mt-4 space-y-2">
+                                    <div className="flex items-center justify-between text-[11px] font-bold text-black/50 bg-black/5 border border-white/40 p-2.5 rounded-2xl">
+                                        <div className="flex items-center gap-2">
+                                            <Calendar size={14} className="text-black/50" />
+                                            {new Date(visit.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Clock size={14} className="text-black/50" />
+                                            {new Date(visit.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <Clock size={14} className="text-black/50" />
-                                        {new Date(visit.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    <div className="text-[12px] text-black/60 font-semibold">
+                                        {visit.user?.fullName ? `Сотрудник: ${visit.user.fullName}` : 'Сотрудник: не указан'}
                                     </div>
                                 </div>
                             </StandardCard>

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../components/PageHeader';
 import { StandardCard } from '../components/ui/StandardCard';
 import { LockScreen } from '../components/LockScreen';
@@ -22,6 +23,7 @@ import {
   Truck,
   ShieldCheck,
   ShieldOff,
+  Pencil,
 } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 
@@ -286,10 +288,7 @@ const ProductManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     key={product.id}
                     className="flex items-center justify-between rounded-2xl border border-gray-100 bg-[#F5F5F7] px-4 py-3"
                   >
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">{product.flavor}</div>
-                      <div className="text-xs text-gray-500">{formatPrice(product.price)} ₽</div>
-                    </div>
+                    <div className="text-sm font-medium text-gray-900">{product.flavor}</div>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleToggleTop(product)}
@@ -361,15 +360,6 @@ const ProductManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
               placeholder="Например: Cherry Cola"
               value={newFlavor}
               onChange={(e) => setNewFlavor(e.target.value)}
-              className="w-full bg-[#F5F5F7] p-3 rounded-2xl mt-2 border border-gray-100"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-gray-500 ml-1">Цена (₽)</label>
-            <input
-              type="number"
-              value={newPrice}
-              onChange={(e) => setNewPrice(Number(e.target.value))}
               className="w-full bg-[#F5F5F7] p-3 rounded-2xl mt-2 border border-gray-100"
             />
           </div>
@@ -453,6 +443,11 @@ const UserManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [fullName, setFullName] = useState('');
   const [telegramId, setTelegramId] = useState('');
   const [role, setRole] = useState<UserRole>('AMBASSADOR');
+  const [distributors, setDistributors] = useState<Distributor[]>([]);
+  const [editingChatsUser, setEditingChatsUser] = useState<User | null>(null);
+  const [selectedChatIds, setSelectedChatIds] = useState<number[]>([]);
+  const [newChatName, setNewChatName] = useState('');
+  const [newChatId, setNewChatId] = useState('');
 
   const loadUsers = async () => {
     setLoading(true);
@@ -468,6 +463,10 @@ const UserManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   useEffect(() => {
     loadUsers();
+    apiClient
+      .get<Distributor[]>('/api/distributors')
+      .then((res) => setDistributors(res.data || []))
+      .catch(() => toast.error('Не удалось загрузить чаты'));
   }, []);
 
   const handleSave = async () => {
@@ -489,6 +488,49 @@ const UserManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       loadUsers();
     } catch (e) {
       toast.error('Ошибка сохранения');
+    }
+  };
+
+  const toggleChat = (id: number) => {
+    setSelectedChatIds((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.length >= 7) return prev; // максимум 7 чатов
+      return [...prev, id];
+    });
+  };
+
+  const saveChats = async () => {
+    if (!editingChatsUser) return;
+    try {
+      await apiClient.post(`/api/users/${editingChatsUser.id}/distributors`, {
+        distributorIds: selectedChatIds,
+      });
+      toast.success('Чаты сохранены');
+      setEditingChatsUser(null);
+      loadUsers();
+    } catch (e) {
+      toast.error('Не удалось сохранить чаты');
+    }
+  };
+
+  const addDistributor = async () => {
+    if (!newChatName.trim() || !newChatId.trim()) {
+      toast.error('Введите название и Chat ID');
+      return;
+    }
+    try {
+      const res = await apiClient.post<Distributor>('/api/distributors', {
+        name: newChatName.trim(),
+        telegramChatId: newChatId.trim(),
+      });
+      const created = res.data;
+      setDistributors((prev) => [created, ...prev]);
+      setNewChatName('');
+      setNewChatId('');
+      toggleChat(created.id);
+      toast.success('Чат добавлен');
+    } catch (e) {
+      toast.error('Не удалось добавить чат');
     }
   };
 
@@ -537,6 +579,16 @@ const UserManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
               <div className="text-[12px] text-gray-500 mt-2 bg-[#F5F5F7] p-3 rounded-2xl border border-gray-100">
                 TG ID: <span className="font-mono text-gray-700">{user.telegramId}</span>
               </div>
+              <button
+                onClick={() => {
+                  setEditingChatsUser(user);
+                  const current = (user as any).allowedDistributors || [];
+                  setSelectedChatIds(current.map((d: any) => d.id));
+                }}
+                className="mt-3 w-full bg-white border border-gray-200 rounded-2xl py-3 text-[13px] font-semibold text-gray-700 active:scale-[0.99] transition"
+              >
+                Настроить чаты (до 7)
+              </button>
             </StandardCard>
           ))}
         </div>
@@ -577,6 +629,88 @@ const UserManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           </select>
         </Modal>
       )}
+
+      {editingChatsUser && (
+        <Modal
+          title={`Чаты для ${editingChatsUser.fullName}`}
+          onClose={() => setEditingChatsUser(null)}
+          action={
+            <button
+              onClick={saveChats}
+              className="w-full bg-black text-white py-3 rounded-2xl font-semibold disabled:opacity-50"
+              disabled={selectedChatIds.length === 0}
+            >
+              Сохранить
+            </button>
+          }
+        >
+          <p className="text-sm text-gray-500">
+            Можно выбрать до 7 чатов. Заявка по заказу уйдёт в выбранный чат.
+          </p>
+
+          {selectedChatIds.length > 0 && (
+            <div className="flex flex-wrap gap-2 bg-[#F5F5F7] p-3 rounded-2xl border border-gray-200">
+              {distributors
+                .filter((d) => selectedChatIds.includes(d.id))
+                .map((d) => (
+                  <span
+                    key={d.id}
+                    className="inline-flex items-center gap-1 bg-white border border-gray-200 rounded-xl px-2 py-1 text-xs font-semibold"
+                  >
+                    {d.name}
+                    <button
+                      onClick={() => toggleChat(d.id)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      <X size={12} strokeWidth={2} />
+                    </button>
+                  </span>
+                ))}
+            </div>
+          )}
+
+          <div className="space-y-2 bg-[#F5F5F7] p-3 rounded-2xl border border-gray-200">
+            <input
+              placeholder="Название дистрибьютора"
+              value={newChatName}
+              onChange={(e) => setNewChatName(e.target.value)}
+              className="w-full bg-white rounded-xl border border-gray-200 p-2 text-sm font-medium"
+            />
+            <input
+              placeholder="Chat ID"
+              value={newChatId}
+              onChange={(e) => setNewChatId(e.target.value)}
+              className="w-full bg-white rounded-xl border border-gray-200 p-2 text-sm font-medium"
+            />
+            <button
+              onClick={addDistributor}
+              className="w-full bg-black text-white rounded-xl py-2 text-sm font-semibold active:scale-[0.99] transition"
+            >
+              Добавить чат
+            </button>
+          </div>
+
+          <div className="space-y-2 max-h-[300px] overflow-y-auto">
+            {distributors.map((d) => {
+              const checked = selectedChatIds.includes(d.id);
+              const disabled = !checked && selectedChatIds.length >= 7;
+              return (
+                <button
+                  key={d.id}
+                  onClick={() => toggleChat(d.id)}
+                  disabled={disabled}
+                  className={`w-full text-left px-3 py-2 rounded-2xl border ${
+                    checked ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-gray-200 text-gray-700'
+                  } ${disabled ? 'opacity-40' : ''}`}
+                >
+                  <div className="font-semibold">{d.name}</div>
+                  <div className="text-[12px] text-gray-500">Chat ID: {d.telegramChatId || '—'}</div>
+                </button>
+              );
+            })}
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };
@@ -584,6 +718,7 @@ const UserManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 const FacilityManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
 
   const loadFacilities = async () => {
     setLoading(true);
@@ -622,17 +757,33 @@ const FacilityManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     }
   };
 
+  const filteredFacilities = facilities.filter((facility) => {
+    const term = search.toLowerCase().trim();
+    if (!term) return true;
+    return (
+      facility.name.toLowerCase().includes(term) ||
+      (facility.address || '').toLowerCase().includes(term)
+    );
+  });
+
   return (
     <div className="space-y-6 pb-24">
       <ManagerHeader title="Объекты" subtitle="Подтверждение точек" onBack={onBack} />
 
+      <input
+        placeholder="Поиск по названию или адресу"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="w-full bg-white p-3 rounded-2xl border border-gray-200 font-medium"
+      />
+
       {loading ? (
         <SkeletonList count={3} />
-      ) : facilities.length === 0 ? (
+      ) : filteredFacilities.length === 0 ? (
         <EmptyState text="Объекты отсутствуют" />
       ) : (
         <div className="space-y-3">
-          {facilities.map((facility) => (
+          {filteredFacilities.map((facility) => (
             <StandardCard
               key={facility.id}
               title={facility.isVerified ? 'Подтверждено' : 'На проверке'}
@@ -674,6 +825,8 @@ const FacilityManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 const ReportsManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [visits, setVisits] = useState<Visit[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
   useEffect(() => {
     apiClient
@@ -684,12 +837,43 @@ const ReportsManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   }, []);
 
   const exportActivity = () => {
-    window.open('/api/reports/visits', '_blank');
+    const params = new URLSearchParams();
+    if (fromDate) params.append('from', fromDate);
+    if (toDate) params.append('to', toDate);
+    const qs = params.toString();
+    window.open(`/api/reports/visits${qs ? `?${qs}` : ''}`, '_blank');
   };
+
+  const filteredVisits = useMemo(() => {
+    if (!fromDate && !toDate) return visits;
+    return visits.filter((visit) => {
+      const date = new Date(visit.date).toISOString().slice(0, 10);
+      if (fromDate && date < fromDate) return false;
+      if (toDate && date > toDate) return false;
+      return true;
+    });
+  }, [visits, fromDate, toDate]);
 
   return (
     <div className="space-y-6 pb-24">
       <ManagerHeader title="Журнал визитов" subtitle="Отчеты" onBack={onBack} />
+      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-4 space-y-3">
+        <div className="text-xs font-semibold text-gray-500">Диапазон дат для выгрузки</div>
+        <div className="grid grid-cols-2 gap-2">
+          <input
+            type="date"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            className="w-full bg-[#F5F5F7] border border-gray-200 rounded-2xl p-2 text-sm font-medium"
+          />
+          <input
+            type="date"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+            className="w-full bg-[#F5F5F7] border border-gray-200 rounded-2xl p-2 text-sm font-medium"
+          />
+        </div>
+      </div>
       <button
         onClick={exportActivity}
         className="w-full py-3 bg-black text-white rounded-3xl font-semibold flex items-center justify-center gap-2 shadow-md"
@@ -699,11 +883,11 @@ const ReportsManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
       {loading ? (
         <SkeletonList count={3} />
-      ) : visits.length === 0 ? (
+      ) : filteredVisits.length === 0 ? (
         <EmptyState text="Отчеты отсутствуют" />
       ) : (
         <div className="space-y-3">
-          {visits.map((visit) => (
+          {filteredVisits.map((visit) => (
             <StandardCard
               key={visit.id}
               title={formatDate(visit.date)}
@@ -727,6 +911,8 @@ const ReportsManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 const OrdersManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
   useEffect(() => {
     apiClient
@@ -737,12 +923,45 @@ const OrdersManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   }, []);
 
   const exportOrders = () => {
-    window.open('/api/samples/export', '_blank');
+    const params = new URLSearchParams();
+    if (fromDate) params.append('from', fromDate);
+    if (toDate) params.append('to', toDate);
+    const qs = params.toString();
+    window.open(`/api/samples/export${qs ? `?${qs}` : ''}`, '_blank');
   };
+
+  const filteredOrders = useMemo(() => {
+    if (!fromDate && !toDate) return orders;
+    return orders.filter((order) => {
+      const dateRaw = (order as any).createdAt || '';
+      if (!dateRaw) return true;
+      const date = new Date(dateRaw).toISOString().slice(0, 10);
+      if (fromDate && date < fromDate) return false;
+      if (toDate && date > toDate) return false;
+      return true;
+    });
+  }, [orders, fromDate, toDate]);
 
   return (
     <div className="space-y-6 pb-24">
       <ManagerHeader title="Заказы" subtitle="История" onBack={onBack} />
+      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-4 space-y-3">
+        <div className="text-xs font-semibold text-gray-500">Диапазон дат для выгрузки</div>
+        <div className="grid grid-cols-2 gap-2">
+          <input
+            type="date"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            className="w-full bg-[#F5F5F7] border border-gray-200 rounded-2xl p-2 text-sm font-medium"
+          />
+          <input
+            type="date"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+            className="w-full bg-[#F5F5F7] border border-gray-200 rounded-2xl p-2 text-sm font-medium"
+          />
+        </div>
+      </div>
       <button
         onClick={exportOrders}
         className="w-full py-3 bg-black text-white rounded-3xl font-semibold flex items-center justify-center gap-2 shadow-md"
@@ -752,11 +971,11 @@ const OrdersManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
       {loading ? (
         <SkeletonList count={3} />
-      ) : orders.length === 0 ? (
+      ) : filteredOrders.length === 0 ? (
         <EmptyState text="Заказы отсутствуют" />
       ) : (
         <div className="space-y-3">
-          {orders.map((order) => (
+          {filteredOrders.map((order) => (
             <StandardCard
               key={order.id}
               title={order.status}
@@ -835,18 +1054,101 @@ const SamplesManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 const KnowledgeManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [title, setTitle] = useState('');
+  const [category, setCategory] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [readTime, setReadTime] = useState('');
+  const [importance, setImportance] = useState(0);
+  const [content, setContent] = useState('');
 
   useEffect(() => {
-    apiClient
-      .get<Post[]>('/api/posts')
-      .then((res) => setPosts(res.data || []))
-      .catch(() => toast.error('Не удалось загрузить контент'))
-      .finally(() => setLoading(false));
+    load();
   }, []);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const res = await apiClient.get<Post[]>('/api/posts');
+      setPosts(res.data || []);
+    } catch {
+      toast.error('Не удалось загрузить контент');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openCreate = () => {
+    setEditingPost(null);
+    setTitle('');
+    setCategory('');
+    setImageUrl('');
+    setReadTime('');
+    setImportance(0);
+    setContent('');
+    setIsModalOpen(true);
+  };
+
+  const openEdit = (post: Post) => {
+    setEditingPost(post);
+    setTitle(post.title || '');
+    setCategory(post.category || '');
+    setImageUrl((post as any).imageUrl || '');
+    setReadTime((post as any).readTime || '');
+    setImportance((post as any).importance || 0);
+    setContent((post as any).content || '');
+    setIsModalOpen(true);
+  };
+
+  const savePost = async () => {
+    if (!title.trim()) {
+      toast.error('Введите заголовок');
+      return;
+    }
+    const payload = {
+      title: title.trim(),
+      category: category.trim() || 'KNOWLEDGE',
+      imageUrl: imageUrl.trim() || undefined,
+      readTime: readTime.trim() || undefined,
+      importance,
+      content,
+    };
+    try {
+      if (editingPost) {
+        await apiClient.patch(`/api/posts/${editingPost.id}`, payload);
+        toast.success('Раздел обновлен');
+      } else {
+        await apiClient.post('/api/posts', payload);
+        toast.success('Раздел создан');
+      }
+      setIsModalOpen(false);
+      load();
+    } catch {
+      toast.error('Не удалось сохранить');
+    }
+  };
+
+  const deletePost = async (id: number) => {
+    if (!window.confirm('Удалить раздел?')) return;
+    try {
+      await apiClient.delete(`/api/posts/${id}`);
+      toast.success('Удалено');
+      load();
+    } catch {
+      toast.error('Не удалось удалить');
+    }
+  };
 
   return (
     <div className="space-y-6 pb-24">
       <ManagerHeader title="Контент" subtitle="База знаний" onBack={onBack} />
+      <button
+        onClick={openCreate}
+        className="w-full bg-black text-white rounded-2xl py-3 font-semibold text-sm"
+      >
+        + Добавить раздел
+      </button>
       {loading ? (
         <SkeletonList count={3} />
       ) : posts.length === 0 ? (
@@ -858,10 +1160,85 @@ const KnowledgeManager: React.FC<{ onBack: () => void }> = ({ onBack }) => {
               key={post.id}
               title={post.category || 'Материал'}
               subtitle={post.title}
+              action={
+                <button
+                  onClick={() => openEdit(post)}
+                  className="p-2 text-gray-400 hover:text-gray-600"
+                  aria-label="Редактировать"
+                >
+                  <Pencil size={16} strokeWidth={2} />
+                </button>
+              }
               icon={BookOpen}
             />
           ))}
         </div>
+      )}
+
+      {isModalOpen && (
+        <Modal
+          title={editingPost ? 'Редактировать раздел' : 'Новый раздел'}
+          onClose={() => setIsModalOpen(false)}
+          action={
+            <div className="flex flex-col gap-2">
+              {editingPost && (
+                <button
+                  onClick={() => deletePost(editingPost.id)}
+                  className="w-full bg-white border border-gray-200 text-red-600 rounded-2xl py-3 font-semibold"
+                >
+                  Удалить раздел
+                </button>
+              )}
+              <button
+                onClick={savePost}
+                className="w-full bg-black text-white py-3 rounded-2xl font-semibold"
+              >
+                Сохранить
+              </button>
+            </div>
+          }
+        >
+          <input
+            placeholder="Заголовок"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="w-full bg-[#F5F5F7] p-3 rounded-2xl border border-gray-100 font-medium"
+          />
+          <input
+            placeholder="Категория (например KNOWLEDGE)"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="w-full bg-[#F5F5F7] p-3 rounded-2xl border border-gray-100 font-medium"
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              placeholder="Read time (например 5 мин)"
+              value={readTime}
+              onChange={(e) => setReadTime(e.target.value)}
+              className="w-full bg-[#F5F5F7] p-3 rounded-2xl border border-gray-100 font-medium"
+            />
+            <input
+              type="number"
+              placeholder="Важность (0-10)"
+              value={importance}
+              onChange={(e) => setImportance(Number(e.target.value))}
+              className="w-full bg-[#F5F5F7] p-3 rounded-2xl border border-gray-100 font-medium"
+            />
+          </div>
+          <input
+            placeholder="Image URL"
+            value={imageUrl}
+            onChange={(e) => setImageUrl(e.target.value)}
+            className="w-full bg-[#F5F5F7] p-3 rounded-2xl border border-gray-100 font-medium"
+          />
+          <textarea
+            placeholder="Контент (markdown / текст)"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            rows={6}
+            className="w-full bg-[#F5F5F7] p-3 rounded-2xl border border-gray-100 font-medium"
+          />
+        </Modal>
       )}
     </div>
   );
@@ -940,6 +1317,35 @@ const ManagerCard: React.FC<{
 const AdminPage: React.FC = () => {
   const [view, setView] = useState<AdminView>('menu');
   const [isUnlocked, setIsUnlocked] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isUnlocked) return;
+
+    const handleBack = () => {
+      if (view !== 'menu') {
+        setView('menu');
+        WebApp.HapticFeedback?.impactOccurred('light');
+        return;
+      }
+      navigate(-1);
+    };
+
+    try {
+      WebApp.BackButton?.onClick?.(handleBack);
+      WebApp.BackButton?.show?.();
+    } catch (e) {
+      console.warn('Admin back handler error', e);
+    }
+
+    return () => {
+      try {
+        WebApp.BackButton?.offClick?.(handleBack);
+      } catch (e) {
+        console.warn('Admin back handler cleanup error', e);
+      }
+    };
+  }, [isUnlocked, view, navigate]);
 
   const handleNavigate = (nextView: AdminView) => {
     setView(nextView);

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '../components/PageHeader';
 import { Search, Plus, MapPin } from 'lucide-react';
 import apiClient from '../api/apiClient';
@@ -20,6 +20,7 @@ const isMustVisit = (facility: Facility) => {
 
 const WorkHubPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -43,13 +44,19 @@ const WorkHubPage: React.FC = () => {
     };
   }, []);
 
+  const filterMode = searchParams.get('filter');
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return facilities;
-    return facilities.filter((f) =>
+    let list = facilities;
+    if (filterMode === 'must') {
+      list = list.filter((f) => (f.score ?? 0) < 100);
+    }
+    if (!term) return list;
+    return list.filter((f) =>
       [f.name, f.address].some((value) => value?.toLowerCase().includes(term))
     );
-  }, [facilities, search]);
+  }, [facilities, search, filterMode]);
 
   const mustVisit = useMemo(() => filtered.filter(isMustVisit), [filtered]);
   const regular = useMemo(() => filtered.filter((f) => !isMustVisit(f)), [filtered]);
@@ -133,9 +140,9 @@ const FacilityRow: React.FC<{ facility: Facility; onClick: () => void }> = ({ fa
           </p>
         </div>
 
-        <div className="flex flex-col items-end gap-2">
-          <div className="px-2 py-1 rounded-xl text-[11px] font-semibold bg-black/5 border border-white/40 text-black/60">
-            {facility.score}%
+        <div className="flex flex-col items-end gap-1.5">
+          <div className="px-2 py-1 rounded-xl text-[11px] font-semibold bg-black/5 border border-white/40 text-black/70">
+            Must {facility.score ?? 0}%
           </div>
           <span className="text-[11px] text-black/35">
             {facility.daysSinceLastVisit !== null ? `${facility.daysSinceLastVisit} дн.` : '—'}

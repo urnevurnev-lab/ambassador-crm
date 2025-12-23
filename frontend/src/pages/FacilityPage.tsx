@@ -29,8 +29,10 @@ interface ProductInfo {
 }
 
 interface FacilityResponse {
-  facility: FacilityInfo;
+  facility: FacilityInfo & { visits?: Array<{ id: number; date: string; user?: { fullName?: string } | null }> };
   currentStock: ProductInfo[];
+  lastVisit?: { date?: string; user?: { fullName?: string } | null };
+  missingRecommendations?: Array<{ id: number; flavor: string; line: string }>;
 }
 
 const VISIT_SCENARIOS = [
@@ -45,6 +47,31 @@ const FacilityPage: React.FC = () => {
   const navigate = useNavigate();
   const [data, setData] = useState<FacilityResponse | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const groupedStock = React.useMemo(() => {
+    const stock = data?.currentStock || [];
+    const groups: Record<string, string[]> = {};
+    stock.forEach((p) => {
+      if (!groups[p.line]) groups[p.line] = [];
+      groups[p.line].push(p.flavor);
+    });
+    return Object.entries(groups)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([line, flavors]) => ({ line, flavors: flavors.sort((a, b) => a.localeCompare(b)) }));
+  }, [data?.currentStock]);
+
+  const groupedMissing = React.useMemo(() => {
+    const items = data?.missingRecommendations || [];
+    const groups: Record<string, string[]> = {};
+    items.forEach((item) => {
+      const line = item.line || 'Другое';
+      if (!groups[line]) groups[line] = [];
+      groups[line].push(item.flavor);
+    });
+    return Object.entries(groups)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([line, flavors]) => ({ line, flavors: flavors.sort((a, b) => a.localeCompare(b)) }));
+  }, [data?.missingRecommendations]);
 
   useEffect(() => {
     let isMounted = true;
@@ -83,6 +110,8 @@ const FacilityPage: React.FC = () => {
   }
 
   const { facility, currentStock } = data;
+  const lastVisit = (data as any).lastVisit || data.facility?.visits?.[0] || null;
+  const lastVisitor = lastVisit?.user?.fullName;
 
   return (
     <div className="space-y-6 pb-24">
@@ -145,15 +174,24 @@ const FacilityPage: React.FC = () => {
 
       <div className="space-y-4">
         <StandardCard title="На полке" floating={false} className="bg-white/60 backdrop-blur-xl border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.10)]">
-          <div className="flex flex-wrap gap-2">
-            {currentStock && currentStock.length > 0 ? (
-              currentStock.map((product) => (
-                <span
-                  key={product.id}
-                  className="text-[11px] font-semibold bg-black/5 border border-white/40 text-gray-900 px-3 py-1.5 rounded-xl"
-                >
-                  {product.flavor}
-                </span>
+          <div className="space-y-3">
+            {groupedStock.length > 0 ? (
+              groupedStock.map((group) => (
+                <div key={group.line} className="space-y-2">
+                  <div className="text-[12px] font-semibold uppercase tracking-widest text-black/45 px-1">
+                    {group.line}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {group.flavors.map((flavor) => (
+                      <span
+                        key={`${group.line}-${flavor}`}
+                        className="text-[11px] font-semibold bg-black/5 border border-white/40 text-gray-900 px-3 py-1.5 rounded-xl"
+                      >
+                        {flavor}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               ))
             ) : (
               <div className="flex items-center gap-3 py-2 text-gray-400 text-sm font-medium">
@@ -164,19 +202,46 @@ const FacilityPage: React.FC = () => {
           </div>
         </StandardCard>
 
-        <button
-          onClick={() => navigate(`/visits-history?facilityId=${facility.id}`)}
-          className="w-full bg-white/60 backdrop-blur-xl p-5 rounded-3xl border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.10)] flex items-center gap-4 text-left active:scale-[0.99] transition-transform"
-        >
-          <div className="w-12 h-12 bg-black/5 border border-white/40 rounded-2xl flex items-center justify-center text-black/60">
-            <History size={22} strokeWidth={1.5} />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-[15px] font-semibold text-black">История визитов</h3>
-            <p className="text-[13px] text-black/50">Прошлые активности</p>
-          </div>
-          <ChevronRight size={18} strokeWidth={2} className="text-black/30" />
-        </button>
+        {groupedMissing.length > 0 && (
+          <StandardCard title="Must-лист (рекомендуем добавить)" floating={false} className="bg-black/75 text-white border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.22)]">
+            <div className="space-y-3">
+              {groupedMissing.map((group) => (
+                <div key={group.line} className="space-y-2">
+                  <div className="text-[12px] font-semibold uppercase tracking-widest text-white/60 px-1">
+                    {group.line}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {group.flavors.map((flavor) => (
+                      <span key={`${group.line}-${flavor}`} className="text-[11px] font-semibold bg-white/10 border border-white/20 text-white px-3 py-1.5 rounded-xl">
+                        {flavor}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </StandardCard>
+        )}
+
+        <div className="space-y-3">
+          <button
+            onClick={() => navigate(`/visits-history?facilityId=${facility.id}`)}
+            className="w-full bg-white/60 backdrop-blur-xl p-5 rounded-3xl border border-white/30 shadow-[0_10px_30px_rgba(0,0,0,0.10)] flex items-center gap-4 text-left active:scale-[0.99] transition-transform"
+          >
+            <div className="w-12 h-12 bg-black/5 border border-white/40 rounded-2xl flex items-center justify-center text-black/60">
+              <History size={22} strokeWidth={1.5} />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-[15px] font-semibold text-black">История визитов</h3>
+              <p className="text-[13px] text-black/50">
+                {lastVisit
+                  ? `${new Date(lastVisit.date || '').toLocaleDateString('ru-RU')} • ${lastVisitor || 'Сотрудник'}`
+                  : 'Прошлые активности'}
+              </p>
+            </div>
+            <ChevronRight size={18} strokeWidth={2} className="text-black/30" />
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -63,13 +63,28 @@ export class VisitsController {
 
         // Синхронизация остатков с объектом (если это проезд/инвентаризация)
         if (data.type === 'transit' && data.scenarioData?.inventory) {
-            // Превращаем { product_id: boolean } в массив объектов или обновляем JSON
-            // Для простоты работы OrderPage, сохраним это в facility.mustList или отдельное поле.
-            // В схеме есть mustList: Json?
+            const inventoryMap = data.scenarioData.inventory as Record<string, any>;
+            const selectedIds = Object.entries(inventoryMap)
+                .filter(([, v]) => Boolean(v))
+                .map(([k]) => Number(k))
+                .filter((id) => !Number.isNaN(id));
+
+            if (selectedIds.length > 0) {
+                await this.prisma.visit.update({
+                    where: { id: visit.id },
+                    data: {
+                        productsAvailable: {
+                            set: [],
+                            connect: selectedIds.map((id) => ({ id })),
+                        },
+                    },
+                });
+            }
+
             await this.prisma.facility.update({
                 where: { id: Number(data.facilityId) },
                 data: {
-                    mustList: data.scenarioData.inventory
+                    mustList: inventoryMap,
                 }
             });
         }

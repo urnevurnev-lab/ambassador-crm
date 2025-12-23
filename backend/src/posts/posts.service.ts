@@ -24,6 +24,32 @@ export class PostsService implements OnModuleInit {
         return this.prisma.post.findUnique({ where: { id } });
     }
 
+    async create(dto: { title: string; category?: string; content?: string; imageUrl?: string; readTime?: string; importance?: number; }) {
+        return this.prisma.post.create({
+            data: {
+                title: dto.title,
+                category: dto.category || 'KNOWLEDGE',
+                content: dto.content || '',
+                imageUrl: dto.imageUrl || null,
+                readTime: dto.readTime || null,
+                importance: dto.importance ?? 0,
+            }
+        });
+    }
+
+    async update(id: number, dto: { title?: string; category?: string; content?: string; imageUrl?: string; readTime?: string; importance?: number; }) {
+        return this.prisma.post.update({
+            where: { id },
+            data: {
+                ...dto,
+            }
+        });
+    }
+
+    async remove(id: number) {
+        return this.prisma.post.delete({ where: { id } });
+    }
+
     private async seedKnowledgeBase() {
         const text = `# База знаний: Бренд NAШ & BLISS
 

@@ -77,8 +77,7 @@ ${itemsList}
                 productsAvailableIn: {
                     _count: 'desc'
                 }
-            },
-            take: 50
+            }
         });
 
         // Group by Line
